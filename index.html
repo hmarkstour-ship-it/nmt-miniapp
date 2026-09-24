@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>НМТ Математика</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #FAFAF8;
+    --ink: #1B1B1F;
+    --ink-soft: #55555C;
+    --line: #E3E3DE;
+    --accent: #2F4FD0;
+    --accent-soft: #EBEFFC;
+    --good: #1E8E5A;
+    --good-soft: #E7F5EE;
+    --bad: #D6483F;
+    --bad-soft: #FBEAE8;
+    --radius: 3px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+  }
+
+  body {
+    font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--paper);
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 24px 24px;
+    color: var(--ink);
+    padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px);
+    min-height: 100%;
+  }
+
+  .wrap {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 20px 18px 40px;
+  }
+
+  /* ---- Верхня панель ---- */
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+  }
+
+  h1 {
+    font-size: 17px;
+    font-weight: 600;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+
+  .streak {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--ink-soft);
+    background: #fff;
+    border: 1px solid var(--line);
+    padding: 4px 9px;
+    border-radius: var(--radius);
+  }
+
+  /* ---- Вибір теми ---- */
+
+  .topic-select {
+    width: 100%;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 14px;
+    padding: 11px 12px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    color: var(--ink);
+    margin-bottom: 20px;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2355555C'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+  }
+
+  /* ---- Картка завдання ---- */
+
+  .card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 22px 18px;
+    min-height: 340px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .card-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 12px;
+  }
+
+  .question-text {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    line-height: 1.55;
+    margin-bottom: 22px;
+    white-space: pre-wrap;
+  }
+
+  .options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: auto;
+  }
+
+  .option {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    text-align: left;
+    padding: 12px 13px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 14.5px;
+    color: var(--ink);
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+
+  .option:hover:not(:disabled) {
+    border-color: var(--accent);
+  }
+
+  .option:disabled { cursor: default; }
+
+  .option-letter {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    color: var(--ink-soft);
+    flex-shrink: 0;
+  }
+
+  .option.correct {
+    background: var(--good-soft);
+    border-color: var(--good);
+  }
+  .option.correct .option-letter { color: var(--good); }
+
+  .option.wrong {
+    background: var(--bad-soft);
+    border-color: var(--bad);
+  }
+  .option.wrong .option-letter { color: var(--bad); }
+
+  /* ---- Пояснення ---- */
+
+  .explanation {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px dashed var(--line);
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: var(--ink-soft);
+    display: none;
+  }
+
+  .explanation.show { display: block; }
+
+  .explanation strong {
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  /* ---- Кнопка дії ---- */
+
+  .primary-btn {
+    width: 100%;
+    margin-top: 18px;
+    padding: 13px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .primary-btn:disabled {
+    background: var(--line);
+    color: var(--ink-soft);
+    cursor: default;
+  }
+
+  /* ---- Стани завантаження / помилки ---- */
+
+  .status {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    min-height: 340px;
+    text-align: center;
+    color: var(--ink-soft);
+    font-size: 14px;
+  }
+
+  .spinner {
+    width: 22px;
+    height: 22px;
+    border: 2.5px solid var(--line);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .error-box {
+    background: var(--bad-soft);
+    border: 1px solid var(--bad);
+    color: var(--bad);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    font-size: 13.5px;
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>НМТ · Математика TEST-777</h1>
+    <div class="streak" id="streak">✅ 0 · ❌ 0</div>
+  </header>
+
+  <select class="topic-select" id="topicSelect"></select>
+
+  <div id="cardArea">
+    <div class="status">
+      <div class="spinner"></div>
+      <span>Готуємо перше завдання…</span>
+    </div>
+  </div>
+</div>
+
+<script>
+  const tg = window.Telegram?.WebApp;
+  tg?.ready();
+  tg?.expand();
+
+  // Бекенд лежить на тому ж домені, що й фронтенд (express.static)
+  const API_BASE = '';
+  const FETCH_TIMEOUT_MS = 25000;
+
+  async function fetchWithTimeout(url, options = {}) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    try {
+      return await fetch(url, { ...options, signal: controller.signal });
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  const state = {
+    correct: 0,
+    wrong: 0,
+    currentQuestion: null,
+    answered: false,
+  };
+
+  const cardArea = document.getElementById('cardArea');
+  const streakEl = document.getElementById('streak');
+  const topicSelect = document.getElementById('topicSelect');
+
+  function updateStreak() {
+    streakEl.textContent = `✅ ${state.correct} · ❌ ${state.wrong}`;
+  }
+
+  function renderLoading(message) {
+    cardArea.innerHTML = `
+      <div class="status">
+        <div class="spinner"></div>
+        <span>${message}</span>
+      </div>`;
+  }
+
+  function renderError(message) {
+    cardArea.innerHTML = `
+      <div class="card">
+        <div class="error-box">${message}</div>
+        <button class="primary-btn" id="retryBtn">Спробувати ще раз</button>
+      </div>`;
+    document.getElementById('retryBtn').addEventListener('click', loadQuestion);
+  }
+
+  function renderQuestion(q) {
+  state.currentQuestion = q;
+  state.answered = false;
+
+  // Підтягуємо збережений прогрес із Supabase
+  if (q.progress) {
+    state.correct = Number(q.progress.correct) || 0;
+    state.wrong = Number(q.progress.wrong) || 0;
+    updateStreak();
+
+    console.log('PROGRESS LOADED:', q.progress);
+  }
+
+  if (q.progress) {
+    state.correct = Number(q.progress.correct) || 0;
+    state.wrong = Number(q.progress.wrong) || 0;
+    updateStreak();
+  }
+
+    const letters = ['А', 'Б', 'В', 'Г'];
+
+    cardArea.innerHTML = `
+      <div class="card">
+        <div class="card-label">${topicSelect.options[topicSelect.selectedIndex]?.text || ''}</div>
+        <div class="question-text">${escapeHtml(q.question)}</div>
+        <div class="options">
+          ${q.options.map((opt, i) => `
+            <button class="option" data-index="${i}">
+              <span class="option-letter">${letters[i]}</span>
+              <span>${escapeHtml(opt)}</span>
+            </button>
+          `).join('')}
+        </div>
+        <div class="explanation" id="explanation">
+          <strong>Розв'язання.</strong> ${escapeHtml(q.explanation)}
+        </div>
+        <button class="primary-btn" id="nextBtn" disabled>Оберіть відповідь</button>
+      </div>`;
+
+    cardArea.querySelectorAll('.option').forEach((btn) => {
+      btn.addEventListener('click', () => handleAnswer(Number(btn.dataset.index)));
+    });
+
+    document.getElementById('nextBtn').addEventListener('click', () => {
+      if (state.answered) loadQuestion();
+    });
+  }
+
+  async function handleAnswer(selectedIndex) {
+  if (state.answered) return;
+  state.answered = true;
+
+  const q = state.currentQuestion;
+  const options = cardArea.querySelectorAll('.option');
+  options.forEach((btn) => (btn.disabled = true));
+
+  const isCorrect = selectedIndex === q.correct_index;
+
+  options[selectedIndex].classList.add(isCorrect ? 'correct' : 'wrong');
+
+  if (!isCorrect) {
+    options[q.correct_index].classList.add('correct');
+  }
+
+  if (isCorrect) {
+    tg?.HapticFeedback?.notificationOccurred('success');
+  } else {
+    tg?.HapticFeedback?.notificationOccurred('error');
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/api/answer`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        initData: tg?.initData || null,
+        isCorrect
+      }),
+    });
+
+    const data = await res.json();
+
+    if (data.saved) {
+      state.correct = Number(data.correct_count) || 0;
+      state.wrong = Number(data.wrong_count) || 0;
+    } else {
+      if (isCorrect) state.correct++;
+      else state.wrong++;
+    }
+
+  } catch (err) {
+    console.error('Помилка збереження:', err);
+
+    if (isCorrect) state.correct++;
+    else state.wrong++;
+  }
+
+  updateStreak();
+
+  document.getElementById('explanation').classList.add('show');
+
+  const nextBtn = document.getElementById('nextBtn');
+  nextBtn.disabled = false;
+  nextBtn.textContent = 'Наступне завдання →';
+}
+
+  if (isCorrect) {
+    tg?.HapticFeedback?.notificationOccurred('success');
+  } else {
+    tg?.HapticFeedback?.notificationOccurred('error');
+  }
+
+  try {
+    const res = await fetchWithTimeout(`${API_BASE}/api/answer`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        initData: tg?.initData || null,
+        isCorrect
+      }),
+    });
+
+    const data = await res.json();
+
+    if (data.saved) {
+      state.correct = Number(data.correct_count) || 0;
+      state.wrong = Number(data.wrong_count) || 0;
+    } else {
+      // Якщо сервер не зберіг — хоча б показуємо локально
+      if (isCorrect) state.correct++;
+      else state.wrong++;
+    }
+
+  } catch (err) {
+    console.warn('Не вдалося зберегти відповідь:', err);
+
+    if (isCorrect) state.correct++;
+    else state.wrong++;
+  }
+
+  updateStreak();
+
+  document.getElementById('explanation').classList.add('show');
+
+  const nextBtn = document.getElementById('nextBtn');
+  nextBtn.disabled = false;
+  nextBtn.textContent = 'Наступне завдання →';
+}
+
+  async function loadQuestion() {
+    renderLoading('Генеруємо завдання…');
+    try {
+      const res = await fetchWithTimeout(`${API_BASE}/api/generate-question`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topic: topicSelect.value,
+          difficulty: 'середній',
+          verify: true,
+          initData: tg?.initData || null,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        renderError(data.error || 'Щось пішло не так. Спробуйте ще раз.');
+        return;
+      }
+
+      renderQuestion(data);
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        renderError('Сервер не відповів вчасно (тайм-аут). Спробуйте ще раз.');
+      } else {
+        renderError('Немає з\'єднання з сервером. Перевірте, чи запущений бекенд.');
+      }
+    }
+  }
+
+  const sleepMs = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  async function getTelegramInitData() {
+    // Чекаємо до 3 секунд, поки Telegram віддасть initData
+    for (let i = 0; i < 30; i++) {
+      const initData = tg?.initData || '';
+
+      if (initData.length > 0) {
+        console.log('Telegram initData ready:', initData.length);
+        return initData;
+      }
+
+      await sleepMs(100);
+    }
+
+    return tg?.initData || '';
+  }
+
+  async function loadProgress() {
+    try {
+      const initData = await getTelegramInitData();
+
+      console.log('LOAD PROGRESS initData:', initData.length);
+
+      if (!initData) {
+        console.warn('Telegram initData порожній — прогрес поки не завантажено');
+        return false;
+      }
+
+      const res = await fetchWithTimeout(`${API_BASE}/api/progress`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          initData
+        }),
+      });
+
+      const data = await res.json();
+
+      console.log('PROGRESS FROM SERVER:', data);
+
+      if (!res.ok) {
+        throw new Error('Помилка /api/progress');
+      }
+
+      state.correct = Number(data.correct ?? 0);
+      state.wrong = Number(data.wrong ?? 0);
+
+      updateStreak();
+
+      return true;
+
+    } catch (err) {
+      console.error('Помилка завантаження прогресу:', err);
+      return false;
+    }
+  }
+async function loadProgress() {
+  try {
+    const res = await fetch(`${API_BASE}/api/progress`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        initData: tg?.initData || null
+      }),
+    });
+
+    const data = await res.json();
+
+    state.correct = Number(data.correct) || 0;
+    state.wrong = Number(data.wrong) || 0;
+
+    updateStreak();
+
+    console.log('Завантажено прогрес:', data);
+
+  } catch (err) {
+    console.error('Не вдалося завантажити прогрес:', err);
+  }
+}
+  async function loadTopics() {
+    try {
+      const res = await fetchWithTimeout(`${API_BASE}/api/topics`);
+      const topics = await res.json();
+
+      topicSelect.innerHTML = topics
+        .map((t) => `<option value="${t.key}">${t.label}</option>`)
+        .join('');
+
+    } catch (err) {
+      console.error('Помилка завантаження тем:', err);
+
+      topicSelect.innerHTML = `
+        <option value="algebra">
+          алгебраїчні вирази, рівняння та нерівності
+        </option>
+      `;
+    }
+  }
+
+  topicSelect.addEventListener('change', loadQuestion);
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str ?? '';
+    return div.innerHTML;
+  }
+
+(async function init() {
+  await loadTopics();
+  await loadProgress();
+  await loadQuestion();
+})();
+</script>  
+</script>
+
+</body>
+</html>

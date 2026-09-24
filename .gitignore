@@ -1,0 +1,4 @@
+﻿.env
+node_modules/
+fix-index.cjs
+npm-debug.log
