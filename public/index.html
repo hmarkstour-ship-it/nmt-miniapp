@@ -985,6 +985,350 @@
     padding: 12px 14px;
     font-size: 13.5px;
   }
+
+
+  /* ---- Liquid Glass bottom navigation + standalone profile ---- */
+
+  .view-page {
+    transition: opacity .28s ease, transform .32s cubic-bezier(.2,.8,.2,1);
+  }
+
+  .view-page:not(.active) { display: none; }
+
+  .wrap {
+    padding-bottom: calc(122px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .profile-view {
+    max-width: 480px;
+    min-height: 100vh;
+    margin: 0 auto;
+    padding: 22px 18px calc(126px + env(safe-area-inset-bottom, 0px));
+    background:
+      radial-gradient(circle at 18% 5%, rgba(255,255,255,.92), transparent 32%),
+      radial-gradient(circle at 92% 15%, rgba(47,79,208,.055), transparent 28%);
+    animation: profileViewIn .36s cubic-bezier(.2,.8,.2,1);
+  }
+
+  @keyframes profileViewIn {
+    from { opacity: 0; transform: translateY(10px) scale(.992); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .profile-page-shell { width: 100%; }
+
+  .profile-page-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 8px 2px 22px;
+  }
+
+  .profile-page-kicker {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: .12em;
+    color: #868A91;
+    margin-bottom: 7px;
+  }
+
+  .profile-page-head h2 {
+    margin: 0;
+    font-family: "Myriad Pro", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 30px;
+    line-height: 1.02;
+    letter-spacing: -.035em;
+    color: #15171A;
+  }
+
+  .profile-page-head p {
+    margin: 7px 0 0;
+    font-size: 13.5px;
+    color: #777B82;
+  }
+
+  .profile-page-mark {
+    min-width: 56px;
+    height: 56px;
+    padding: 0 13px;
+    border-radius: 18px;
+    display: grid;
+    place-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    color: #30343A;
+    background: linear-gradient(145deg, rgba(255,255,255,.82), rgba(227,231,237,.56));
+    border: 1px solid rgba(255,255,255,.9);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.95),
+      inset 0 -1px 0 rgba(95,103,114,.08),
+      0 12px 30px rgba(34,39,46,.09);
+    backdrop-filter: blur(22px) saturate(160%);
+    -webkit-backdrop-filter: blur(22px) saturate(160%);
+  }
+
+  .profile-page-content { display: grid; gap: 12px; }
+
+  .profile-page-loading {
+    min-height: 320px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: #777B82;
+    font-size: 14px;
+  }
+
+  .glass-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 24px;
+    background: linear-gradient(145deg, rgba(255,255,255,.76), rgba(240,242,245,.58));
+    border: 1px solid rgba(255,255,255,.86);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.94),
+      inset 0 -1px 0 rgba(71,77,86,.05),
+      0 14px 36px rgba(31,35,41,.075);
+    backdrop-filter: blur(24px) saturate(165%);
+    -webkit-backdrop-filter: blur(24px) saturate(165%);
+  }
+
+  .glass-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(115deg, rgba(255,255,255,.42), transparent 28%, transparent 70%, rgba(255,255,255,.18));
+  }
+
+  .profile-hero-new {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 17px;
+  }
+
+  .profile-avatar-new {
+    width: 64px;
+    height: 64px;
+    flex: 0 0 64px;
+    border-radius: 21px;
+    overflow: hidden;
+    display: grid;
+    place-items: center;
+    background: linear-gradient(145deg, #272B31, #555D68);
+    color: #fff;
+    font-size: 23px;
+    font-weight: 700;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 10px 24px rgba(29,32,38,.15);
+  }
+
+  .profile-avatar-new img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .profile-identity { min-width: 0; flex: 1; }
+  .profile-name-new { font-size: 21px; font-weight: 740; letter-spacing: -.025em; color: #181A1D; }
+  .profile-since-new { margin-top: 4px; font-size: 12.5px; color: #7B7F86; }
+
+  .profile-streak-pill {
+    margin-top: 9px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 28px;
+    padding: 5px 9px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.66);
+    border: 1px solid rgba(255,255,255,.82);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.9);
+    color: #4D5259;
+    font-size: 12px;
+    font-weight: 650;
+  }
+
+  .profile-highlight-grid {
+    display: grid;
+    grid-template-columns: 1.05fr .95fr;
+    gap: 10px;
+  }
+
+  .profile-highlight {
+    min-height: 136px;
+    padding: 16px;
+  }
+
+  .highlight-kicker {
+    font-size: 10.5px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: #858990;
+  }
+
+  .streak-number {
+    margin-top: 9px;
+    font-size: 39px;
+    line-height: .95;
+    font-weight: 760;
+    letter-spacing: -.05em;
+    color: #1A1C20;
+  }
+
+  .streak-number span { font-size: 14px; letter-spacing: 0; color: #767B82; font-weight: 600; }
+  .highlight-note { margin-top: 8px; font-size: 12px; line-height: 1.35; color: #777C83; }
+
+  .accuracy-ring {
+    --accuracy: 0;
+    width: 70px;
+    height: 70px;
+    margin-top: 10px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: conic-gradient(#2F4FD0 calc(var(--accuracy) * 1%), rgba(83,89,99,.11) 0);
+    position: relative;
+  }
+
+  .accuracy-ring::after {
+    content: '';
+    position: absolute;
+    inset: 7px;
+    border-radius: 50%;
+    background: rgba(248,249,250,.94);
+    box-shadow: inset 0 1px 3px rgba(25,28,33,.05);
+  }
+
+  .accuracy-ring strong { position: relative; z-index: 1; font-size: 16px; letter-spacing: -.02em; }
+
+  .profile-stat-grid-new {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 9px;
+  }
+
+  .profile-stat-new { padding: 14px 10px; text-align: center; }
+  .profile-stat-new strong { display: block; font-size: 21px; line-height: 1; letter-spacing: -.025em; color: #202226; }
+  .profile-stat-new span { display: block; margin-top: 6px; font-size: 10.5px; color: #7C8087; }
+
+  .profile-topic-section { padding: 16px; }
+  .profile-topic-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+  .profile-topic-head h3 { margin: 0; font-size: 16px; letter-spacing: -.015em; }
+  .profile-topic-head span { font-size: 11px; color: #858990; }
+
+  .topic-stat-list-new { display: grid; gap: 9px; }
+  .topic-stat-row-new {
+    padding: 12px 12px 11px;
+    border-radius: 16px;
+    background: rgba(255,255,255,.56);
+    border: 1px solid rgba(255,255,255,.78);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.85);
+  }
+
+  .topic-stat-top-new { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px; color: #3E4248; }
+  .topic-stat-top-new strong { color: #202226; }
+  .topic-stat-meta { margin-top: 3px; font-size: 10.5px; color: #8B8F95; }
+  .topic-stat-bar-new { height: 5px; margin-top: 9px; border-radius: 999px; overflow: hidden; background: rgba(64,70,79,.09); }
+  .topic-stat-fill-new { height: 100%; border-radius: inherit; background: linear-gradient(90deg, #334FC2, #5370E3); }
+
+  .liquid-bottom-nav {
+    position: fixed;
+    left: 50%;
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    transform: translateX(-50%);
+    width: min(310px, calc(100vw - 34px));
+    z-index: 100;
+    pointer-events: none;
+  }
+
+  .liquid-nav-track {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    padding: 6px;
+    border-radius: 25px;
+    background: linear-gradient(145deg, rgba(238,242,247,.68), rgba(211,218,228,.48));
+    border: 1px solid rgba(255,255,255,.76);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.94),
+      inset 0 -1px 0 rgba(63,71,81,.08),
+      0 16px 36px rgba(28,33,40,.16),
+      0 2px 8px rgba(28,33,40,.06);
+    backdrop-filter: blur(26px) saturate(185%);
+    -webkit-backdrop-filter: blur(26px) saturate(185%);
+    pointer-events: auto;
+    overflow: hidden;
+  }
+
+  .liquid-nav-track::before {
+    content: '';
+    position: absolute;
+    inset: 1px 10px auto;
+    height: 42%;
+    border-radius: 22px;
+    pointer-events: none;
+    background: linear-gradient(180deg, rgba(255,255,255,.4), transparent);
+    filter: blur(.2px);
+  }
+
+  .liquid-nav-indicator {
+    position: absolute;
+    z-index: 0;
+    left: 6px;
+    top: 6px;
+    bottom: 6px;
+    width: calc(50% - 10px);
+    border-radius: 19px;
+    background: linear-gradient(145deg, rgba(255,255,255,.78), rgba(225,231,239,.6));
+    border: 1px solid rgba(255,255,255,.88);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.98),
+      inset 0 -1px 0 rgba(86,95,107,.08),
+      0 5px 14px rgba(34,39,46,.11);
+    transition: transform .42s cubic-bezier(.22,1,.36,1), width .3s ease;
+  }
+
+  .liquid-nav-indicator.profile { transform: translateX(calc(100% + 8px)); }
+
+  .liquid-nav-item {
+    position: relative;
+    z-index: 1;
+    min-height: 54px;
+    border: 0;
+    background: transparent;
+    border-radius: 19px;
+    color: #7B8088;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-family: "Myriad Pro", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 13px;
+    font-weight: 650;
+    cursor: pointer;
+    transition: color .28s ease, transform .18s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .liquid-nav-item:active { transform: scale(.96); }
+  .liquid-nav-item.active { color: #202329; }
+
+  .liquid-nav-icon {
+    width: 21px;
+    height: 21px;
+    display: grid;
+    place-items: center;
+    transition: transform .34s cubic-bezier(.22,1,.36,1);
+  }
+  .liquid-nav-item.active .liquid-nav-icon { transform: translateY(-1px) scale(1.04); }
+  .liquid-nav-icon svg { width: 21px; height: 21px; stroke: currentColor; stroke-width: 1.85; stroke-linecap: round; stroke-linejoin: round; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .liquid-nav-indicator,
+    .liquid-nav-item,
+    .view-page { transition: none !important; animation: none !important; }
+  }
+
 </style>
 </head>
 <body>
@@ -1006,12 +1350,11 @@
   <div class="startup-note">Це може зайняти кілька секунд</div>
 </div>
 
-<div class="wrap">
+<div class="wrap view-page active" id="testView" aria-hidden="false">
   <header>
     <h1>НМТ · Математика</h1>
     <div class="header-actions">
       <div class="streak" id="streak">✅ 0 · ❌ 0</div>
-      <button class="profile-btn" id="profileBtn" type="button" aria-label="Відкрити профіль">👤</button>
     </div>
   </header>
 
@@ -1035,6 +1378,26 @@
   </div>
 </div>
 
+<section class="profile-view view-page" id="profileView" aria-hidden="true">
+  <div class="profile-page-shell">
+    <div class="profile-page-head">
+      <div>
+        <div class="profile-page-kicker">ОСОБИСТИЙ КАБІНЕТ</div>
+        <h2>Твій прогрес</h2>
+        <p>Статистика підготовки до НМТ</p>
+      </div>
+      <div class="profile-page-mark" aria-hidden="true">НМТ</div>
+    </div>
+
+    <div id="profileContent" class="profile-page-content">
+      <div class="profile-page-loading">
+        <div class="spinner"></div>
+        <span>Завантажуємо профіль…</span>
+      </div>
+    </div>
+  </div>
+</section>
+
 <div class="topic-overlay" id="topicOverlay" aria-hidden="true">
   <div class="topic-sheet" role="dialog" aria-modal="true" aria-label="Вибір теми НМТ">
     <div class="topic-sheet-handle"></div>
@@ -1044,19 +1407,6 @@
     </div>
     <div class="topic-list" id="topicList"></div>
   </div>
-</div>
-
-<div class="profile-overlay" id="profileOverlay" aria-hidden="true">
-  <section class="profile-panel" role="dialog" aria-modal="true" aria-label="Профіль">
-    <div class="topic-sheet-handle"></div>
-    <div class="profile-head">
-      <h2>Профіль</h2>
-      <button class="sheet-close" id="profileClose" type="button">×</button>
-    </div>
-    <div id="profileContent">
-      <div class="status"><div class="spinner"></div><span>Завантажуємо профіль…</span></div>
-    </div>
-  </section>
 </div>
 
 <div class="report-overlay" id="reportOverlay" aria-hidden="true">
@@ -1075,6 +1425,24 @@
     </div>
   </section>
 </div>
+
+<nav class="liquid-bottom-nav" id="bottomNav" aria-label="Навігація застосунку">
+  <div class="liquid-nav-track">
+    <div class="liquid-nav-indicator" id="navIndicator" aria-hidden="true"></div>
+    <button class="liquid-nav-item active" type="button" data-view="tests" aria-current="page">
+      <span class="liquid-nav-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M7 4h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/><path d="M9 9h6M9 13h6M9 17h3"/></svg>
+      </span>
+      <span>Тести</span>
+    </button>
+    <button class="liquid-nav-item" type="button" data-view="profile">
+      <span class="liquid-nav-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.5"/><path d="M5.5 20c.6-4 3-6 6.5-6s5.9 2 6.5 6"/></svg>
+      </span>
+      <span>Профіль</span>
+    </button>
+  </div>
+</nav>
 
 <div class="toast" id="toast"></div>
 
@@ -1168,10 +1536,11 @@
   const topicList = document.getElementById('topicList');
   const topicSheetClose = document.getElementById('topicSheetClose');
   const startupScreen = document.getElementById('startupScreen');
-  const profileBtn = document.getElementById('profileBtn');
-  const profileOverlay = document.getElementById('profileOverlay');
-  const profileClose = document.getElementById('profileClose');
+  const testView = document.getElementById('testView');
+  const profileView = document.getElementById('profileView');
   const profileContent = document.getElementById('profileContent');
+  const navIndicator = document.getElementById('navIndicator');
+  const navItems = Array.from(document.querySelectorAll('.liquid-nav-item'));
   const reportOverlay = document.getElementById('reportOverlay');
   const reportClose = document.getElementById('reportClose');
   const reportReasons = document.getElementById('reportReasons');
@@ -1272,11 +1641,30 @@
     }
   }
 
-  async function openProfile() {
-    profileOverlay.classList.add('show');
-    profileOverlay.setAttribute('aria-hidden', 'false');
-    document.body.style.overflow = 'hidden';
-    profileContent.innerHTML = `<div class="status"><div class="spinner"></div><span>Завантажуємо профіль…</span></div>`;
+  function switchView(viewName) {
+    const showProfile = viewName === 'profile';
+
+    testView.classList.toggle('active', !showProfile);
+    profileView.classList.toggle('active', showProfile);
+    testView.setAttribute('aria-hidden', showProfile ? 'true' : 'false');
+    profileView.setAttribute('aria-hidden', showProfile ? 'false' : 'true');
+    navIndicator.classList.toggle('profile', showProfile);
+
+    navItems.forEach((btn) => {
+      const active = btn.dataset.view === (showProfile ? 'profile' : 'tests');
+      btn.classList.toggle('active', active);
+      if (active) btn.setAttribute('aria-current', 'page');
+      else btn.removeAttribute('aria-current');
+    });
+
+    tg?.HapticFeedback?.selectionChanged?.();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    if (showProfile) loadProfilePage();
+  }
+
+  async function loadProfilePage() {
+    profileContent.innerHTML = `<div class="profile-page-loading"><div class="spinner"></div><span>Завантажуємо профіль…</span></div>`;
 
     try {
       const res = await fetchWithTimeout(`${API_BASE}/api/profile`, {
@@ -1288,41 +1676,67 @@
       if (!res.ok) throw new Error(data.error || 'Не вдалося завантажити профіль');
 
       const initial = (data.first_name || 'У').trim().charAt(0).toUpperCase();
+      const photoUrl = tg?.initDataUnsafe?.user?.photo_url || '';
+      const avatarMarkup = photoUrl
+        ? `<img src="${escapeHtml(photoUrl)}" alt="" referrerpolicy="no-referrer">`
+        : escapeHtml(initial);
+
+      const accuracy = Math.max(0, Math.min(100, Number(data.accuracy) || 0));
+      const streak = Math.max(0, Number(data.streak) || 0);
+      const bestStreak = Math.max(streak, Number(data.best_streak) || 0);
+
       const topicRows = Array.isArray(data.topic_stats) && data.topic_stats.length
-        ? data.topic_stats.map((row) => `
-          <div class="topic-stat-row">
-            <div class="topic-stat-top">
-              <span>${escapeHtml(stripLeadingEmoji(row.label || row.topic))}</span>
-              <span class="topic-stat-accuracy">${Number(row.accuracy) || 0}%</span>
-            </div>
-            <div class="topic-stat-bar"><div class="topic-stat-fill" style="width:${Math.max(0, Math.min(100, Number(row.accuracy) || 0))}%"></div></div>
-          </div>`).join('')
-        : `<div class="topic-stat-row">Статистика по темах з’явиться після кількох відповідей.</div>`;
+        ? data.topic_stats.map((row) => {
+            const rowAccuracy = Math.max(0, Math.min(100, Number(row.accuracy) || 0));
+            const rowTotal = Number(row.total) || 0;
+            const rowCorrect = Number(row.correct) || 0;
+            return `
+              <div class="topic-stat-row-new">
+                <div class="topic-stat-top-new">
+                  <span>${escapeHtml(stripLeadingEmoji(row.label || row.topic))}</span>
+                  <strong>${rowAccuracy}%</strong>
+                </div>
+                <div class="topic-stat-meta">${rowCorrect} правильних із ${rowTotal}</div>
+                <div class="topic-stat-bar-new"><div class="topic-stat-fill-new" style="width:${rowAccuracy}%"></div></div>
+              </div>`;
+          }).join('')
+        : `<div class="topic-stat-row-new"><div class="topic-stat-top-new"><span>Статистика по темах</span><strong>—</strong></div><div class="topic-stat-meta">З’явиться після кількох відповідей</div></div>`;
 
       profileContent.innerHTML = `
-        <div class="profile-hero">
-          <div class="profile-avatar">${escapeHtml(initial)}</div>
-          <div>
-            <div class="profile-name">${escapeHtml(data.first_name || 'Учень')}</div>
-            <div class="profile-since">${escapeHtml(formatJoinDate(data.created_at))}</div>
+        <div class="profile-hero-new glass-card">
+          <div class="profile-avatar-new">${avatarMarkup}</div>
+          <div class="profile-identity">
+            <div class="profile-name-new">${escapeHtml(data.first_name || 'Учень')}</div>
+            <div class="profile-since-new">${escapeHtml(formatJoinDate(data.created_at))}</div>
+            <div class="profile-streak-pill">🔥 ${streak} ${streak === 1 ? 'день' : 'днів'} поспіль</div>
           </div>
         </div>
-        <div class="profile-grid">
-          <div class="profile-stat"><div class="profile-stat-value">${Number(data.total) || 0}</div><div class="profile-stat-label">завдань</div></div>
-          <div class="profile-stat"><div class="profile-stat-value">${Number(data.accuracy) || 0}%</div><div class="profile-stat-label">точність</div></div>
-          <div class="profile-stat"><div class="profile-stat-value">${Number(data.correct) || 0}</div><div class="profile-stat-label">правильно</div></div>
+
+        <div class="profile-highlight-grid">
+          <div class="profile-highlight glass-card">
+            <div class="highlight-kicker">Поточна серія</div>
+            <div class="streak-number">${streak}<span> днів</span></div>
+            <div class="highlight-note">Найкраща серія: ${bestStreak} дн.</div>
+          </div>
+          <div class="profile-highlight glass-card">
+            <div class="highlight-kicker">Точність</div>
+            <div class="accuracy-ring" style="--accuracy:${accuracy}"><strong>${accuracy}%</strong></div>
+          </div>
         </div>
-        <div class="profile-section-title">Результати за темами</div>
-        <div class="topic-stat-list">${topicRows}</div>`;
+
+        <div class="profile-stat-grid-new">
+          <div class="profile-stat-new glass-card"><strong>${Number(data.total) || 0}</strong><span>завдань</span></div>
+          <div class="profile-stat-new glass-card"><strong>${Number(data.correct) || 0}</strong><span>правильно</span></div>
+          <div class="profile-stat-new glass-card"><strong>${Number(data.wrong) || 0}</strong><span>помилок</span></div>
+        </div>
+
+        <div class="profile-topic-section glass-card">
+          <div class="profile-topic-head"><h3>Результати за темами</h3><span>${Array.isArray(data.topic_stats) ? data.topic_stats.length : 0} тем</span></div>
+          <div class="topic-stat-list-new">${topicRows}</div>
+        </div>`;
     } catch (err) {
       profileContent.innerHTML = `<div class="error-box">${escapeHtml(err.message)}</div>`;
     }
-  }
-
-  function closeProfile() {
-    profileOverlay.classList.remove('show');
-    profileOverlay.setAttribute('aria-hidden', 'true');
-    document.body.style.overflow = '';
   }
 
   function openReport() {
@@ -1774,9 +2188,9 @@
     if (event.target === topicOverlay) closeTopicSheet();
   });
 
-  profileBtn.addEventListener('click', openProfile);
-  profileClose.addEventListener('click', closeProfile);
-  profileOverlay.addEventListener('click', (event) => { if (event.target === profileOverlay) closeProfile(); });
+  navItems.forEach((btn) => {
+    btn.addEventListener('click', () => switchView(btn.dataset.view || 'tests'));
+  });
   reportClose.addEventListener('click', closeReport);
   reportOverlay.addEventListener('click', (event) => { if (event.target === reportOverlay) closeReport(); });
   reportReasons.querySelectorAll('.report-reason').forEach((btn) => {

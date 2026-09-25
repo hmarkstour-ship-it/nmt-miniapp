@@ -266,7 +266,65 @@ async function getProfileData(telegramId) {
     [telegramId]
   );
 
-  return { user, topicStats: statsResult.rows };
+  const activityResult = await pool.query(
+    `SELECT DISTINCT to_char(answered_at AT TIME ZONE 'Europe/Kyiv', 'YYYY-MM-DD') AS day
+     FROM user_answers
+     WHERE telegram_id = $1
+     ORDER BY day DESC
+     LIMIT 370`,
+    [telegramId]
+  );
+
+  return {
+    user,
+    topicStats: statsResult.rows,
+    activityDays: activityResult.rows.map((row) => row.day).filter(Boolean),
+  };
+}
+
+function kyivDateKey(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Kyiv',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
+function dateKeyToDayNumber(key) {
+  const [year, month, day] = String(key).split('-').map(Number);
+  if (!year || !month || !day) return null;
+  return Math.floor(Date.UTC(year, month - 1, day) / 86400000);
+}
+
+function calculateStreaks(dayKeys = []) {
+  const days = [...new Set(dayKeys.map(dateKeyToDayNumber).filter(Number.isFinite))]
+    .sort((a, b) => a - b);
+
+  if (!days.length) return { current: 0, best: 0 };
+
+  let best = 1;
+  let run = 1;
+  for (let i = 1; i < days.length; i++) {
+    if (days[i] === days[i - 1] + 1) run += 1;
+    else run = 1;
+    if (run > best) best = run;
+  }
+
+  const today = dateKeyToDayNumber(kyivDateKey());
+  const latest = days[days.length - 1];
+  if (latest < today - 1) return { current: 0, best };
+
+  let current = 1;
+  for (let i = days.length - 2; i >= 0; i--) {
+    if (days[i] === days[i + 1] - 1) current += 1;
+    else break;
+  }
+
+  return { current, best };
 }
 
 // ---- Промпти ----------------------------------------------------------------
@@ -827,12 +885,16 @@ app.post('/api/profile', async (req, res) => {
       };
     });
 
+    const streaks = calculateStreaks(profile.activityDays || []);
+
     res.json({
       first_name: profile.user.first_name || telegramUser.first_name || 'Учень',
       correct,
       wrong,
       total,
       accuracy: total ? Math.round((correct / total) * 100) : 0,
+      streak: streaks.current,
+      best_streak: streaks.best,
       created_at: profile.user.created_at,
       topic_stats: topicStats,
     });
