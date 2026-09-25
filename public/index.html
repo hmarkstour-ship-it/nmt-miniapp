@@ -45,6 +45,7 @@
     color: var(--ink);
     padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px);
     min-height: 100%;
+    overflow-x: hidden;
   }
 
   .wrap {
@@ -317,6 +318,8 @@
     display: flex;
     flex-direction: column;
     box-shadow: 0 14px 42px rgba(27,27,31,.07);
+    transform: translateZ(0);
+    contain: paint;
   }
 
   .card-label {
@@ -385,8 +388,17 @@
     box-shadow: 0 7px 20px rgba(27,27,31,.055);
   }
 
-  .option:active:not(:disabled) { transform: scale(.992); }
+  .option:active:not(:disabled) { transform: translateZ(0) scale(.992); }
   .option:disabled { cursor: default; }
+
+  .card-enter {
+    animation: cardEnter .24s cubic-bezier(.22,.8,.2,1) both;
+  }
+
+  @keyframes cardEnter {
+    from { opacity: .18; transform: translate3d(0, 8px, 0) scale(.995); }
+    to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+  }
 
   .option-letter {
     width: 30px;
@@ -781,6 +793,45 @@
 
   @keyframes spin { to { transform: rotate(360deg); } }
 
+
+  .question-skeleton {
+    min-height: 340px;
+    padding: 22px 18px 18px;
+    border-radius: 20px;
+    background: rgba(255,255,255,.95);
+    border: 1px solid rgba(27,27,31,.07);
+    box-shadow: 0 14px 36px rgba(27,27,31,.055);
+    overflow: hidden;
+  }
+
+  .skeleton-line,
+  .skeleton-option {
+    position: relative;
+    overflow: hidden;
+    background: #ECEDEF;
+  }
+
+  .skeleton-line::after,
+  .skeleton-option::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.72), transparent);
+    animation: skeletonShimmer 1.25s ease-in-out infinite;
+  }
+
+  .skeleton-line { height: 13px; border-radius: 7px; margin-bottom: 10px; }
+  .skeleton-line.kicker { width: 34%; height: 9px; margin-bottom: 20px; }
+  .skeleton-line.q1 { width: 94%; }
+  .skeleton-line.q2 { width: 78%; margin-bottom: 24px; }
+  .skeleton-option { height: 54px; border-radius: 16px; margin-top: 8px; }
+  .skeleton-status { margin-top: 16px; text-align: center; color: #858990; font-size: 12.5px; }
+
+  @keyframes skeletonShimmer {
+    100% { transform: translateX(100%); }
+  }
+
   /* ---- Premium startup screen ---- */
 
   .startup-screen {
@@ -1002,7 +1053,7 @@
       radial-gradient(circle at 14% 3%, rgba(255,255,255,.96), transparent 34%),
       radial-gradient(circle at 88% 18%, rgba(36,42,49,.045), transparent 28%),
       linear-gradient(180deg, rgba(249,249,247,.99), rgba(242,243,242,.98));
-    animation: profileViewIn .36s cubic-bezier(.2,.8,.2,1);
+    animation: none;
   }
 
   .cheat-shell { width: 100%; }
@@ -1053,8 +1104,8 @@
     background: linear-gradient(145deg, rgba(255,255,255,.83), rgba(224,228,233,.58));
     border: 1px solid rgba(255,255,255,.92);
     box-shadow: inset 0 1px 0 rgba(255,255,255,.96), inset 0 -1px 0 rgba(90,98,109,.08), 0 12px 30px rgba(34,39,46,.09);
-    backdrop-filter: blur(22px) saturate(160%);
-    -webkit-backdrop-filter: blur(22px) saturate(160%);
+    backdrop-filter: blur(12px) saturate(140%);
+    -webkit-backdrop-filter: blur(12px) saturate(140%);
   }
 
   .cheat-source-card {
@@ -1105,11 +1156,12 @@
   .cheat-section {
     overflow: hidden;
     border-radius: 21px;
-    background: linear-gradient(145deg, rgba(255,255,255,.77), rgba(237,239,241,.6));
+    background: linear-gradient(145deg, rgba(255,255,255,.86), rgba(237,239,241,.72));
     border: 1px solid rgba(255,255,255,.88);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.96), 0 11px 28px rgba(31,35,41,.065);
-    backdrop-filter: blur(22px) saturate(155%);
-    -webkit-backdrop-filter: blur(22px) saturate(155%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.96), 0 9px 22px rgba(31,35,41,.055);
+    backdrop-filter: blur(10px) saturate(135%);
+    -webkit-backdrop-filter: blur(10px) saturate(135%);
+    transform: translateZ(0);
   }
   .cheat-section[hidden] { display:none; }
   .cheat-section-btn {
@@ -1127,15 +1179,15 @@
   .cheat-section-chevron { color:#8C9096; font-size:21px; transition:transform .28s cubic-bezier(.22,.8,.2,1); will-change:transform; }
   .cheat-section.open .cheat-section-chevron { transform:rotate(90deg); }
   .cheat-formulas {
-    height:0;
-    overflow:hidden;
-    opacity:0;
-    transform:translateY(-5px);
-    transition:height .32s cubic-bezier(.22,.8,.2,1), opacity .2s ease, transform .32s cubic-bezier(.22,.8,.2,1);
-    will-change:height,opacity,transform;
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: .15;
+    transform: translate3d(0,-4px,0);
+    transition: grid-template-rows .28s cubic-bezier(.22,.8,.2,1), opacity .18s ease, transform .28s cubic-bezier(.22,.8,.2,1);
+    will-change: grid-template-rows, opacity, transform;
   }
-  .cheat-section.open .cheat-formulas { opacity:1; transform:translateY(0); }
-  .cheat-formulas-inner { overflow:visible; }
+  .cheat-section.open .cheat-formulas { grid-template-rows: 1fr; opacity:1; transform:translate3d(0,0,0); }
+  .cheat-formulas-inner { overflow:hidden; min-height:0; }
   .cheat-formula-grid { display:grid; gap:8px; padding:0 12px 13px; }
   .cheat-formula {
     padding:11px 12px; border-radius:15px; background:rgba(255,255,255,.62); border:1px solid rgba(255,255,255,.83);
@@ -1149,10 +1201,30 @@
   /* ---- Liquid Glass bottom navigation + standalone profile ---- */
 
   .view-page {
-    transition: opacity .28s ease, transform .32s cubic-bezier(.2,.8,.2,1);
+    transition: opacity .20s ease, transform .26s cubic-bezier(.22,.8,.2,1), visibility .20s linear;
+    transform: translate3d(0,0,0);
+    will-change: opacity, transform;
   }
 
-  .view-page:not(.active) { display: none; }
+  .view-page:not(.active) {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 0;
+    overflow: hidden;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translate3d(12px,0,0);
+  }
+
+  .view-page.active {
+    position: relative;
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translate3d(0,0,0);
+  }
 
   .wrap {
     padding-bottom: calc(122px + env(safe-area-inset-bottom, 0px));
@@ -1166,7 +1238,7 @@
     background:
       radial-gradient(circle at 18% 5%, rgba(255,255,255,.92), transparent 32%),
       radial-gradient(circle at 92% 15%, rgba(47,79,208,.055), transparent 28%);
-    animation: profileViewIn .36s cubic-bezier(.2,.8,.2,1);
+    animation: none;
   }
 
   @keyframes profileViewIn {
@@ -1224,8 +1296,8 @@
       inset 0 1px 0 rgba(255,255,255,.95),
       inset 0 -1px 0 rgba(95,103,114,.08),
       0 12px 30px rgba(34,39,46,.09);
-    backdrop-filter: blur(22px) saturate(160%);
-    -webkit-backdrop-filter: blur(22px) saturate(160%);
+    backdrop-filter: blur(12px) saturate(140%);
+    -webkit-backdrop-filter: blur(12px) saturate(140%);
   }
 
   .profile-page-content { display: grid; gap: 12px; }
@@ -1251,8 +1323,8 @@
       inset 0 1px 0 rgba(255,255,255,.94),
       inset 0 -1px 0 rgba(71,77,86,.05),
       0 14px 36px rgba(31,35,41,.075);
-    backdrop-filter: blur(24px) saturate(165%);
-    -webkit-backdrop-filter: blur(24px) saturate(165%);
+    backdrop-filter: blur(12px) saturate(140%);
+    -webkit-backdrop-filter: blur(12px) saturate(140%);
   }
 
   .glass-card::before {
@@ -1413,8 +1485,8 @@
       inset 0 -1px 0 rgba(63,71,81,.08),
       0 16px 36px rgba(28,33,40,.16),
       0 2px 8px rgba(28,33,40,.06);
-    backdrop-filter: blur(26px) saturate(185%);
-    -webkit-backdrop-filter: blur(26px) saturate(185%);
+    backdrop-filter: blur(14px) saturate(145%);
+    -webkit-backdrop-filter: blur(14px) saturate(145%);
     pointer-events: auto;
     overflow: hidden;
   }
@@ -1486,7 +1558,35 @@
   @media (prefers-reduced-motion: reduce) {
     .liquid-nav-indicator,
     .liquid-nav-item,
-    .view-page { transition: none !important; animation: none !important; }
+    .view-page,
+    .card-enter,
+    .skeleton-line::after,
+    .skeleton-option::after { transition: none !important; animation: none !important; }
+  }
+
+  /* ---- Performance polish for Telegram WebView ---- */
+  .liquid-nav-track,
+  .glass-card,
+  .cheat-section,
+  .topic-picker,
+  .card {
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+
+  @media (max-width: 520px) {
+    .glass-card,
+    .cheat-section,
+    .profile-page-mark,
+    .cheat-mark,
+    .liquid-nav-track {
+      backdrop-filter: blur(10px) saturate(130%);
+      -webkit-backdrop-filter: blur(10px) saturate(130%);
+    }
+
+    .liquid-nav-track {
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 10px 26px rgba(28,33,40,.13);
+    }
   }
 
 </style>
@@ -1824,7 +1924,16 @@
     currentQuestion: null,
     selectedIndex: null,
     answered: false,
+    prefetchedQuestion: null,
+    prefetchPromise: null,
+    prefetchTopic: null,
+    prefetchToken: 0,
+    currentView: 'tests',
+    viewScroll: { tests: 0, cheatsheet: 0, profile: 0 },
   };
+
+  let profileLoaded = false;
+  let profileDirty = true;
 
   const cardArea = document.getElementById('cardArea');
   const streakEl = document.getElementById('streak');
@@ -1947,6 +2056,9 @@
 
   function switchView(viewName) {
     const target = ['tests', 'cheatsheet', 'profile'].includes(viewName) ? viewName : 'tests';
+    if (target === state.currentView) return;
+
+    state.viewScroll[state.currentView] = window.scrollY || 0;
     const showTests = target === 'tests';
     const showCheat = target === 'cheatsheet';
     const showProfile = target === 'profile';
@@ -1969,15 +2081,21 @@
       else btn.removeAttribute('aria-current');
     });
 
+    state.currentView = target;
     tg?.HapticFeedback?.selectionChanged?.();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    requestAnimationFrame(() => {
+      window.scrollTo(0, state.viewScroll[target] || 0);
+    });
 
     if (showProfile) loadProfilePage();
-    if (showCheat) primeCheatMath();
   }
 
   async function loadProfilePage() {
-    profileContent.innerHTML = `<div class="profile-page-loading"><div class="spinner"></div><span>Завантажуємо профіль…</span></div>`;
+    if (profileLoaded && !profileDirty) return;
+    if (!profileLoaded) {
+      profileContent.innerHTML = `<div class="profile-page-loading"><div class="spinner"></div><span>Завантажуємо профіль…</span></div>`;
+    }
 
     try {
       const res = await fetchWithTimeout(`${API_BASE}/api/profile`, {
@@ -2047,8 +2165,10 @@
           <div class="profile-topic-head"><h3>Результати за темами</h3><span>${Array.isArray(data.topic_stats) ? data.topic_stats.length : 0} тем</span></div>
           <div class="topic-stat-list-new">${topicRows}</div>
         </div>`;
+      profileLoaded = true;
+      profileDirty = false;
     } catch (err) {
-      profileContent.innerHTML = `<div class="error-box">${escapeHtml(err.message)}</div>`;
+      if (!profileLoaded) profileContent.innerHTML = `<div class="error-box">${escapeHtml(err.message)}</div>`;
     }
   }
 
@@ -2119,6 +2239,7 @@
       if (!res.ok) throw new Error(data.error || 'Помилка AI');
 
       if (mode === 'similar' && data.question) {
+        clearPrefetch();
         renderQuestion(data.question);
         return;
       }
@@ -2135,9 +2256,15 @@
 
   function renderLoading(message) {
     cardArea.innerHTML = `
-      <div class="status">
-        <div class="spinner"></div>
-        <span id="questionLoadingText">${message}</span>
+      <div class="question-skeleton" aria-busy="true">
+        <div class="skeleton-line kicker"></div>
+        <div class="skeleton-line q1"></div>
+        <div class="skeleton-line q2"></div>
+        <div class="skeleton-option"></div>
+        <div class="skeleton-option"></div>
+        <div class="skeleton-option"></div>
+        <div class="skeleton-option"></div>
+        <div class="skeleton-status" id="questionLoadingText">${escapeHtml(message)}</div>
       </div>`;
   }
 
@@ -2199,7 +2326,7 @@
     const explanationSteps = getExplanationSteps(q);
 
     cardArea.innerHTML = `
-      <div class="card">
+      <div class="card card-enter">
         <div class="card-top">
           <div class="card-label">${topicSelect.options[topicSelect.selectedIndex]?.text || ''}</div>
           <button class="report-btn" id="reportBtn" type="button" aria-label="Повідомити про проблему">⚑</button>
@@ -2252,6 +2379,7 @@
 
     document.getElementById('regenerateBtn').addEventListener('click', () => {
       tg?.HapticFeedback?.impactOccurred?.('light');
+      clearPrefetch();
       loadQuestion({ forceFresh: true });
     });
 
@@ -2308,6 +2436,9 @@
       tg?.HapticFeedback?.notificationOccurred('error');
     }
 
+    profileDirty = true;
+    prefetchNextQuestion();
+
     try {
       const res = await fetchWithTimeout(`${API_BASE}/api/answer`, {
         method: 'POST',
@@ -2349,54 +2480,101 @@
     regenerateBtn.textContent = '↻ Інше завдання';
   }
 
-  async function loadQuestion(options = {}, retryCount = 0) {
+  function clearPrefetch() {
+    state.prefetchToken += 1;
+    state.prefetchedQuestion = null;
+    state.prefetchPromise = null;
+    state.prefetchTopic = null;
+  }
+
+  async function requestQuestion(options = {}, retryCount = 0) {
+    const res = await fetchWithTimeout(`${API_BASE}/api/generate-question`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        topic: topicSelect.value,
+        difficulty: 'середній',
+        initData: tg?.initData || null,
+        forceFresh: !!options.forceFresh,
+      }),
+    }, QUESTION_TIMEOUT_MS);
+
+    const data = await res.json();
+    if (!res.ok) {
+      if (retryCount < 1 && [502, 503, 504].includes(res.status)) {
+        await sleepMs(350);
+        return requestQuestion(options, retryCount + 1);
+      }
+      throw new Error(data.error || 'Не вдалося підготувати завдання. Спробуйте ще раз.');
+    }
+    return data;
+  }
+
+  function prefetchNextQuestion() {
+    const topic = topicSelect.value;
+    if (state.prefetchedQuestion && state.prefetchTopic === topic) return;
+    if (state.prefetchPromise && state.prefetchTopic === topic) return;
+
+    const token = ++state.prefetchToken;
+    state.prefetchTopic = topic;
+    state.prefetchPromise = requestQuestion({ forceFresh: false })
+      .then((data) => {
+        if (token !== state.prefetchToken || topic !== topicSelect.value) return;
+        data.progress = { correct: state.correct, wrong: state.wrong };
+        state.prefetchedQuestion = data;
+      })
+      .catch((err) => {
+        console.warn('Prefetch skipped:', err.message);
+      })
+      .finally(() => {
+        if (token === state.prefetchToken) state.prefetchPromise = null;
+      });
+  }
+
+  async function loadQuestion(options = {}) {
+    const topic = topicSelect.value;
+
+    if (!options.forceFresh && state.prefetchedQuestion && state.prefetchTopic === topic) {
+      const ready = state.prefetchedQuestion;
+      state.prefetchedQuestion = null;
+      state.prefetchPromise = null;
+      state.prefetchTopic = null;
+      ready.progress = { correct: state.correct, wrong: state.wrong };
+      renderQuestion(ready);
+      return;
+    }
+
+    if (!options.forceFresh && state.prefetchPromise && state.prefetchTopic === topic) {
+      renderLoading('Вже майже готово…');
+      await state.prefetchPromise;
+      if (state.prefetchedQuestion && state.prefetchTopic === topic) {
+        const ready = state.prefetchedQuestion;
+        state.prefetchedQuestion = null;
+        state.prefetchPromise = null;
+        state.prefetchTopic = null;
+        ready.progress = { correct: state.correct, wrong: state.wrong };
+        renderQuestion(ready);
+        return;
+      }
+    }
+
     renderLoading(options.forceFresh ? 'Створюємо інше завдання…' : 'Готуємо завдання…');
     const stopLoadingMessages = beginQuestionLoadingMessages(!!options.forceFresh);
 
     try {
-      const res = await fetchWithTimeout(`${API_BASE}/api/generate-question`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          topic: topicSelect.value,
-          difficulty: 'середній',
-          initData: tg?.initData || null,
-          forceFresh: !!options.forceFresh,
-        }),
-      }, QUESTION_TIMEOUT_MS);
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        if (retryCount < 1 && [502, 503, 504].includes(res.status)) {
-          stopLoadingMessages();
-          renderLoading('Підбираємо інше перевірене завдання…');
-          await sleepMs(500);
-          return loadQuestion(options, retryCount + 1);
-        }
-
-        renderError(data.error || 'Не вдалося підготувати завдання. Спробуйте ще раз.');
-        return;
-      }
-
+      const data = await requestQuestion(options);
       renderQuestion(data);
     } catch (err) {
-      if (err.name === 'AbortError' && retryCount < 1) {
-        stopLoadingMessages();
-        renderLoading('Пробуємо ще раз…');
-        await sleepMs(500);
-        return loadQuestion(options, retryCount + 1);
-      }
-
       if (err.name === 'AbortError') {
-        renderError('Не вдалося підготувати завдання достатньо швидко. Натисніть «Спробувати ще раз».');
+        renderError('Не вдалося підготувати завдання достатньо швидко. Спробуйте ще раз.');
       } else {
-        renderError('Немає з’єднання з сервером. Спробуйте ще раз.');
+        renderError(err.message || 'Немає з’єднання з сервером. Спробуйте ще раз.');
       }
     } finally {
       stopLoadingMessages();
     }
   }
+
 
 
   const sleepMs = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -2503,6 +2681,7 @@
         }
 
         topicSelect.value = btn.dataset.key;
+        clearPrefetch();
         try { localStorage.setItem('nmt_topic', topicSelect.value); } catch (_) {}
         syncTopicPicker();
         closeTopicSheet();
@@ -2534,62 +2713,35 @@
   });
 
 
-  let cheatMathPrimed = false;
-
   function primeCheatMath() {
-    if (cheatMathPrimed) return;
-    cheatMathPrimed = true;
-    renderMathSafely(cheatView);
-    // KaTeX CDN може дорендеритися трохи пізніше; другий легкий прохід прибирає стрибки висоти.
-    setTimeout(() => renderMathSafely(cheatView), 180);
+    // Навмисно не рендеримо всю шпаргалку одразу — це важко для Telegram WebView.
+    // Формули рендеряться лише у відкритій секції.
   }
 
   function closeCheatSection(section) {
     if (!section?.classList.contains('open')) return;
-    const btn = section.querySelector('.cheat-section-btn');
-    const panel = section.querySelector('.cheat-formulas');
-    if (!panel) return;
-
-    const currentHeight = panel.getBoundingClientRect().height;
-    panel.style.height = `${currentHeight}px`;
-    panel.getBoundingClientRect();
-
-    requestAnimationFrame(() => {
-      section.classList.remove('open');
-      btn?.setAttribute('aria-expanded', 'false');
-      panel.style.height = '0px';
-    });
+    section.classList.remove('open');
+    section.querySelector('.cheat-section-btn')?.setAttribute('aria-expanded', 'false');
   }
 
   function openCheatSection(section) {
     if (!section || section.classList.contains('open')) return;
-    primeCheatMath();
 
-    // Одночасно тримаємо відкритою лише одну секцію — менше layout і набагато плавніша анімація.
     cheatList?.querySelectorAll('.cheat-section.open').forEach((other) => {
       if (other !== section) closeCheatSection(other);
     });
 
     const btn = section.querySelector('.cheat-section-btn');
-    const panel = section.querySelector('.cheat-formulas');
     const inner = section.querySelector('.cheat-formulas-inner');
-    if (!panel || !inner) return;
+    if (!inner) return;
+
+    if (inner.dataset.mathReady !== '1') {
+      renderMathSafely(inner);
+      inner.dataset.mathReady = '1';
+    }
 
     section.classList.add('open');
     btn?.setAttribute('aria-expanded', 'true');
-    panel.style.height = '0px';
-    panel.getBoundingClientRect();
-
-    requestAnimationFrame(() => {
-      panel.style.height = `${inner.scrollHeight}px`;
-    });
-
-    const finish = (event) => {
-      if (event.propertyName !== 'height') return;
-      panel.removeEventListener('transitionend', finish);
-      if (section.classList.contains('open')) panel.style.height = 'auto';
-    };
-    panel.addEventListener('transitionend', finish);
   }
 
   document.querySelectorAll('.cheat-section-btn').forEach((btn) => {
@@ -2676,7 +2828,6 @@
       await waitForBackend();
 
       await loadTopics();
-      setTimeout(() => primeCheatMath(), 250);
 
       // Спочатку намагаємось підтягнути збережений прогрес
       const progressLoaded = await loadProgress();
