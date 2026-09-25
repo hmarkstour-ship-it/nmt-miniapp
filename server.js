@@ -339,10 +339,37 @@ async function getProfileData(telegramId) {
     [telegramId]
   );
 
+  const recentResult = await pool.query(
+    `SELECT COUNT(*)::int AS total,
+            SUM(CASE WHEN is_correct THEN 1 ELSE 0 END)::int AS correct
+     FROM user_answers
+     WHERE telegram_id = $1
+       AND answered_at >= now() - interval '7 days'`,
+    [telegramId]
+  );
+
+  const examResult = await pool.query(
+    `SELECT COUNT(*)::int AS completed,
+            (SELECT finished_at FROM nmt_exam_attempts x
+             WHERE x.telegram_id = $1 AND x.status = 'finished'
+             ORDER BY finished_at DESC LIMIT 1) AS last_finished_at,
+            (SELECT scaled_score FROM nmt_exam_attempts x
+             WHERE x.telegram_id = $1 AND x.status = 'finished' AND x.scaled_score IS NOT NULL
+             ORDER BY finished_at DESC LIMIT 1) AS last_scaled_score,
+            (SELECT raw_score FROM nmt_exam_attempts x
+             WHERE x.telegram_id = $1 AND x.status = 'finished' AND x.raw_score IS NOT NULL
+             ORDER BY finished_at DESC LIMIT 1) AS last_raw_score
+     FROM nmt_exam_attempts
+     WHERE telegram_id = $1 AND status = 'finished'`,
+    [telegramId]
+  );
+
   return {
     user,
     topicStats: statsResult.rows,
     activityDays: activityResult.rows.map((row) => row.day).filter(Boolean),
+    recent7: recentResult.rows[0] || { total: 0, correct: 0 },
+    examStats: examResult.rows[0] || { completed: 0, last_scaled_score: null, last_raw_score: null, last_finished_at: null },
   };
 }
 
@@ -1124,13 +1151,31 @@ app.post('/api/answer', async (req, res) => {
 
 // ---- Пробний НМТ: 15 вибір + 3 відповідність + 4 коротка відповідь ----------
 
+
+function isCurrentNmtAttempt(attempt) {
+  const questions = Array.isArray(attempt?.questions) ? attempt.questions : [];
+  return questions.length === NMT_EXAM_META.questions &&
+    Number(questions[0]?.engine_version) === Number(NMT_EXAM_META.generatorVersion);
+}
+
+async function discardLegacyNmtAttempt(attempt) {
+  if (!attempt || !pool || isCurrentNmtAttempt(attempt)) return attempt;
+  await pool.query(
+    `UPDATE nmt_exam_attempts SET status = 'abandoned', finished_at = now() WHERE id = $1`,
+    [attempt.id]
+  );
+  return null;
+}
+
+
 app.post('/api/nmt/resume', async (req, res) => {
   const { initData } = req.body;
   try {
     const telegramUser = verifyTelegramInitData(initData);
     if (!telegramUser?.id) return res.status(401).json({ error: 'Потрібно відкрити застосунок через Telegram.' });
     await getOrCreateUser(telegramUser);
-    const attempt = await getActiveNmtAttempt(telegramUser.id);
+    let attempt = await getActiveNmtAttempt(telegramUser.id);
+    attempt = await discardLegacyNmtAttempt(attempt);
     res.json({ attempt: nmtAttemptPayload(attempt) });
   } catch (err) {
     console.error('NMT RESUME ERROR:', err);
@@ -1145,7 +1190,8 @@ app.post('/api/nmt/start', async (req, res) => {
     if (!telegramUser?.id) return res.status(401).json({ error: 'Потрібно відкрити застосунок через Telegram.' });
     await getOrCreateUser(telegramUser);
 
-    const current = await getActiveNmtAttempt(telegramUser.id);
+    let current = await getActiveNmtAttempt(telegramUser.id);
+    current = await discardLegacyNmtAttempt(current);
     if (current && !forceNew) {
       return res.json({ attempt: nmtAttemptPayload(current), resumed: true });
     }
@@ -1255,6 +1301,15 @@ app.post('/api/profile', async (req, res) => {
     });
 
     const streaks = calculateStreaks(profile.activityDays || []);
+    const rankedTopics = topicStats
+      .filter((row) => row.total >= 3)
+      .sort((a, b) => b.accuracy - a.accuracy || b.total - a.total);
+    const strongestTopic = rankedTopics[0] || null;
+    const weakestTopic = rankedTopics.length
+      ? [...rankedTopics].sort((a, b) => a.accuracy - b.accuracy || b.total - a.total)[0]
+      : null;
+    const recent7Total = Number(profile.recent7?.total) || 0;
+    const recent7Correct = Number(profile.recent7?.correct) || 0;
 
     res.json({
       first_name: profile.user.first_name || telegramUser.first_name || 'Учень',
@@ -1266,6 +1321,19 @@ app.post('/api/profile', async (req, res) => {
       best_streak: streaks.best,
       created_at: profile.user.created_at,
       topic_stats: topicStats,
+      recent_7_days: {
+        total: recent7Total,
+        correct: recent7Correct,
+        accuracy: recent7Total ? Math.round((recent7Correct / recent7Total) * 100) : 0,
+      },
+      strongest_topic: strongestTopic,
+      weakest_topic: weakestTopic,
+      nmt: {
+        completed: Number(profile.examStats?.completed) || 0,
+        last_scaled_score: profile.examStats?.last_scaled_score == null ? null : Number(profile.examStats.last_scaled_score),
+        last_raw_score: profile.examStats?.last_raw_score == null ? null : Number(profile.examStats.last_raw_score),
+        last_finished_at: profile.examStats?.last_finished_at || null,
+      },
     });
   } catch (err) {
     console.error('PROFILE ERROR:', err);

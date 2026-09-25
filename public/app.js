@@ -87,6 +87,7 @@ const tg = window.Telegram?.WebApp;
 
   let profileLoaded = false;
   let profileDirty = true;
+  window.addEventListener('nmt:finished', () => { profileDirty = true; });
 
   const cardArea = document.getElementById('cardArea');
   const streakEl = document.getElementById('streak');
@@ -279,6 +280,16 @@ const tg = window.Telegram?.WebApp;
       profileContent.innerHTML = `<div class="profile-page-loading"><div class="spinner"></div><span>Завантажуємо профіль…</span></div>`;
     }
 
+    const dayWord = (value) => {
+      const n = Math.abs(Number(value) || 0);
+      const mod100 = n % 100;
+      const mod10 = n % 10;
+      if (mod100 >= 11 && mod100 <= 14) return 'днів';
+      if (mod10 === 1) return 'день';
+      if (mod10 >= 2 && mod10 <= 4) return 'дні';
+      return 'днів';
+    };
+
     try {
       const res = await fetchWithTimeout(`${API_BASE}/api/profile`, {
         method: 'POST',
@@ -297,6 +308,11 @@ const tg = window.Telegram?.WebApp;
       const accuracy = Math.max(0, Math.min(100, Number(data.accuracy) || 0));
       const streak = Math.max(0, Number(data.streak) || 0);
       const bestStreak = Math.max(streak, Number(data.best_streak) || 0);
+      const recent = data.recent_7_days || {};
+      const recentTotal = Number(recent.total) || 0;
+      const recentAccuracy = Math.max(0, Math.min(100, Number(recent.accuracy) || 0));
+      const nmt = data.nmt || {};
+      const strongest = data.strongest_topic || null;
 
       const topicRows = Array.isArray(data.topic_stats) && data.topic_stats.length
         ? data.topic_stats.map((row) => {
@@ -313,40 +329,79 @@ const tg = window.Telegram?.WebApp;
                 <div class="topic-stat-bar-new"><div class="topic-stat-fill-new" style="width:${rowAccuracy}%"></div></div>
               </div>`;
           }).join('')
-        : `<div class="topic-stat-row-new"><div class="topic-stat-top-new"><span>Статистика по темах</span><strong>—</strong></div><div class="topic-stat-meta">З’явиться після кількох відповідей</div></div>`;
+        : `<div class="profile-empty-state">Результати за темами з’являться після кількох відповідей.</div>`;
+
+      const lastNmt = Number(nmt.completed) > 0
+        ? `<strong>${nmt.last_scaled_score != null ? Number(nmt.last_scaled_score) : '&lt;100'}</strong><span>із 200 · ${Number(nmt.last_raw_score) || 0}/32 тестових</span>`
+        : `<strong>Ще не проходив</strong><span>Пробний НМТ можна відкрити в окремій вкладці</span>`;
+
+      const strongestMarkup = strongest
+        ? `<strong>${escapeHtml(stripLeadingEmoji(strongest.label || strongest.topic))}</strong><span>${Number(strongest.accuracy) || 0}% точності</span>`
+        : `<strong>Ще визначаємо</strong><span>Потрібно трохи більше відповідей</span>`;
 
       profileContent.innerHTML = `
-        <div class="profile-hero-new glass-card">
+        <section class="profile-hero-v2 glass-card">
           <div class="profile-avatar-new">${avatarMarkup}</div>
           <div class="profile-identity">
             <div class="profile-name-new">${escapeHtml(data.first_name || 'Учень')}</div>
             <div class="profile-since-new">${escapeHtml(formatJoinDate(data.created_at))}</div>
-            <div class="profile-streak-pill">🔥 ${streak} ${streak === 1 ? 'день' : 'днів'} поспіль</div>
           </div>
-        </div>
+          <div class="profile-hero-streak">🔥 <strong>${streak}</strong><span>${dayWord(streak)}</span></div>
+        </section>
 
-        <div class="profile-highlight-grid">
-          <div class="profile-highlight glass-card">
-            <div class="highlight-kicker">Поточна серія</div>
-            <div class="streak-number">${streak}<span> днів</span></div>
-            <div class="highlight-note">Найкраща серія: ${bestStreak} дн.</div>
-          </div>
-          <div class="profile-highlight glass-card">
-            <div class="highlight-kicker">Точність</div>
+        <section class="profile-overview-v2">
+          <div class="profile-overview-card glass-card">
+            <span class="profile-overview-label">Точність</span>
             <div class="accuracy-ring" style="--accuracy:${accuracy}"><strong>${accuracy}%</strong></div>
+            <small>за всі тренування</small>
           </div>
-        </div>
+          <div class="profile-overview-card glass-card">
+            <span class="profile-overview-label">Серія</span>
+            <div class="profile-streak-big">${streak}<small>${dayWord(streak)}</small></div>
+            <small>рекорд: ${bestStreak} ${dayWord(bestStreak)}</small>
+          </div>
+        </section>
 
-        <div class="profile-stat-grid-new">
-          <div class="profile-stat-new glass-card"><strong>${Number(data.total) || 0}</strong><span>завдань</span></div>
-          <div class="profile-stat-new glass-card"><strong>${Number(data.correct) || 0}</strong><span>правильно</span></div>
-          <div class="profile-stat-new glass-card"><strong>${Number(data.wrong) || 0}</strong><span>помилок</span></div>
-        </div>
+        <section class="profile-insights-v2 glass-card">
+          <div class="profile-section-title"><span>Огляд</span><small>останні дані</small></div>
+          <div class="profile-insight-row">
+            <span class="profile-insight-icon">7д</span>
+            <div><strong>${recentTotal} завдань за 7 днів</strong><small>${recentTotal ? `${recentAccuracy}% правильних відповідей` : 'Почни тренування — тут з’явиться активність'}</small></div>
+          </div>
+          <div class="profile-insight-row">
+            <span class="profile-insight-icon">↗</span>
+            <div>${strongestMarkup}</div>
+          </div>
+          <div class="profile-insight-row">
+            <span class="profile-insight-icon">НМТ</span>
+            <div>${lastNmt}</div>
+          </div>
+        </section>
 
-        <div class="profile-topic-section glass-card">
-          <div class="profile-topic-head"><h3>Результати за темами</h3><span>${Array.isArray(data.topic_stats) ? data.topic_stats.length : 0} тем</span></div>
-          <div class="topic-stat-list-new">${topicRows}</div>
-        </div>`;
+        <details class="profile-disclosure glass-card">
+          <summary>
+            <div><strong>Детальна статистика</strong><span>Усі відповіді за весь час</span></div>
+            <span class="profile-disclosure-arrow">⌄</span>
+          </summary>
+          <div class="profile-disclosure-body">
+            <div class="profile-stat-grid-new">
+              <div class="profile-stat-new"><strong>${Number(data.total) || 0}</strong><span>розв’язано</span></div>
+              <div class="profile-stat-new"><strong>${Number(data.correct) || 0}</strong><span>правильно</span></div>
+              <div class="profile-stat-new"><strong>${Number(data.wrong) || 0}</strong><span>помилок</span></div>
+            </div>
+          </div>
+        </details>
+
+        <details class="profile-disclosure glass-card">
+          <summary>
+            <div><strong>Результати за темами</strong><span>${Array.isArray(data.topic_stats) ? data.topic_stats.length : 0} тем</span></div>
+            <span class="profile-disclosure-arrow">⌄</span>
+          </summary>
+          <div class="profile-disclosure-body">
+            <div class="topic-stat-list-new">${topicRows}</div>
+          </div>
+        </details>`;
+
       profileLoaded = true;
       profileDirty = false;
     } catch (err) {

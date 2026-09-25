@@ -7,6 +7,8 @@
   const finishCancel = document.getElementById('nmtFinishCancel');
   const finishConfirm = document.getElementById('nmtFinishConfirm');
   const keyboardDone = document.getElementById('nmtKeyboardDone');
+  const keyboardToolbar = document.getElementById('nmtKeyboardToolbar');
+  const nmtView = document.getElementById('nmtView');
 
   const state = {
     checked: false,
@@ -84,6 +86,8 @@
 
   function renderLanding(active = null) {
     clearTimer();
+    hideKeyboardDone();
+    nmtView?.classList.remove('exam-running');
     state.result = null;
     const resume = active ? `
       <div class="nmt-resume-card">
@@ -100,7 +104,7 @@
       <section class="nmt-hero-card">
         <div class="nmt-hero-badge">ФОРМАТ НМТ-2026</div>
         <h3>Пробний тест з математики</h3>
-        <p>Максимально наближений формат: 15 завдань з вибором відповіді, 3 на встановлення відповідності та 4 з короткою відповіддю.</p>
+        <p>22 завдання у структурі реального НМТ: вибір відповіді, встановлення відповідності та коротка числова відповідь.</p>
         <div class="nmt-facts-grid">
           <div><strong>22</strong><span>завдання</span></div>
           <div><strong>60</strong><span>хвилин</span></div>
@@ -109,17 +113,18 @@
         </div>
         <div class="nmt-hero-note">
           <span>◉</span>
-          <p>Під час тесту правильні відповіді не показуються. Після завершення побачиш бал 100–200, усі помилки й теми для повторення.</p>
+          <p>Правильні відповіді відкриються лише після завершення. Завдання стали складнішими: більше багатокрокових обчислень, геометричних схем та комбінованих тем.</p>
         </div>
         <button class="nmt-start-btn" id="nmtStartBtn" type="button">${active ? 'Почати новий тест' : 'Почати пробний НМТ'}</button>
       </section>
 
       <section class="nmt-format-card">
         <div class="nmt-format-row"><span class="nmt-format-number">1–15</span><div><strong>Одна правильна відповідь</strong><p>5 варіантів · 1 бал за завдання</p></div></div>
-        <div class="nmt-format-row"><span class="nmt-format-number">16–18</span><div><strong>Логічні пари</strong><p>3 пари · до 3 балів за завдання</p></div></div>
-        <div class="nmt-format-row"><span class="nmt-format-number">19–22</span><div><strong>Коротка відповідь</strong><p>Число · 2 бали за правильну відповідь</p></div></div>
+        <div class="nmt-format-row"><span class="nmt-format-number">16–18</span><div><strong>Встановлення відповідності</strong><p>3 пари · до 3 балів за завдання</p></div></div>
+        <div class="nmt-format-row"><span class="nmt-format-number">19–22</span><div><strong>Коротка відповідь</strong><p>Число · кома й крапка сприймаються однаково</p></div></div>
       </section>`;
 
+    requestAnimationFrame(() => { if (nmtView) nmtView.scrollTop = 0; });
     document.getElementById('nmtStartBtn')?.addEventListener('click', () => startExam(Boolean(active)));
     document.getElementById('nmtResumeBtn')?.addEventListener('click', () => activateAttempt(active));
   }
@@ -188,6 +193,7 @@
   }
 
   function renderExam() {
+    nmtView?.classList.add('exam-running');
     const q = state.questions[state.index];
     if (!q) return;
     const answered = answeredCount();
@@ -233,7 +239,7 @@
   }
 
   function typeLabel(type) {
-    if (type === 'matching') return 'Логічні пари';
+    if (type === 'matching') return 'Встановлення відповідності';
     if (type === 'short') return 'Коротка відповідь';
     return 'Одна відповідь';
   }
@@ -249,12 +255,22 @@
     if (q.type === 'matching') {
       const current = answer && typeof answer === 'object' ? answer : {};
       return `<div class="nmt-matching-wrap">
-        <div class="nmt-match-options-head">${q.match_options.map(opt => `<span><b>${escapeHtml(opt.code)}</b>${escapeHtml(opt.label)}</span>`).join('')}</div>
-        ${q.left.map((left, row) => `<div class="nmt-match-row">
-          <div class="nmt-match-left"><b>${row + 1}</b><span>${escapeHtml(left)}</span></div>
-          <div class="nmt-match-buttons">${q.match_options.map(opt => `<button type="button" class="nmt-match-chip ${current[String(row)] === opt.code ? 'selected' : ''}" data-match-row="${row}" data-match-code="${opt.code}">${opt.code}</button>`).join('')}</div>
-        </div>`).join('')}
-        <p class="nmt-answer-help">Для кожного пункту вибери одну літеру. Одна літера не може використовуватися двічі.</p>
+        <div class="nmt-match-options-preview">
+          <div class="nmt-match-options-title">Варіанти відповідей</div>
+          ${q.match_options.map(opt => `<div class="nmt-match-option-preview"><b>${escapeHtml(opt.code)}</b><span>${escapeHtml(opt.label)}</span></div>`).join('')}
+        </div>
+        <div class="nmt-match-rows-v2">
+          ${q.left.map((left, row) => {
+            const code = current[String(row)] || '';
+            const selected = q.match_options.find(opt => opt.code === code);
+            return `<button type="button" class="nmt-match-row-v2 ${code ? 'selected' : ''}" data-match-open="${row}">
+              <span class="nmt-match-row-number">${row + 1}</span>
+              <span class="nmt-match-row-copy"><strong>${escapeHtml(left)}</strong><small>${selected ? `${escapeHtml(selected.code)} · ${escapeHtml(selected.label)}` : 'Натисни, щоб обрати відповідність'}</small></span>
+              <span class="nmt-match-row-action">${code ? escapeHtml(code) : 'Обрати'} <i>›</i></span>
+            </button>`;
+          }).join('')}
+        </div>
+        <p class="nmt-answer-help">Обери відповідь для кожного пункту. Уже використана літера автоматично перенесеться, якщо вибрати її для іншого пункту.</p>
       </div>`;
     }
 
@@ -262,7 +278,7 @@
     return `<div class="nmt-short-wrap">
       <label for="nmtShortInput">Ваша відповідь</label>
       <div class="nmt-short-input-shell"><input id="nmtShortInput" class="nmt-short-input" type="text" inputmode="decimal" autocomplete="off" enterkeyhint="done" value="${escapeHtml(String(value))}" placeholder="${escapeHtml(q.answer_hint || 'Введіть число')}"><span>123</span></div>
-      <p class="nmt-answer-help">Кома й крапка сприймаються однаково. Наприклад: <b>2,5</b> і <b>2.5</b>.</p>
+      <p class="nmt-answer-help">Кома й крапка сприймаються однаково: <b>2,5</b> = <b>2.5</b>. Зайві пробіли і кінцеві нулі не впливають на перевірку.</p>
     </div>`;
   }
 
@@ -286,21 +302,16 @@
         renderExam();
       }));
     } else if (q.type === 'matching') {
-      document.querySelectorAll('[data-match-row]').forEach(btn => btn.addEventListener('click', () => {
-        const row = String(btn.dataset.matchRow);
-        const code = btn.dataset.matchCode;
-        const current = { ...(state.answers[String(state.index)] || {}) };
-        Object.keys(current).forEach(key => { if (key !== row && current[key] === code) delete current[key]; });
-        current[row] = code;
-        state.answers[String(state.index)] = current;
-        tg?.HapticFeedback?.selectionChanged?.();
-        saveCurrentAnswer(current);
-        renderExam();
+      document.querySelectorAll('[data-match-open]').forEach(btn => btn.addEventListener('click', () => {
+        openMatchingSheet(q, Number(btn.dataset.matchOpen));
       }));
     } else {
       const input = document.getElementById('nmtShortInput');
       if (input) {
-        input.addEventListener('focus', showKeyboardDone);
+        input.addEventListener('focus', () => {
+          showKeyboardDone();
+          setTimeout(() => input.scrollIntoView({ block: 'center', behavior: 'smooth' }), 140);
+        });
         const inputIndex = state.index;
         input.addEventListener('input', () => {
           state.answers[String(inputIndex)] = input.value;
@@ -315,6 +326,60 @@
         });
       }
     }
+  }
+
+  function closeMatchingSheet() {
+    const overlay = document.getElementById('nmtMatchOverlay');
+    if (!overlay) return;
+    overlay.classList.remove('show');
+    setTimeout(() => overlay.remove(), 180);
+  }
+
+  function openMatchingSheet(q, row) {
+    closeMatchingSheet();
+    const current = { ...(state.answers[String(state.index)] || {}) };
+    const overlay = document.createElement('div');
+    overlay.id = 'nmtMatchOverlay';
+    overlay.className = 'nmt-match-overlay';
+    const usedBy = Object.fromEntries(Object.entries(current).map(([key, code]) => [code, Number(key) + 1]));
+
+    overlay.innerHTML = `
+      <section class="nmt-match-sheet" role="dialog" aria-modal="true" aria-label="Оберіть відповідність">
+        <div class="nmt-match-sheet-handle"></div>
+        <div class="nmt-match-sheet-head">
+          <div><small>ПУНКТ ${row + 1}</small><strong>${escapeHtml(q.left[row])}</strong></div>
+          <button type="button" class="nmt-match-sheet-close" aria-label="Закрити">×</button>
+        </div>
+        <div class="nmt-match-sheet-options">
+          ${q.match_options.map(opt => {
+            const selected = current[String(row)] === opt.code;
+            const occupied = usedBy[opt.code] && usedBy[opt.code] !== row + 1;
+            return `<button type="button" class="nmt-match-sheet-option ${selected ? 'selected' : ''}" data-match-select="${escapeHtml(opt.code)}">
+              <span class="nmt-match-sheet-letter">${escapeHtml(opt.code)}</span>
+              <span class="nmt-match-sheet-copy"><strong>${escapeHtml(opt.label)}</strong>${occupied ? `<small>Зараз обрано для пункту ${usedBy[opt.code]}</small>` : '<small>Натисни, щоб обрати</small>'}</span>
+              <span class="nmt-match-sheet-check">${selected ? '✓' : ''}</span>
+            </button>`;
+          }).join('')}
+        </div>
+      </section>`;
+
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('show'));
+    renderMath(overlay);
+
+    overlay.querySelector('.nmt-match-sheet-close')?.addEventListener('click', closeMatchingSheet);
+    overlay.addEventListener('click', (event) => { if (event.target === overlay) closeMatchingSheet(); });
+    overlay.querySelectorAll('[data-match-select]').forEach(btn => btn.addEventListener('click', () => {
+      const code = btn.dataset.matchSelect;
+      const updated = { ...(state.answers[String(state.index)] || {}) };
+      Object.keys(updated).forEach(key => { if (key !== String(row) && updated[key] === code) delete updated[key]; });
+      updated[String(row)] = code;
+      state.answers[String(state.index)] = updated;
+      tg?.HapticFeedback?.selectionChanged?.();
+      saveCurrentAnswer(updated);
+      closeMatchingSheet();
+      setTimeout(renderExam, 110);
+    }));
   }
 
   function goTo(index) {
@@ -365,6 +430,7 @@
       const data = await post('/api/nmt/finish', { attemptId: state.activeAttempt.id, answers: state.answers }, 30000);
       state.result = data.result;
       state.activeAttempt = null;
+      window.dispatchEvent(new CustomEvent('nmt:finished', { detail: data.result }));
       renderResult(data.result);
     } catch (err) {
       content.innerHTML = `<div class="nmt-error-card"><strong>Не вдалося завершити тест</strong><p>${escapeHtml(err.message)}</p><button class="primary-btn" id="nmtRetryFinish">Повторити</button></div>`;
@@ -375,6 +441,8 @@
   }
 
   function renderResult(result) {
+    nmtView?.classList.remove('exam-running');
+    hideKeyboardDone();
     const scoreText = result.scaled_score ? String(result.scaled_score) : '<100';
     const weak = Array.isArray(result.weak_topics) ? result.weak_topics : [];
     content.innerHTML = `
@@ -387,7 +455,7 @@
 
       <section class="nmt-result-card">
         <div class="nmt-result-card-head"><h3>Що повторити</h3><span>${weak.length ? `${weak.length} тем` : 'Все добре'}</span></div>
-        ${weak.length ? `<div class="nmt-weak-list">${weak.slice(0, 6).map(item => `<div class="nmt-weak-row"><div><strong>${escapeHtml(item.label)}</strong><span>${item.count} проблемн${item.count === 1 ? 'е завдання' : 'их завдання'}</span></div><b>−${item.lost} б.</b></div>`).join('')}</div>` : '<p class="nmt-perfect-copy">Жодної теми для обов’язкового повторення — сильна робота.</p>'}
+        ${weak.length ? `<div class="nmt-weak-list">${weak.slice(0, 6).map(item => `<div class="nmt-weak-row"><div><strong>${escapeHtml(item.label)}</strong><span>помилок у темі: ${item.count}</span></div><b>−${item.lost} б.</b></div>`).join('')}</div>` : '<p class="nmt-perfect-copy">Жодної теми для обов’язкового повторення — сильна робота.</p>'}
       </section>
 
       <section class="nmt-review-section">
@@ -429,19 +497,24 @@
   }
 
   function showKeyboardDone() {
-    keyboardDone.classList.add('show');
+    document.body.classList.add('keyboard-open');
+    keyboardToolbar?.classList.add('show');
+    keyboardToolbar?.setAttribute('aria-hidden', 'false');
     positionKeyboardDone();
   }
 
   function hideKeyboardDone() {
-    keyboardDone.classList.remove('show');
+    document.body.classList.remove('keyboard-open');
+    keyboardToolbar?.classList.remove('show');
+    keyboardToolbar?.setAttribute('aria-hidden', 'true');
+    document.documentElement.style.setProperty('--keyboard-offset', '0px');
   }
 
   function positionKeyboardDone() {
     if (!window.visualViewport) return;
     const vv = window.visualViewport;
     const keyboardHeight = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
-    keyboardDone.style.bottom = `${Math.max(94, keyboardHeight + 10)}px`;
+    document.documentElement.style.setProperty('--keyboard-offset', `${keyboardHeight}px`);
   }
 
   function showLocalToast(message) {
@@ -455,20 +528,22 @@
   finishCancel?.addEventListener('click', closeFinishOverlay);
   finishConfirm?.addEventListener('click', () => finishExam(false));
   finishOverlay?.addEventListener('click', (e) => { if (e.target === finishOverlay) closeFinishOverlay(); });
-  keyboardDone?.addEventListener('click', () => document.activeElement?.blur?.());
+  keyboardDone?.addEventListener('pointerdown', (event) => event.preventDefault());
+  keyboardDone?.addEventListener('click', () => { document.activeElement?.blur?.(); hideKeyboardDone(); });
   window.visualViewport?.addEventListener('resize', positionKeyboardDone);
   window.visualViewport?.addEventListener('scroll', positionKeyboardDone);
 
   document.addEventListener('pointerdown', (event) => {
     const active = document.activeElement;
     if (active?.classList?.contains('nmt-short-input') && event.target !== active && event.target !== keyboardDone) {
-      if (!event.target.closest('.nmt-short-input-shell')) active.blur();
+      if (!event.target.closest('.nmt-short-input-shell') && !event.target.closest('.nmt-keyboard-toolbar')) active.blur();
     }
   }, { passive: true });
 
   window.NMTExamController = {
     onViewOpen() {
       if (!state.checked) checkActive();
+      if (!state.activeAttempt && !state.result) requestAnimationFrame(() => { if (nmtView) nmtView.scrollTop = 0; });
     },
   };
 })();
