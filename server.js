@@ -168,6 +168,7 @@ ${topic.patterns.map((x) => `- ${x}`).join('\n')}
 - Завдання має бути реально розв'язати приблизно за 1-3 хвилини на чернетці.
 - Уникай невиправдано громіздких обчислень і довгих десяткових дробів.
 - УСЮ математику оформлюй у LaTeX і завжди бери математичний вираз у delimiters \\( ... \\) для рядкового запису або \\[ ... \\] для окремого великого виразу.
+- ВАЖЛИВО ДЛЯ JSON: кожен backslash у LaTeX ОБОВ'ЯЗКОВО екрануй ще одним backslash. Наприклад, у сирому JSON правильно: "Обчисліть \\\\(\\\\sqrt{9}\\\\)". Не повертай одинарні backslash усередині JSON-рядків.
 - НІКОЛИ не показуй учневі програмістський запис на кшталт sqrt(9), x^2, a/b, *, <=, >=, log_2(8).
 - Використовуй нормальний шкільний математичний вигляд: \\(\\sqrt{9}\\), \\(x^{2}\\), \\(\\frac{a}{b}\\), \\(a \\cdot b\\), \\(x \\le 5\\), \\(\\log_{2} 8\\).
 - КОЖНА формула повинна мати повну пару delimiters. Заборонено повертати сирий LaTeX на кшталт \\frac{1}{2}, \\sqrt{5}, \\left(...\\right) без \\( ... \\) або \\[ ... \\].
@@ -232,6 +233,99 @@ const RETRYABLE_STATUSES = new Set([429, 503]);
 const MAX_RETRIES = 3;
 const GEMINI_TIMEOUT_MS = 25_000;
 
+
+function stripJsonCodeFence(value) {
+  if (typeof value !== 'string') return value;
+  return value
+    .trim()
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/, '')
+    .trim();
+}
+
+// Gemini інколи повертає математичний LaTeX у JSON з одинарними backslash:
+// "\\(\\frac{1}{2}\\)" замість JSON-safe "\\\\(\\\\frac{1}{2}\\\\)".
+// Через це звичайний JSON.parse падає (а \\frac ще й може трактуватися як JSON escape \\f).
+// Ця функція акуратно екранує лише НЕекрановані backslash усередині JSON-рядків.
+function repairJsonBackslashes(raw) {
+  const text = stripJsonCodeFence(raw);
+  let out = '';
+  let inString = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+
+    if (!inString) {
+      out += ch;
+      if (ch === '"') inString = true;
+      continue;
+    }
+
+    if (ch === '"') {
+      // Quote closes the JSON string only if it is not escaped.
+      let slashCount = 0;
+      for (let j = i - 1; j >= 0 && text[j] === '\\'; j--) slashCount++;
+      out += ch;
+      if (slashCount % 2 === 0) inString = false;
+      continue;
+    }
+
+    if (ch !== '\\') {
+      out += ch;
+      continue;
+    }
+
+    const next = text[i + 1];
+    const afterNext = text[i + 2];
+
+    // Already JSON-escaped backslash/quote/slash: keep the pair unchanged.
+    if (next === '\\' || next === '"' || next === '/') {
+      out += ch + next;
+      i++;
+      continue;
+    }
+
+    // Valid Unicode JSON escape: \\uXXXX.
+    if (next === 'u' && /^[0-9a-fA-F]{4}$/.test(text.slice(i + 2, i + 6))) {
+      out += text.slice(i, i + 6);
+      i += 5;
+      continue;
+    }
+
+    // Preserve genuine JSON control escapes only when they are standalone.
+    // If a letter follows (\\frac, \\right, \\times, \\neq...), it is LaTeX.
+    if ('bfnrt'.includes(next) && !/[A-Za-z]/.test(afterNext || '')) {
+      out += ch + next;
+      i++;
+      continue;
+    }
+
+    // Everything else is treated as a literal LaTeX backslash and escaped for JSON.
+    out += '\\\\';
+  }
+
+  return out;
+}
+
+function parseGeminiJson(raw) {
+  const clean = stripJsonCodeFence(raw);
+
+  try {
+    return JSON.parse(clean);
+  } catch (firstError) {
+    const repaired = repairJsonBackslashes(clean);
+    try {
+      const parsed = JSON.parse(repaired);
+      console.warn('⚠️ Gemini JSON автоматично виправлено (LaTeX backslash escaping).');
+      return parsed;
+    } catch (secondError) {
+      const err = new Error(`Gemini повернув некоректний JSON: ${secondError.message}`);
+      err.rawPreview = clean.slice(0, 500);
+      throw err;
+    }
+  }
+}
+
 async function callGemini(prompt) {
   if (!GEMINI_API_KEY) {
     throw new Error('GEMINI_API_KEY не налаштовано на сервері');
@@ -252,7 +346,7 @@ async function callGemini(prompt) {
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
             responseMimeType: 'application/json',
-            temperature: 0.7,
+            temperature: 0.5,
           },
         }),
       });
@@ -266,11 +360,14 @@ async function callGemini(prompt) {
   }
 
   try {
-    return JSON.parse(text);
+    return parseGeminiJson(text);
   } catch (parseErr) {
     console.warn('⚠️ Gemini повернув некоректний JSON. Повторюємо запит...');
 
-    lastError = new Error('Gemini повернув некоректний JSON');
+    console.warn('JSON parse detail:', parseErr.message);
+    if (parseErr.rawPreview) console.warn('JSON preview:', parseErr.rawPreview);
+
+    lastError = parseErr;
 
     if (attempt < MAX_RETRIES) {
       const delayMs = 800 * Math.pow(2, attempt);
