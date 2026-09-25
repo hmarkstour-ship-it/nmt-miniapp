@@ -1083,18 +1083,70 @@
   tg?.ready();
   tg?.expand();
 
-  // Бекенд лежить на тому ж домені, що й фронтенд (express.static)
-  const API_BASE = '';
-  const FETCH_TIMEOUT_MS = 25000;
+  // Frontend працює окремо як Render Static Site.
+  // API лишається на Web Service, який може засинати на Free-плані.
+  const API_BASE = 'https://nmt-miniapp.onrender.com';
+  const FETCH_TIMEOUT_MS = 30000;
+  const BACKEND_WAKE_MAX_MS = 75000;
 
-  async function fetchWithTimeout(url, options = {}) {
+  async function fetchWithTimeout(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
       return await fetch(url, { ...options, signal: controller.signal });
     } finally {
       clearTimeout(timeout);
     }
+  }
+
+  function setStartupStatus(title, subtitle) {
+    const titleEl = document.querySelector('.startup-title');
+    const subtitleEl = document.querySelector('.startup-subtitle');
+
+    if (titleEl && title) titleEl.textContent = title;
+    if (subtitleEl && subtitle) subtitleEl.textContent = subtitle;
+  }
+
+  async function waitForBackend() {
+    const startedAt = Date.now();
+    let attempt = 0;
+
+    setStartupStatus('НМТ запускається…', 'Готуємо завдання для тебе ✨');
+
+    while (Date.now() - startedAt < BACKEND_WAKE_MAX_MS) {
+      attempt += 1;
+
+      try {
+        const res = await fetchWithTimeout(
+          `${API_BASE}/api/topics?wake=${Date.now()}`,
+          { cache: 'no-store' },
+          12000
+        );
+
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            setStartupStatus('Майже готово…', 'Завантажуємо твою підготовку');
+            return true;
+          }
+        }
+      } catch (err) {
+        // Поки Render прокидається, короткі тайм-аути — нормальні.
+      }
+
+      const elapsed = Date.now() - startedAt;
+
+      if (elapsed > 8000) {
+        setStartupStatus(
+          'Сервер прокидається…',
+          'Після перерви це може зайняти до хвилини'
+        );
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, Math.min(1200 + attempt * 250, 2500)));
+    }
+
+    throw new Error('Сервер не встиг запуститися. Спробуйте ще раз.');
   }
 
   const state = {
@@ -1772,18 +1824,27 @@
   }
 
   (async function init() {
-    await loadTopics();
+    try {
+      // Static Site відкривається одразу, а тут у фоні будимо Web Service.
+      // Поки він прокидається, користувач бачить наш startup screen, а не Render.
+      await waitForBackend();
 
-    // Спочатку намагаємось підтягнути збережений прогрес
-    const progressLoaded = await loadProgress();
+      await loadTopics();
 
-    // Потім генеруємо перше питання
-    await loadQuestion();
+      // Спочатку намагаємось підтягнути збережений прогрес
+      const progressLoaded = await loadProgress();
 
-    // Якщо Telegram не встиг віддати initData —
-    // пробуємо підтягнути прогрес ще раз
-    if (!progressLoaded) {
-      await loadProgress();
+      // Потім генеруємо перше питання
+      await loadQuestion();
+
+      // Якщо Telegram не встиг віддати initData —
+      // пробуємо підтягнути прогрес ще раз
+      if (!progressLoaded) {
+        await loadProgress();
+      }
+    } catch (err) {
+      console.error('INIT ERROR:', err);
+      renderError(err?.message || 'Не вдалося запустити застосунок. Спробуйте ще раз.');
     }
   })();
 
