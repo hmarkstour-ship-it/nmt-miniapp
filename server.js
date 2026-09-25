@@ -206,7 +206,7 @@ ${options}
 
 Автор позначив правильним індекс: ${q.correct_index}
 
-Зроби три перевірки:
+Зроби чотири перевірки:
 1. Самостійно розв'яжи завдання та визнач фактичний правильний індекс.
 2. Перевір, чи завдання справді відповідає обраній темі.
 3. Перевір, чи воно відповідає шкільному рівню та рамкам НМТ, а не виходить у університетську/олімпіадну математику.
@@ -326,7 +326,7 @@ function parseGeminiJson(raw) {
   }
 }
 
-async function callGemini(prompt) {
+async function callGemini(prompt, temperature = 0.5) {
   if (!GEMINI_API_KEY) {
     throw new Error('GEMINI_API_KEY не налаштовано на сервері');
   }
@@ -346,7 +346,7 @@ async function callGemini(prompt) {
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
             responseMimeType: 'application/json',
-            temperature: 0.5,
+            temperature,
           },
         }),
       });
@@ -621,30 +621,24 @@ app.post('/api/generate-question', async (req, res) => {
 
   try {
     const telegramUser = verifyTelegramInitData(initData);
-
     const user = await getOrCreateUser(telegramUser);
-
-    const telegramId =
-      user?.telegram_id ?? null;
+    const telegramId = user?.telegram_id ?? null;
 
     const avoidList = telegramId
-      ? await getRecentQuestions(
-          telegramId,
-          topic
-        )
+      ? await getRecentQuestions(telegramId, topic)
       : [];
 
     let question = null;
+    let verified = false;
 
-    // Форматування математики критичне для учня, тому не показуємо сирий LaTeX.
-    // Якщо модель один раз помилилась із delimiters — автоматично генеруємо ще раз.
-    for (let generationAttempt = 1; generationAttempt <= 3; generationAttempt++) {
+    // Не показуємо користувачу 422 після першої невдалої перевірки.
+    // Якщо кандидат не пройшов перевірку — тихо генеруємо інший.
+    const maxQuestionAttempts = verify ? 4 : 3;
+
+    for (let generationAttempt = 1; generationAttempt <= maxQuestionAttempts; generationAttempt++) {
       const rawQuestion = await callGemini(
-        buildGeneratePrompt(
-          topic,
-          difficulty,
-          avoidList
-        )
+        buildGeneratePrompt(topic, difficulty, avoidList),
+        0.5
       );
 
       const candidate = normalizeQuestionMath(rawQuestion);
@@ -655,99 +649,100 @@ app.post('/api/generate-question', async (req, res) => {
       }
 
       if (!hasSafeQuestionMath(candidate)) {
-        console.warn(`⚠️ Generation ${generationAttempt}: сирий LaTeX поза delimiters, генеруємо заново`);
+        console.warn(`⚠️ Generation ${generationAttempt}: некоректне математичне оформлення, генеруємо заново`);
         continue;
       }
 
-      question = candidate;
-      break;
+      if (!verify) {
+        question = candidate;
+        break;
+      }
+
+      try {
+        // Перевірка має бути максимально стабільною, тому температура нижча.
+        const verification = await callGemini(
+          buildVerifyPrompt(candidate, topic),
+          0.1
+        );
+
+        const actualIndex = Number(verification.actual_correct_index);
+
+        // Формат LaTeX уже детерміновано перевірений hasSafeQuestionMath().
+        // Не даємо другій AI-перевірці відхиляти хороше завдання лише через
+        // суб'єктивну оцінку форматування.
+        const verificationFailed =
+          verification.is_correct !== true ||
+          !Number.isInteger(actualIndex) ||
+          actualIndex !== candidate.correct_index ||
+          verification.topic_match !== true ||
+          verification.is_nmt_appropriate !== true;
+
+        if (verificationFailed) {
+          console.warn(
+            `⚠️ Verification ${generationAttempt}: кандидат відхилено, генеруємо новий.`,
+            {
+              expected: candidate.correct_index,
+              actual: verification.actual_correct_index,
+              is_correct: verification.is_correct,
+              topic_match: verification.topic_match,
+              is_nmt_appropriate: verification.is_nmt_appropriate,
+              math_format_ok: verification.math_format_ok,
+              note: verification.note,
+            }
+          );
+          continue;
+        }
+
+        question = candidate;
+        verified = true;
+        break;
+      } catch (verifyErr) {
+        // Якщо саме сервіс перевірки тимчасово впав, не караємо користувача:
+        // кандидат уже пройшов структурну й математичну перевірку сервера.
+        console.warn(
+          `⚠️ Verification ${generationAttempt}: технічна помилка перевірки, повертаємо валідний кандидат без AI-підтвердження:`,
+          verifyErr.message
+        );
+        question = candidate;
+        verified = false;
+        break;
+      }
     }
 
     if (!question) {
       return res.status(502).json({
         error:
-          'Не вдалося отримати коректно оформлене математичне завдання. Спробуйте ще раз.',
+          'Не вдалося підібрати коректне завдання після кількох спроб. Натисніть «Спробувати ще раз».',
       });
     }
 
-    let verified = false;
-
-    if (verify) {
-      try {
-        const verification =
-          await callGemini(
-            buildVerifyPrompt(question, topic)
-          );
-
-        const verificationFailed =
-          verification.is_correct !== true ||
-          verification.actual_correct_index !== question.correct_index ||
-          verification.topic_match !== true ||
-          verification.is_nmt_appropriate !== true ||
-          verification.math_format_ok !== true;
-
-        if (verificationFailed) {
-          return res.status(422).json({
-            error:
-              'Завдання не пройшло перевірку на правильність або відповідність НМТ. Спробуйте ще раз.',
-            details: verification,
-          });
-        }
-
-        verified = true;
-
-      } catch (verifyErr) {
-        console.warn(
-          'Самоперевірка не вдалася, повертаємо завдання без неї:',
-          verifyErr.message
-        );
-      }
-    }
-
     if (telegramId) {
-      await saveQuestionToHistory(
-        telegramId,
-        topic,
-        question.question
-      );
+      await saveQuestionToHistory(telegramId, topic, question.question);
     }
 
-    const freshUser =
-      telegramUser
-        ? await getOrCreateUser(
-            telegramUser
-          )
-        : null;
+    const freshUser = telegramUser
+      ? await getOrCreateUser(telegramUser)
+      : null;
 
     res.json({
       ...question,
       topic,
       difficulty,
       verified,
-
       progress: {
-        correct:
-          freshUser?.correct_count ?? 0,
-
-        wrong:
-          freshUser?.wrong_count ?? 0,
+        correct: freshUser?.correct_count ?? 0,
+        wrong: freshUser?.wrong_count ?? 0,
       },
     });
-
   } catch (err) {
-    console.error(
-      'GENERATE ERROR:',
-      err
-    );
+    console.error('GENERATE ERROR:', err);
 
     res.status(500).json({
       error:
-        'Не вдалося згенерувати завдання: ' +
-        err.message,
+        'Не вдалося згенерувати завдання: ' + err.message,
     });
   }
 });
-
 
 app.use(
   express.static('public', {
