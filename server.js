@@ -90,8 +90,13 @@ async function initDb() {
   `);
 
   await pool.query(`
+    ALTER TABLE question_bank
+    ADD COLUMN IF NOT EXISTS verification_version INT NOT NULL DEFAULT 0;
+  `);
+
+  await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_question_bank_pick
-    ON question_bank (topic, difficulty, is_active, use_count);
+    ON question_bank (topic, difficulty, is_active, verified, verification_version, use_count);
   `);
 
   await pool.query(`
@@ -210,10 +215,11 @@ async function getQuestionFromBank(topic, difficulty, avoidList = []) {
        AND difficulty = $2
        AND is_active = true
        AND verified = true
+       AND verification_version >= $4
        AND NOT ((question_json->>'question') = ANY($3::text[]))
      ORDER BY use_count ASC, random()
      LIMIT 1`,
-    [topic, difficulty, avoidList]
+    [topic, difficulty, avoidList, BANK_VERIFICATION_VERSION]
   );
 
   const row = rows[0];
@@ -233,15 +239,43 @@ async function saveQuestionToBank(topic, difficulty, question) {
   if (!pool || !question?.question) return null;
 
   const { rows } = await pool.query(
-    `INSERT INTO question_bank (topic, difficulty, question_text, question_json, verified)
-     VALUES ($1, $2, $3, $4::jsonb, true)
+    `INSERT INTO question_bank (topic, difficulty, question_text, question_json, verified, verification_version)
+     VALUES ($1, $2, $3, $4::jsonb, true, $5)
      ON CONFLICT (topic, question_text)
-     DO UPDATE SET question_json = EXCLUDED.question_json, verified = true, is_active = true
+     DO UPDATE SET question_json = EXCLUDED.question_json, verified = true, verification_version = EXCLUDED.verification_version, is_active = true
      RETURNING id`,
-    [topic, difficulty, question.question, JSON.stringify(question)]
+    [topic, difficulty, question.question, JSON.stringify(question), BANK_VERIFICATION_VERSION]
   );
 
   return rows[0]?.id ?? null;
+}
+
+async function countStrictBankQuestions(topic, difficulty) {
+  if (!pool) return 0;
+  const { rows } = await pool.query(
+    `SELECT COUNT(*)::int AS count
+     FROM question_bank
+     WHERE topic = $1
+       AND difficulty = $2
+       AND is_active = true
+       AND verified = true
+       AND verification_version >= $3`,
+    [topic, difficulty, BANK_VERIFICATION_VERSION]
+  );
+  return Number(rows[0]?.count) || 0;
+}
+
+async function getStrictBankTexts(topic, difficulty, limit = 24) {
+  if (!pool) return [];
+  const { rows } = await pool.query(
+    `SELECT question_text
+     FROM question_bank
+     WHERE topic = $1 AND difficulty = $2 AND is_active = true
+     ORDER BY created_at DESC
+     LIMIT $3`,
+    [topic, difficulty, limit]
+  );
+  return rows.map((row) => row.question_text).filter(Boolean);
 }
 
 async function getProfileData(telegramId) {
@@ -364,9 +398,11 @@ ${topic.patterns.map((x) => `- ${x}`).join('\n')}
 
 ЖОРСТКІ ВИМОГИ:
 - Рівно 5 варіантів відповіді.
-- Лише один варіант правильний.
+- Лише один варіант правильний. Жоден інший варіант не може бути математично еквівалентним правильному.
+- Умова має бути повною й однозначною: жодних прихованих припущень, пропущених даних або двозначних формулювань.
 - Завдання має однозначно належати до обраної теми.
 - Правильна відповідь повинна точно бути серед 5 варіантів.
+- Перед поверненням JSON самостійно перевір арифметику, правильний індекс і те, що пояснення приводить саме до позначеної відповіді.
 - Неправильні варіанти мають бути правдоподібними результатами типових учнівських помилок, а не випадковими числами.
 - Не копіюй дослівно реальні завдання УЦОЯО та не відтворюй їх з мінімальними змінами.
 - Завдання має бути реально розв'язати приблизно за 1-3 хвилини на чернетці.
@@ -396,7 +432,7 @@ function buildVerifyPrompt(q, topicKey) {
   const topic = getTopic(topicKey);
   const options = q.options.map((option, index) => `${index}: ${option}`).join('\n');
 
-  return `Ти — незалежний редактор і перевіряючий завдань НМТ з математики.
+  return `Ти — незалежний математичний редактор НМТ. Не довіряй автору завдання і перевір усе з нуля.
 
 ОБРАНА ТЕМА: ${topic.label}
 Допустимі навички:
@@ -409,21 +445,59 @@ ${q.question}
 ${options}
 
 Автор позначив правильним індекс: ${q.correct_index}
+Пояснення автора:
+${q.explanation}
 
-Зроби чотири перевірки:
-1. Самостійно розв'яжи завдання та визнач фактичний правильний індекс.
-2. Перевір, чи завдання справді відповідає обраній темі.
-3. Перевір, чи воно відповідає шкільному рівню та рамкам НМТ, а не виходить у університетську/олімпіадну математику.
-4. Перевір математичне оформлення: учень не повинен бачити сирі записи sqrt(...), x^2, a/b, *, <=, >= або іншу програмістську нотацію. Формули мають бути коректним LaTeX у \\( ... \\) або \\[ ... \\].
+Перевір ОБОВ'ЯЗКОВО:
+1. Самостійно розв'яжи завдання і визнач фактичний правильний індекс.
+2. Чи є РІВНО ОДИН правильний варіант, без еквівалентного дубля.
+3. Чи умова повна, однозначна і містить усі потрібні дані.
+4. Чи пояснення автора математично правильне і приводить до фактичної відповіді.
+5. Чи завдання відповідає обраній темі.
+6. Чи воно відповідає шкільному рівню та рамкам НМТ.
+7. Чи математичний запис придатний для показу учню.
+
+Якщо є хоч найменший математичний сумнів — став відповідний boolean у false.
 
 Поверни ЛИШЕ валідний JSON:
 {
   "actual_correct_index": 0,
   "is_correct": true,
+  "has_unique_answer": true,
+  "condition_complete": true,
+  "explanation_correct": true,
   "topic_match": true,
   "is_nmt_appropriate": true,
   "math_format_ok": true,
-  "note": "коротка причина, якщо є проблема; інакше порожній рядок"
+  "note": "коротка причина проблеми або порожній рядок"
+}`;
+}
+
+function buildAuditPrompt(q, topicKey) {
+  const topic = getTopic(topicKey);
+  const options = q.options.map((option, index) => `${index}: ${option}`).join('\n');
+
+  return `Ти — суворий аудитор якості математичних завдань НМТ. Твоє завдання — спробувати ЗНАЙТИ ПОМИЛКУ, а не погодитися з автором.
+
+Тема: ${topic.label}
+Умова: ${q.question}
+Варіанти:\n${options}
+Позначений індекс: ${q.correct_index}
+Пояснення: ${q.explanation}
+
+Перерахуй задачу незалежно. Особливо шукай: арифметичну помилку, неоднозначність, два правильні варіанти, відсутні дані, помилку в поясненні або вихід за межі НМТ.
+
+Поверни ЛИШЕ JSON того самого формату:
+{
+  "actual_correct_index": 0,
+  "is_correct": true,
+  "has_unique_answer": true,
+  "condition_complete": true,
+  "explanation_correct": true,
+  "topic_match": true,
+  "is_nmt_appropriate": true,
+  "math_format_ok": true,
+  "note": "коротка причина проблеми або порожній рядок"
 }`;
 }
 
@@ -475,8 +549,11 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 // Google's servers occasionally return 503 (overloaded) or 429 (rate limited).
 // These are transient — retrying after a short delay usually succeeds.
 const RETRYABLE_STATUSES = new Set([429, 503]);
-const MAX_RETRIES = 3;
-const GEMINI_TIMEOUT_MS = 25_000;
+const DEFAULT_GEMINI_RETRIES = 1;
+const DEFAULT_GEMINI_TIMEOUT_MS = 12_000;
+const BANK_VERIFICATION_VERSION = 2;
+const BANK_TARGET_PER_TOPIC = 6;
+const bankRefillLocks = new Set();
 
 
 function stripJsonCodeFence(value) {
@@ -571,16 +648,18 @@ function parseGeminiJson(raw) {
   }
 }
 
-async function callGemini(prompt, temperature = 0.5) {
+async function callGemini(prompt, temperature = 0.5, options = {}) {
   if (!GEMINI_API_KEY) {
     throw new Error('GEMINI_API_KEY не налаштовано на сервері');
   }
 
+  const timeoutMs = Math.max(3000, Number(options.timeoutMs) || DEFAULT_GEMINI_TIMEOUT_MS);
+  const maxRetries = Math.max(0, Number.isInteger(options.maxRetries) ? options.maxRetries : DEFAULT_GEMINI_RETRIES);
   let lastError;
 
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
       const response = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
@@ -597,51 +676,38 @@ async function callGemini(prompt, temperature = 0.5) {
       });
 
       if (response.ok) {
-  const data = await response.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        const data = await response.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
-  if (!text) {
-    throw new Error('Gemini повернув порожню відповідь');
-  }
+        if (!text) throw new Error('Gemini повернув порожню відповідь');
 
-  try {
-    return parseGeminiJson(text);
-  } catch (parseErr) {
-    console.warn('⚠️ Gemini повернув некоректний JSON. Повторюємо запит...');
-
-    console.warn('JSON parse detail:', parseErr.message);
-    if (parseErr.rawPreview) console.warn('JSON preview:', parseErr.rawPreview);
-
-    lastError = parseErr;
-
-    if (attempt < MAX_RETRIES) {
-      const delayMs = 800 * Math.pow(2, attempt);
-      await sleep(delayMs);
-      continue;
-    }
-
-    throw lastError;
-  }
-}
+        try {
+          return parseGeminiJson(text);
+        } catch (parseErr) {
+          console.warn('⚠️ Gemini повернув некоректний JSON. Повторюємо запит...');
+          if (parseErr.rawPreview) console.warn('JSON preview:', parseErr.rawPreview);
+          lastError = parseErr;
+          if (attempt < maxRetries) {
+            await sleep(500 * Math.pow(2, attempt));
+            continue;
+          }
+          throw lastError;
+        }
+      }
 
       const errText = await response.text();
       lastError = new Error(`Gemini API помилка ${response.status}: ${errText}`);
 
-      if (RETRYABLE_STATUSES.has(response.status) && attempt < MAX_RETRIES) {
-        const delayMs = 800 * Math.pow(2, attempt); // 800ms, 1.6s, 3.2s
-        console.warn(`Gemini ${response.status}, повтор через ${delayMs}мс (спроба ${attempt + 1}/${MAX_RETRIES})`);
-        await sleep(delayMs);
+      if (RETRYABLE_STATUSES.has(response.status) && attempt < maxRetries) {
+        await sleep(600 * Math.pow(2, attempt));
         continue;
       }
 
       throw lastError;
     } catch (err) {
       if (err.name === 'AbortError') {
-        lastError = new Error('Gemini не відповів за 25 секунд (тайм-аут)');
-        if (attempt < MAX_RETRIES) {
-          console.warn(`Тайм-аут, повтор (спроба ${attempt + 1}/${MAX_RETRIES})`);
-          continue;
-        }
+        lastError = new Error(`Gemini не відповів за ${Math.round(timeoutMs / 1000)} секунд`);
+        if (attempt < maxRetries) continue;
         throw lastError;
       }
       throw err;
@@ -652,6 +718,7 @@ async function callGemini(prompt, temperature = 0.5) {
 
   throw lastError;
 }
+
 
 function isValidQuestion(q) {
   return (
@@ -765,6 +832,116 @@ function hasSafeQuestionMath(question) {
   ];
 
   return fields.every((value) => !hasUnsafeRawMath(value));
+}
+
+function verificationPasses(check, candidate) {
+  const actualIndex = Number(check?.actual_correct_index);
+  return (
+    check?.is_correct === true &&
+    check?.has_unique_answer === true &&
+    check?.condition_complete === true &&
+    check?.explanation_correct === true &&
+    check?.topic_match === true &&
+    check?.is_nmt_appropriate === true &&
+    check?.math_format_ok === true &&
+    Number.isInteger(actualIndex) &&
+    actualIndex === candidate.correct_index
+  );
+}
+
+async function strictVerifyQuestion(candidate, topicKey) {
+  const prompts = [buildVerifyPrompt(candidate, topicKey), buildAuditPrompt(candidate, topicKey)];
+  const results = await Promise.allSettled(
+    prompts.map((prompt) => callGemini(prompt, 0, { timeoutMs: 10_000, maxRetries: 0 }))
+  );
+
+  const successful = [];
+  let hardReject = false;
+
+  for (const result of results) {
+    if (result.status === 'fulfilled') {
+      successful.push(result.value);
+      if (!verificationPasses(result.value, candidate)) hardReject = true;
+    }
+  }
+
+  if (hardReject) {
+    return { ok: false, checks: successful, reason: 'reviewer_rejected' };
+  }
+
+  // Для максимальної точності потрібні дві незалежні успішні перевірки.
+  // Якщо одна впала технічно, робимо один короткий резервний аудит.
+  if (successful.length < 2) {
+    try {
+      const backup = await callGemini(buildAuditPrompt(candidate, topicKey), 0, { timeoutMs: 9_000, maxRetries: 0 });
+      successful.push(backup);
+      if (!verificationPasses(backup, candidate)) {
+        return { ok: false, checks: successful, reason: 'backup_rejected' };
+      }
+    } catch (err) {
+      return { ok: false, checks: successful, reason: 'not_enough_reviewers' };
+    }
+  }
+
+  return {
+    ok: successful.length >= 2 && successful.every((check) => verificationPasses(check, candidate)),
+    checks: successful,
+  };
+}
+
+async function generateStrictQuestion(topic, difficulty, avoidList = [], attempts = 3, promptBuilder = null) {
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      const prompt = promptBuilder
+        ? promptBuilder(attempt)
+        : buildGeneratePrompt(topic, difficulty, avoidList);
+
+      const raw = await callGemini(prompt, 0.35, { timeoutMs: 12_000, maxRetries: 1 });
+      const candidate = normalizeQuestionMath(raw);
+
+      if (!isValidQuestion(candidate) || !hasSafeQuestionMath(candidate)) {
+        console.warn(`⚠️ Strict generation ${attempt}: формат кандидата відхилено`);
+        continue;
+      }
+
+      const verification = await strictVerifyQuestion(candidate, topic);
+      if (!verification.ok) {
+        console.warn(`⚠️ Strict generation ${attempt}: подвійна перевірка не пройдена`, verification.reason || '');
+        continue;
+      }
+
+      return candidate;
+    } catch (err) {
+      console.warn(`⚠️ Strict generation ${attempt}: ${err.message}`);
+    }
+  }
+
+  return null;
+}
+
+async function refillBankOnce(topic, difficulty) {
+  if (!pool) return;
+  const lockKey = `${topic}:${difficulty}`;
+  if (bankRefillLocks.has(lockKey)) return;
+  bankRefillLocks.add(lockKey);
+
+  try {
+    const count = await countStrictBankQuestions(topic, difficulty);
+    if (count >= BANK_TARGET_PER_TOPIC) return;
+
+    const existing = await getStrictBankTexts(topic, difficulty, 24);
+    const candidate = await generateStrictQuestion(topic, difficulty, existing, 2);
+    if (candidate) await saveQuestionToBank(topic, difficulty, candidate);
+  } catch (err) {
+    console.warn('BANK REFILL ERROR:', err.message);
+  } finally {
+    bankRefillLocks.delete(lockKey);
+  }
+}
+
+function scheduleBankRefill(topic, difficulty) {
+  if (!pool) return;
+  setTimeout(() => refillBankOnce(topic, difficulty), 25);
 }
 
 // ---- Перевірка Telegram initData -----------------------------------
@@ -968,20 +1145,13 @@ app.post('/api/explain-more', async (req, res) => {
       let verified = false;
 
       for (let attempt = 1; attempt <= 3; attempt++) {
-        const raw = await callGemini(buildSimilarPrompt(topic, difficulty, question), 0.45);
-        const candidate = normalizeQuestionMath(raw);
-        if (!isValidQuestion(candidate) || !hasSafeQuestionMath(candidate)) continue;
-
         try {
-          const check = await callGemini(buildVerifyPrompt(candidate, topic), 0.1);
-          const actualIndex = Number(check.actual_correct_index);
-          if (
-            check.is_correct === true &&
-            Number.isInteger(actualIndex) &&
-            actualIndex === candidate.correct_index &&
-            check.topic_match === true &&
-            check.is_nmt_appropriate === true
-          ) {
+          const raw = await callGemini(buildSimilarPrompt(topic, difficulty, question), 0.35, { timeoutMs: 12_000, maxRetries: 1 });
+          const candidate = normalizeQuestionMath(raw);
+          if (!isValidQuestion(candidate) || !hasSafeQuestionMath(candidate)) continue;
+
+          const strictCheck = await strictVerifyQuestion(candidate, topic);
+          if (strictCheck.ok) {
             similar = candidate;
             verified = true;
             break;
@@ -1019,9 +1189,7 @@ app.post('/api/generate-question', async (req, res) => {
   const {
     topic = 'mixed',
     difficulty = 'середній',
-    verify = true,
     initData,
-    forceFresh = false,
   } = req.body;
 
   try {
@@ -1034,90 +1202,30 @@ app.post('/api/generate-question', async (req, res) => {
       : [];
 
     let question = null;
-    let verified = false;
     let bankId = null;
-    let source = 'ai';
+    let source = 'bank';
 
-    // Спочатку намагаємося віддати вже перевірене завдання з банку.
-    // forceFresh використовується для явної перегенерації користувачем.
-    if (!forceFresh) {
-      const bankQuestion = await getQuestionFromBank(topic, difficulty, avoidList);
-      if (bankQuestion?.question && isValidQuestion(bankQuestion.question) && hasSafeQuestionMath(bankQuestion.question)) {
-        question = bankQuestion.question;
-        verified = true;
-        bankId = bankQuestion.id;
-        source = 'bank';
-      }
+    // Навіть кнопка «інше завдання» спочатку бере ІНШЕ перевірене питання з банку.
+    // Історія користувача не дозволяє віддати те саме питання вдруге.
+    const bankQuestion = await getQuestionFromBank(topic, difficulty, avoidList);
+    if (bankQuestion?.question && isValidQuestion(bankQuestion.question) && hasSafeQuestionMath(bankQuestion.question)) {
+      question = bankQuestion.question;
+      bankId = bankQuestion.id;
     }
 
+    // Якщо запасу немає — створюємо нове питання і показуємо його ТІЛЬКИ після подвійної перевірки.
     if (!question) {
-      const maxQuestionAttempts = verify ? 4 : 3;
+      source = 'ai';
+      question = await generateStrictQuestion(topic, difficulty, avoidList, 3);
 
-      for (let generationAttempt = 1; generationAttempt <= maxQuestionAttempts; generationAttempt++) {
-        const rawQuestion = await callGemini(
-          buildGeneratePrompt(topic, difficulty, avoidList),
-          0.5
-        );
-
-        const candidate = normalizeQuestionMath(rawQuestion);
-
-        if (!isValidQuestion(candidate)) {
-          console.warn(`⚠️ Generation ${generationAttempt}: невірна JSON-структура завдання`);
-          continue;
-        }
-
-        if (!hasSafeQuestionMath(candidate)) {
-          console.warn(`⚠️ Generation ${generationAttempt}: некоректне математичне оформлення, генеруємо заново`);
-          continue;
-        }
-
-        if (!verify) {
-          question = candidate;
-          break;
-        }
-
-        try {
-          const verification = await callGemini(
-            buildVerifyPrompt(candidate, topic),
-            0.1
-          );
-
-          const actualIndex = Number(verification.actual_correct_index);
-          const verificationFailed =
-            verification.is_correct !== true ||
-            !Number.isInteger(actualIndex) ||
-            actualIndex !== candidate.correct_index ||
-            verification.topic_match !== true ||
-            verification.is_nmt_appropriate !== true;
-
-          if (verificationFailed) {
-            console.warn(`⚠️ Verification ${generationAttempt}: кандидат відхилено, генеруємо новий.`, {
-              expected: candidate.correct_index,
-              actual: verification.actual_correct_index,
-              note: verification.note,
-            });
-            continue;
-          }
-
-          question = candidate;
-          verified = true;
-          break;
-        } catch (verifyErr) {
-          console.warn(`⚠️ Verification ${generationAttempt}: технічна помилка:`, verifyErr.message);
-          question = candidate;
-          verified = false;
-          break;
-        }
-      }
-
-      if (question && verified) {
+      if (question) {
         bankId = await saveQuestionToBank(topic, difficulty, question);
       }
     }
 
     if (!question) {
-      return res.status(502).json({
-        error: 'Не вдалося підібрати коректне завдання після кількох спроб. Натисніть «Спробувати ще раз».',
+      return res.status(503).json({
+        error: 'Не вдалося безпечно підготувати завдання. Спробуйте ще раз за кілька секунд.',
       });
     }
 
@@ -1127,11 +1235,14 @@ app.post('/api/generate-question', async (req, res) => {
 
     const freshUser = telegramUser ? await getOrCreateUser(telegramUser) : null;
 
+    // Поповнюємо запас у фоні, щоб наступні користувачі отримували питання майже миттєво.
+    scheduleBankRefill(topic, difficulty);
+
     res.json({
       ...question,
       topic,
       difficulty,
-      verified,
+      verified: true,
       bank_id: bankId,
       source,
       progress: {
@@ -1143,10 +1254,11 @@ app.post('/api/generate-question', async (req, res) => {
     console.error('GENERATE ERROR:', err);
 
     res.status(500).json({
-      error: 'Не вдалося згенерувати завдання: ' + err.message,
+      error: 'Не вдалося підготувати завдання. Спробуйте ще раз.',
     });
   }
 });
+
 
 app.use(
   express.static('public', {

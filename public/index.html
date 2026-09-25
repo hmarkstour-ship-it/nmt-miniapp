@@ -1100,24 +1100,6 @@
     -webkit-backdrop-filter: blur(12px);
   }
 
-  .cheat-search-wrap { position:relative; margin: 13px 0 12px; }
-  .cheat-search-icon { position:absolute; left:14px; top:50%; transform:translateY(-50%); color:#8B8F95; pointer-events:none; }
-  .cheat-search {
-    width: 100%;
-    min-height: 48px;
-    border: 1px solid rgba(255,255,255,.82);
-    outline: none;
-    border-radius: 18px;
-    padding: 0 14px 0 42px;
-    color: #202226;
-    background: linear-gradient(145deg, rgba(255,255,255,.78), rgba(236,239,242,.62));
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.96), 0 9px 24px rgba(31,35,41,.06);
-    backdrop-filter: blur(20px) saturate(150%);
-    -webkit-backdrop-filter: blur(20px) saturate(150%);
-    font-family: "Myriad Pro", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    font-size: 14px;
-  }
-  .cheat-search::placeholder { color:#999DA3; }
 
   .cheat-list { display:grid; gap:10px; }
   .cheat-section {
@@ -1142,11 +1124,18 @@
   .cheat-section-copy { min-width:0; flex:1; }
   .cheat-section-title { display:block; font-size:15px; font-weight:700; letter-spacing:-.015em; }
   .cheat-section-meta { display:block; margin-top:3px; font-size:11px; color:#858990; }
-  .cheat-section-chevron { color:#8C9096; font-size:21px; transition:transform .3s cubic-bezier(.2,.8,.2,1); }
+  .cheat-section-chevron { color:#8C9096; font-size:21px; transition:transform .28s cubic-bezier(.22,.8,.2,1); will-change:transform; }
   .cheat-section.open .cheat-section-chevron { transform:rotate(90deg); }
-  .cheat-formulas { display:grid; grid-template-rows:0fr; transition:grid-template-rows .34s cubic-bezier(.2,.8,.2,1), opacity .25s ease; opacity:0; }
-  .cheat-section.open .cheat-formulas { grid-template-rows:1fr; opacity:1; }
-  .cheat-formulas-inner { overflow:hidden; }
+  .cheat-formulas {
+    height:0;
+    overflow:hidden;
+    opacity:0;
+    transform:translateY(-5px);
+    transition:height .32s cubic-bezier(.22,.8,.2,1), opacity .2s ease, transform .32s cubic-bezier(.22,.8,.2,1);
+    will-change:height,opacity,transform;
+  }
+  .cheat-section.open .cheat-formulas { opacity:1; transform:translateY(0); }
+  .cheat-formulas-inner { overflow:visible; }
   .cheat-formula-grid { display:grid; gap:8px; padding:0 12px 13px; }
   .cheat-formula {
     padding:11px 12px; border-radius:15px; background:rgba(255,255,255,.62); border:1px solid rgba(255,255,255,.83);
@@ -1155,8 +1144,6 @@
   .cheat-formula-label { margin-bottom:7px; font-size:10.5px; color:#858990; }
   .cheat-formula-math { color:#202328; font-size:14px; overflow-x:auto; -webkit-overflow-scrolling:touch; }
   .cheat-formula-note { margin-top:7px; color:#747980; font-size:11.5px; line-height:1.45; }
-  .cheat-empty { display:none; padding:22px 14px; text-align:center; color:#858990; font-size:13px; }
-  .cheat-empty.show { display:block; }
 
 
   /* ---- Liquid Glass bottom navigation + standalone profile ---- */
@@ -1573,10 +1560,6 @@
       <button class="cheat-pdf-btn" id="openOfficialPdf" type="button">Відкрити оригінальний PDF</button>
     </div>
 
-    <div class="cheat-search-wrap">
-      <span class="cheat-search-icon" aria-hidden="true">⌕</span>
-      <input class="cheat-search" id="cheatSearch" type="search" inputmode="search" autocomplete="off" placeholder="Знайти формулу або тему" aria-label="Пошук у шпаргалці">
-    </div>
 
     <div class="cheat-list" id="cheatList">
       <article class="cheat-section" data-search="алгебра скорочене множення квадратне рівняння дискримінант модуль">
@@ -1686,7 +1669,6 @@
         </div></div></div>
       </article>
     </div>
-    <div class="cheat-empty" id="cheatEmpty">Нічого не знайдено. Спробуй інше слово.</div>
   </div>
 </section>
 
@@ -1773,6 +1755,7 @@
   // API лишається на Web Service, який може засинати на Free-плані.
   const API_BASE = 'https://nmt-miniapp.onrender.com';
   const FETCH_TIMEOUT_MS = 30000;
+  const QUESTION_TIMEOUT_MS = 55000;
   const BACKEND_WAKE_MAX_MS = 75000;
 
   async function fetchWithTimeout(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS) {
@@ -1857,9 +1840,7 @@
   const testView = document.getElementById('testView');
   const cheatView = document.getElementById('cheatView');
   const profileView = document.getElementById('profileView');
-  const cheatSearch = document.getElementById('cheatSearch');
   const cheatList = document.getElementById('cheatList');
-  const cheatEmpty = document.getElementById('cheatEmpty');
   const openOfficialPdf = document.getElementById('openOfficialPdf');
   const profileContent = document.getElementById('profileContent');
   const navIndicator = document.getElementById('navIndicator');
@@ -1992,7 +1973,7 @@
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
     if (showProfile) loadProfilePage();
-    if (showCheat) setTimeout(() => renderMathSafely(cheatView), 20);
+    if (showCheat) primeCheatMath();
   }
 
   async function loadProfilePage() {
@@ -2156,8 +2137,22 @@
     cardArea.innerHTML = `
       <div class="status">
         <div class="spinner"></div>
-        <span>${message}</span>
+        <span id="questionLoadingText">${message}</span>
       </div>`;
+  }
+
+  function beginQuestionLoadingMessages(forceFresh = false) {
+    const timers = [];
+    const update = (text) => {
+      const el = document.getElementById('questionLoadingText');
+      if (el) el.textContent = text;
+    };
+
+    timers.push(setTimeout(() => update('Перевіряємо правильність завдання…'), 5500));
+    timers.push(setTimeout(() => update('Підбираємо найточніший варіант…'), 12500));
+    timers.push(setTimeout(() => update(forceFresh ? 'Створюємо інше перевірене завдання…' : 'Ще кілька секунд — завершуємо перевірку…'), 24000));
+
+    return () => timers.forEach(clearTimeout);
   }
 
   function renderError(message) {
@@ -2354,8 +2349,10 @@
     regenerateBtn.textContent = '↻ Інше завдання';
   }
 
-  async function loadQuestion(options = {}) {
-    renderLoading(options.forceFresh ? 'Створюємо нове завдання…' : 'Готуємо завдання…');
+  async function loadQuestion(options = {}, retryCount = 0) {
+    renderLoading(options.forceFresh ? 'Створюємо інше завдання…' : 'Готуємо завдання…');
+    const stopLoadingMessages = beginQuestionLoadingMessages(!!options.forceFresh);
+
     try {
       const res = await fetchWithTimeout(`${API_BASE}/api/generate-question`, {
         method: 'POST',
@@ -2363,28 +2360,44 @@
         body: JSON.stringify({
           topic: topicSelect.value,
           difficulty: 'середній',
-          verify: true,
           initData: tg?.initData || null,
           forceFresh: !!options.forceFresh,
         }),
-      });
+      }, QUESTION_TIMEOUT_MS);
 
       const data = await res.json();
 
       if (!res.ok) {
-        renderError(data.error || 'Щось пішло не так. Спробуйте ще раз.');
+        if (retryCount < 1 && [502, 503, 504].includes(res.status)) {
+          stopLoadingMessages();
+          renderLoading('Підбираємо інше перевірене завдання…');
+          await sleepMs(500);
+          return loadQuestion(options, retryCount + 1);
+        }
+
+        renderError(data.error || 'Не вдалося підготувати завдання. Спробуйте ще раз.');
         return;
       }
 
       renderQuestion(data);
     } catch (err) {
-      if (err.name === 'AbortError') {
-        renderError('Сервер не відповів вчасно (тайм-аут). Спробуйте ще раз.');
-      } else {
-        renderError('Немає з\'єднання з сервером. Перевірте, чи запущений бекенд.');
+      if (err.name === 'AbortError' && retryCount < 1) {
+        stopLoadingMessages();
+        renderLoading('Пробуємо ще раз…');
+        await sleepMs(500);
+        return loadQuestion(options, retryCount + 1);
       }
+
+      if (err.name === 'AbortError') {
+        renderError('Не вдалося підготувати завдання достатньо швидко. Натисніть «Спробувати ще раз».');
+      } else {
+        renderError('Немає з’єднання з сервером. Спробуйте ще раз.');
+      }
+    } finally {
+      stopLoadingMessages();
     }
   }
+
 
   const sleepMs = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -2521,28 +2534,75 @@
   });
 
 
+  let cheatMathPrimed = false;
+
+  function primeCheatMath() {
+    if (cheatMathPrimed) return;
+    cheatMathPrimed = true;
+    renderMathSafely(cheatView);
+    // KaTeX CDN може дорендеритися трохи пізніше; другий легкий прохід прибирає стрибки висоти.
+    setTimeout(() => renderMathSafely(cheatView), 180);
+  }
+
+  function closeCheatSection(section) {
+    if (!section?.classList.contains('open')) return;
+    const btn = section.querySelector('.cheat-section-btn');
+    const panel = section.querySelector('.cheat-formulas');
+    if (!panel) return;
+
+    const currentHeight = panel.getBoundingClientRect().height;
+    panel.style.height = `${currentHeight}px`;
+    panel.getBoundingClientRect();
+
+    requestAnimationFrame(() => {
+      section.classList.remove('open');
+      btn?.setAttribute('aria-expanded', 'false');
+      panel.style.height = '0px';
+    });
+  }
+
+  function openCheatSection(section) {
+    if (!section || section.classList.contains('open')) return;
+    primeCheatMath();
+
+    // Одночасно тримаємо відкритою лише одну секцію — менше layout і набагато плавніша анімація.
+    cheatList?.querySelectorAll('.cheat-section.open').forEach((other) => {
+      if (other !== section) closeCheatSection(other);
+    });
+
+    const btn = section.querySelector('.cheat-section-btn');
+    const panel = section.querySelector('.cheat-formulas');
+    const inner = section.querySelector('.cheat-formulas-inner');
+    if (!panel || !inner) return;
+
+    section.classList.add('open');
+    btn?.setAttribute('aria-expanded', 'true');
+    panel.style.height = '0px';
+    panel.getBoundingClientRect();
+
+    requestAnimationFrame(() => {
+      panel.style.height = `${inner.scrollHeight}px`;
+    });
+
+    const finish = (event) => {
+      if (event.propertyName !== 'height') return;
+      panel.removeEventListener('transitionend', finish);
+      if (section.classList.contains('open')) panel.style.height = 'auto';
+    };
+    panel.addEventListener('transitionend', finish);
+  }
+
   document.querySelectorAll('.cheat-section-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       const section = btn.closest('.cheat-section');
-      const willOpen = !section.classList.contains('open');
-      section.classList.toggle('open', willOpen);
-      btn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+      if (!section) return;
+      const isOpen = section.classList.contains('open');
       tg?.HapticFeedback?.selectionChanged?.();
-      if (willOpen) setTimeout(() => renderMathSafely(section), 30);
+      if (isOpen) closeCheatSection(section);
+      else openCheatSection(section);
     });
   });
 
-  cheatSearch?.addEventListener('input', () => {
-    const q = cheatSearch.value.trim().toLocaleLowerCase('uk-UA');
-    let visible = 0;
-    cheatList?.querySelectorAll('.cheat-section').forEach((section) => {
-      const haystack = `${section.dataset.search || ''} ${section.textContent || ''}`.toLocaleLowerCase('uk-UA');
-      const match = !q || haystack.includes(q);
-      section.hidden = !match;
-      if (match) visible += 1;
-    });
-    cheatEmpty?.classList.toggle('show', visible === 0);
-  });
 
   openOfficialPdf?.addEventListener('click', () => {
     const url = 'https://testportal.gov.ua/wp-content/uploads/2022/04/ZNO_Math_dovidkovy-materialy.pdf';
@@ -2616,6 +2676,7 @@
       await waitForBackend();
 
       await loadTopics();
+      setTimeout(() => primeCheatMath(), 250);
 
       // Спочатку намагаємось підтягнути збережений прогрес
       const progressLoaded = await loadProgress();
