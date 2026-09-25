@@ -75,21 +75,210 @@
 
   /* ---- Вибір теми ---- */
 
-  .topic-select {
+  .topic-select { display: none; }
+
+  .topic-picker {
     width: 100%;
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 14px;
-    padding: 11px 12px;
-    background: #fff;
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    color: var(--ink);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 15px;
     margin-bottom: 20px;
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2355555C'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 12px center;
+    background: rgba(255,255,255,.96);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    color: var(--ink);
+    text-align: left;
+    cursor: pointer;
+    box-shadow: 0 8px 24px rgba(27,27,31,.06);
+    transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
   }
+
+  .topic-picker:active { transform: scale(.992); }
+
+  .topic-picker-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 11px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    display: grid;
+    place-items: center;
+    flex: 0 0 42px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .topic-picker-copy { min-width: 0; flex: 1; }
+
+  .topic-picker-kicker {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--ink-soft);
+    margin-bottom: 3px;
+  }
+
+  .topic-picker-title {
+    font-size: 16px;
+    line-height: 1.25;
+    font-weight: 700;
+    letter-spacing: -.01em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .topic-picker-subtitle {
+    margin-top: 3px;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .topic-picker-chevron {
+    color: var(--ink-soft);
+    font-size: 22px;
+    line-height: 1;
+    transform: translateY(-1px);
+  }
+
+  .topic-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10,10,14,.48);
+    backdrop-filter: blur(3px);
+    z-index: 50;
+    display: none;
+    align-items: flex-end;
+    justify-content: center;
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  .topic-overlay.show { display: flex; }
+
+  .topic-sheet {
+    width: min(100%, 480px);
+    max-height: 82vh;
+    background: var(--paper);
+    border-radius: 22px 22px 0 0;
+    border: 1px solid var(--line);
+    border-bottom: 0;
+    padding: 10px 14px calc(18px + env(safe-area-inset-bottom, 0px));
+    overflow: hidden;
+    box-shadow: 0 -16px 50px rgba(0,0,0,.18);
+    animation: sheetUp .18s ease-out;
+  }
+
+  @keyframes sheetUp {
+    from { transform: translateY(18px); opacity: .4; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  .topic-sheet-handle {
+    width: 38px;
+    height: 4px;
+    border-radius: 999px;
+    background: #cfcfd4;
+    margin: 2px auto 12px;
+  }
+
+  .topic-sheet-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 0 4px 12px;
+  }
+
+  .topic-sheet-title {
+    font-size: 19px;
+    font-weight: 700;
+    letter-spacing: -.02em;
+  }
+
+  .topic-sheet-close {
+    width: 34px;
+    height: 34px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: #fff;
+    color: var(--ink);
+    font-size: 18px;
+    cursor: pointer;
+  }
+
+  .topic-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+    max-height: calc(82vh - 86px);
+    padding: 0 2px 4px;
+    overscroll-behavior: contain;
+  }
+
+  .topic-item {
+    width: 100%;
+    border: 1px solid var(--line);
+    background: #fff;
+    border-radius: 13px;
+    padding: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-align: left;
+    color: var(--ink);
+    cursor: pointer;
+  }
+
+  .topic-item.active {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  .topic-item-icon {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    background: var(--paper);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .topic-item.active .topic-item-icon { background: #fff; }
+
+  .topic-item-copy { min-width: 0; flex: 1; }
+
+  .topic-item-title {
+    font-size: 14.5px;
+    font-weight: 650;
+    line-height: 1.25;
+  }
+
+  .topic-item-subtitle {
+    margin-top: 3px;
+    font-size: 12px;
+    line-height: 1.3;
+    color: var(--ink-soft);
+  }
+
+  .topic-item-check {
+    color: var(--accent);
+    font-weight: 700;
+    opacity: 0;
+  }
+
+  .topic-item.active .topic-item-check { opacity: 1; }
 
   /* ---- Картка завдання ---- */
 
@@ -252,13 +441,34 @@
     <div class="streak" id="streak">✅ 0 · ❌ 0</div>
   </header>
 
-  <select class="topic-select" id="topicSelect"></select>
+  <select class="topic-select" id="topicSelect" aria-hidden="true" tabindex="-1"></select>
+
+  <button class="topic-picker" id="topicPicker" type="button">
+    <div class="topic-picker-icon" id="topicPickerIcon">🎯</div>
+    <div class="topic-picker-copy">
+      <div class="topic-picker-kicker">Тема підготовки</div>
+      <div class="topic-picker-title" id="topicPickerTitle">Змішані завдання НМТ</div>
+      <div class="topic-picker-subtitle" id="topicPickerSubtitle">Натисни, щоб обрати тему</div>
+    </div>
+    <div class="topic-picker-chevron">›</div>
+  </button>
 
   <div id="cardArea">
     <div class="status">
       <div class="spinner"></div>
       <span>Готуємо перше завдання…</span>
     </div>
+  </div>
+</div>
+
+<div class="topic-overlay" id="topicOverlay" aria-hidden="true">
+  <div class="topic-sheet" role="dialog" aria-modal="true" aria-label="Вибір теми НМТ">
+    <div class="topic-sheet-handle"></div>
+    <div class="topic-sheet-head">
+      <div class="topic-sheet-title">Оберіть тему</div>
+      <button class="topic-sheet-close" id="topicSheetClose" type="button" aria-label="Закрити">×</button>
+    </div>
+    <div class="topic-list" id="topicList"></div>
   </div>
 </div>
 
@@ -291,6 +501,53 @@
   const cardArea = document.getElementById('cardArea');
   const streakEl = document.getElementById('streak');
   const topicSelect = document.getElementById('topicSelect');
+  const topicPicker = document.getElementById('topicPicker');
+  const topicPickerIcon = document.getElementById('topicPickerIcon');
+  const topicPickerTitle = document.getElementById('topicPickerTitle');
+  const topicPickerSubtitle = document.getElementById('topicPickerSubtitle');
+  const topicOverlay = document.getElementById('topicOverlay');
+  const topicList = document.getElementById('topicList');
+  const topicSheetClose = document.getElementById('topicSheetClose');
+
+  const FALLBACK_TOPICS = [
+    { key: 'mixed', label: '🎯 Змішані завдання НМТ' },
+    { key: 'numbers', label: 'Числа та дроби' },
+    { key: 'percents', label: 'Відсотки та пропорції' },
+    { key: 'powers_roots', label: 'Степені та корені' },
+    { key: 'logarithms', label: 'Логарифми' },
+    { key: 'equations', label: 'Рівняння' },
+    { key: 'inequalities', label: 'Нерівності' },
+    { key: 'systems', label: 'Системи рівнянь і нерівностей' },
+    { key: 'functions', label: 'Функції та графіки' },
+    { key: 'progressions', label: 'Прогресії' },
+    { key: 'trigonometry', label: 'Тригонометрія' },
+    { key: 'calculus', label: 'Похідна та інтеграл' },
+    { key: 'probability_stats', label: 'Ймовірність, комбінаторика та статистика' },
+    { key: 'planimetry', label: 'Планіметрія' },
+    { key: 'stereometry', label: 'Стереометрія' },
+    { key: 'word_problems', label: 'Текстові задачі' },
+  ];
+
+  const TOPIC_UI = {
+    mixed: { icon: '🎯', subtitle: 'Завдання з усіх тем НМТ' },
+    numbers: { icon: '123', subtitle: 'Числа, дроби та обчислення' },
+    percents: { icon: '%', subtitle: 'Відсотки, пропорції та практичні задачі' },
+    powers_roots: { icon: '√', subtitle: 'Степені, корені та перетворення' },
+    logarithms: { icon: 'log', subtitle: 'Логарифми, властивості та рівняння' },
+    equations: { icon: 'x=', subtitle: 'Лінійні, квадратні та інші рівняння' },
+    inequalities: { icon: '≠', subtitle: 'Нерівності та метод інтервалів' },
+    systems: { icon: '{}', subtitle: 'Системи рівнянь і нерівностей' },
+    functions: { icon: 'f(x)', subtitle: 'Функції, графіки та їх властивості' },
+    progressions: { icon: 'Σ', subtitle: 'Арифметична та геометрична прогресії' },
+    trigonometry: { icon: 'sin', subtitle: 'sin, cos, tg і задачі з трикутниками' },
+    calculus: { icon: "f′", subtitle: 'Похідна, первісна та інтеграл' },
+    probability_stats: { icon: 'P', subtitle: 'Ймовірність, комбінаторика та статистика' },
+    planimetry: { icon: '△', subtitle: 'Геометрія на площині' },
+    stereometry: { icon: '◇', subtitle: 'Об’єми та геометрія у просторі' },
+    word_problems: { icon: '→', subtitle: 'Рух, робота, суміші та моделювання' },
+  };
+
+  let loadedTopics = [];
 
   function updateStreak() {
     streakEl.textContent = `✅ ${state.correct} · ❌ ${state.wrong}`;
@@ -505,25 +762,113 @@
     }
   }
 
-  async function loadTopics() {
-    try {
-      const res = await fetchWithTimeout(`${API_BASE}/api/topics`);
-      const topics = await res.json();
-
-      topicSelect.innerHTML = topics
-        .map((t) => `<option value="${t.key}">${t.label}</option>`)
-        .join('');
-
-    } catch (err) {
-      console.error('Помилка завантаження тем:', err);
-
-      topicSelect.innerHTML = `
-        <option value="mixed">🎯 Змішані завдання НМТ</option>
-      `;
-    }
+  function getTopicUi(key) {
+    return TOPIC_UI[key] || { icon: '•', subtitle: 'Тренування в межах програми НМТ' };
   }
 
-  topicSelect.addEventListener('change', loadQuestion);
+  function stripLeadingEmoji(label = '') {
+    return label.replace(/^🎯\s*/, '').trim();
+  }
+
+  function syncTopicPicker() {
+    const selected = loadedTopics.find((t) => t.key === topicSelect.value) || loadedTopics[0];
+    if (!selected) return;
+
+    const ui = getTopicUi(selected.key);
+    topicPickerIcon.textContent = ui.icon;
+    topicPickerTitle.textContent = stripLeadingEmoji(selected.label);
+    topicPickerSubtitle.textContent = ui.subtitle;
+
+    topicList.querySelectorAll('.topic-item').forEach((item) => {
+      item.classList.toggle('active', item.dataset.key === selected.key);
+    });
+  }
+
+  function renderTopicList() {
+    topicList.innerHTML = loadedTopics.map((t) => {
+      const ui = getTopicUi(t.key);
+      return `
+        <button class="topic-item" type="button" data-key="${escapeHtml(t.key)}">
+          <span class="topic-item-icon">${escapeHtml(ui.icon)}</span>
+          <span class="topic-item-copy">
+            <span class="topic-item-title">${escapeHtml(stripLeadingEmoji(t.label))}</span>
+            <span class="topic-item-subtitle">${escapeHtml(ui.subtitle)}</span>
+          </span>
+          <span class="topic-item-check">✓</span>
+        </button>`;
+    }).join('');
+
+    topicList.querySelectorAll('.topic-item').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        if (btn.dataset.key === topicSelect.value) {
+          closeTopicSheet();
+          return;
+        }
+
+        topicSelect.value = btn.dataset.key;
+        try { localStorage.setItem('nmt_topic', topicSelect.value); } catch (_) {}
+        syncTopicPicker();
+        closeTopicSheet();
+        tg?.HapticFeedback?.selectionChanged?.();
+        await loadQuestion();
+      });
+    });
+
+    syncTopicPicker();
+  }
+
+  function openTopicSheet() {
+    topicOverlay.classList.add('show');
+    topicOverlay.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    syncTopicPicker();
+  }
+
+  function closeTopicSheet() {
+    topicOverlay.classList.remove('show');
+    topicOverlay.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+  }
+
+  topicPicker.addEventListener('click', openTopicSheet);
+  topicSheetClose.addEventListener('click', closeTopicSheet);
+  topicOverlay.addEventListener('click', (event) => {
+    if (event.target === topicOverlay) closeTopicSheet();
+  });
+
+  async function loadTopics() {
+    let topics = FALLBACK_TOPICS;
+
+    try {
+      const res = await fetchWithTimeout(`${API_BASE}/api/topics?v=3`, { cache: 'no-store' });
+      if (!res.ok) throw new Error('Помилка /api/topics');
+
+      const freshTopics = await res.json();
+      if (Array.isArray(freshTopics) && freshTopics.some((t) => t.key === 'logarithms')) {
+        topics = freshTopics;
+      } else {
+        console.warn('Отримано застарілий список тем — використовую актуальний локальний список.');
+      }
+    } catch (err) {
+      console.error('Помилка завантаження тем:', err);
+    }
+
+    loadedTopics = topics;
+    topicSelect.innerHTML = loadedTopics
+      .map((t) => `<option value="${escapeHtml(t.key)}">${escapeHtml(t.label)}</option>`)
+      .join('');
+
+    let savedTopic = '';
+    try { savedTopic = localStorage.getItem('nmt_topic') || ''; } catch (_) {}
+
+    if (savedTopic && loadedTopics.some((t) => t.key === savedTopic)) {
+      topicSelect.value = savedTopic;
+    } else if (loadedTopics.some((t) => t.key === 'mixed')) {
+      topicSelect.value = 'mixed';
+    }
+
+    renderTopicList();
+  }
 
   function escapeHtml(str) {
     const div = document.createElement('div');
