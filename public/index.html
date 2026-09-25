@@ -72,8 +72,28 @@
     color: var(--ink-soft);
     background: #fff;
     border: 1px solid var(--line);
-    padding: 4px 9px;
-    border-radius: var(--radius);
+    padding: 7px 10px;
+    border-radius: 12px;
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .profile-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: rgba(255,255,255,.96);
+    color: var(--ink);
+    display: grid;
+    place-items: center;
+    font-size: 17px;
+    cursor: pointer;
+    box-shadow: 0 5px 16px rgba(27,27,31,.04);
   }
 
   /* ---- Вибір теми ---- */
@@ -484,6 +504,205 @@
     font-weight: 700;
   }
 
+
+  .card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .card-top .card-label { margin-bottom: 0; }
+
+  .report-btn {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(27,27,31,.08);
+    border-radius: 11px;
+    background: #F8F8F6;
+    color: #7A7D83;
+    font-size: 15px;
+    cursor: pointer;
+  }
+
+  .ai-help {
+    display: none;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(27,27,31,.07);
+  }
+
+  .ai-help.show { display: block; }
+
+  .ai-help-title {
+    margin-bottom: 10px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  .ai-help-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .ai-chip {
+    border: 1px solid rgba(27,27,31,.09);
+    border-radius: 999px;
+    background: #fff;
+    color: #454950;
+    padding: 9px 12px;
+    font-family: "Myriad Pro", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  .ai-chip:disabled { opacity: .55; cursor: default; }
+
+  .ai-help-result {
+    display: none;
+    margin-top: 12px;
+    padding: 13px;
+    border-radius: 14px;
+    background: #F2F4F8;
+    border: 1px solid rgba(47,79,208,.10);
+  }
+
+  .ai-help-result.show { display: block; }
+  .ai-help-result h4 { margin: 0 0 9px; font-size: 14px; color: var(--ink); }
+  .ai-help-result ol { margin: 0; padding-left: 20px; display: grid; gap: 8px; color: #555A62; font-size: 13.5px; line-height: 1.5; }
+
+  /* ---- Профіль ---- */
+
+  .profile-overlay,
+  .report-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    background: rgba(10,10,14,.46);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    display: none;
+    align-items: flex-end;
+    justify-content: center;
+  }
+
+  .profile-overlay.show,
+  .report-overlay.show { display: flex; }
+
+  .profile-panel,
+  .report-panel {
+    width: min(100%, 480px);
+    max-height: 88vh;
+    overflow-y: auto;
+    background: linear-gradient(180deg, #FAFAF8 0%, #F2F3F4 100%);
+    border-radius: 26px 26px 0 0;
+    border: 1px solid rgba(27,27,31,.08);
+    padding: 12px 18px calc(22px + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -22px 60px rgba(0,0,0,.18);
+    animation: sheetUp .2s ease-out;
+  }
+
+  .profile-head,
+  .report-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 8px 0 18px;
+  }
+
+  .profile-head h2,
+  .report-head h3 { margin: 0; font-size: 21px; letter-spacing: -.02em; }
+
+  .sheet-close {
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: #fff;
+    font-size: 18px;
+    cursor: pointer;
+  }
+
+  .profile-hero {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px;
+    background: rgba(255,255,255,.88);
+    border: 1px solid rgba(27,27,31,.07);
+    border-radius: 18px;
+    box-shadow: 0 10px 28px rgba(27,27,31,.05);
+  }
+
+  .profile-avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 18px;
+    display: grid;
+    place-items: center;
+    background: linear-gradient(145deg, #20242A, #3B424C);
+    color: #fff;
+    font-size: 22px;
+    font-weight: 700;
+  }
+
+  .profile-name { font-size: 20px; font-weight: 700; letter-spacing: -.02em; }
+  .profile-since { margin-top: 3px; color: #777B82; font-size: 12.5px; }
+
+  .profile-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 9px;
+    margin-top: 12px;
+  }
+
+  .profile-stat {
+    padding: 13px 8px;
+    text-align: center;
+    border-radius: 16px;
+    background: rgba(255,255,255,.78);
+    border: 1px solid rgba(27,27,31,.07);
+  }
+
+  .profile-stat-value { font-size: 21px; font-weight: 750; color: var(--ink); }
+  .profile-stat-label { margin-top: 3px; font-size: 11px; color: #7B7F85; }
+
+  .profile-section-title { margin: 20px 2px 10px; font-size: 14px; font-weight: 700; }
+  .topic-stat-list { display: grid; gap: 8px; }
+  .topic-stat-row { padding: 12px 13px; border-radius: 14px; background: rgba(255,255,255,.82); border: 1px solid rgba(27,27,31,.07); }
+  .topic-stat-top { display: flex; justify-content: space-between; gap: 10px; font-size: 13.5px; }
+  .topic-stat-accuracy { font-weight: 700; }
+  .topic-stat-bar { height: 6px; margin-top: 8px; border-radius: 999px; background: #E5E7EA; overflow: hidden; }
+  .topic-stat-fill { height: 100%; border-radius: inherit; background: #2F4FD0; }
+
+  .report-reasons { display: grid; gap: 9px; }
+  .report-reason { width: 100%; padding: 13px 14px; text-align: left; border-radius: 14px; border: 1px solid rgba(27,27,31,.08); background: #fff; font-size: 14px; cursor: pointer; }
+
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+    transform: translateX(-50%) translateY(16px);
+    z-index: 120;
+    max-width: calc(100vw - 36px);
+    padding: 11px 14px;
+    border-radius: 14px;
+    background: rgba(25,28,33,.94);
+    color: #fff;
+    font-size: 13px;
+    opacity: 0;
+    pointer-events: none;
+    transition: .2s ease;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
   /* ---- Кнопка дії ---- */
 
   .action-stack {
@@ -790,7 +1009,10 @@
 <div class="wrap">
   <header>
     <h1>НМТ · Математика</h1>
-    <div class="streak" id="streak">✅ 0 · ❌ 0</div>
+    <div class="header-actions">
+      <div class="streak" id="streak">✅ 0 · ❌ 0</div>
+      <button class="profile-btn" id="profileBtn" type="button" aria-label="Відкрити профіль">👤</button>
+    </div>
   </header>
 
   <select class="topic-select" id="topicSelect" aria-hidden="true" tabindex="-1"></select>
@@ -823,6 +1045,38 @@
     <div class="topic-list" id="topicList"></div>
   </div>
 </div>
+
+<div class="profile-overlay" id="profileOverlay" aria-hidden="true">
+  <section class="profile-panel" role="dialog" aria-modal="true" aria-label="Профіль">
+    <div class="topic-sheet-handle"></div>
+    <div class="profile-head">
+      <h2>Профіль</h2>
+      <button class="sheet-close" id="profileClose" type="button">×</button>
+    </div>
+    <div id="profileContent">
+      <div class="status"><div class="spinner"></div><span>Завантажуємо профіль…</span></div>
+    </div>
+  </section>
+</div>
+
+<div class="report-overlay" id="reportOverlay" aria-hidden="true">
+  <section class="report-panel" role="dialog" aria-modal="true" aria-label="Повідомити про проблему">
+    <div class="topic-sheet-handle"></div>
+    <div class="report-head">
+      <h3>Що не так із завданням?</h3>
+      <button class="sheet-close" id="reportClose" type="button">×</button>
+    </div>
+    <div class="report-reasons" id="reportReasons">
+      <button class="report-reason" data-reason="Помилка в умові">📝 Помилка в умові</button>
+      <button class="report-reason" data-reason="Неправильна відповідь">❌ Неправильна відповідь</button>
+      <button class="report-reason" data-reason="Незрозуміле пояснення">💬 Незрозуміле пояснення</button>
+      <button class="report-reason" data-reason="Погане математичне оформлення">√ Погане математичне оформлення</button>
+      <button class="report-reason" data-reason="Інше">⚑ Інше</button>
+    </div>
+  </section>
+</div>
+
+<div class="toast" id="toast"></div>
 
 <script>
   const tg = window.Telegram?.WebApp;
@@ -862,6 +1116,14 @@
   const topicList = document.getElementById('topicList');
   const topicSheetClose = document.getElementById('topicSheetClose');
   const startupScreen = document.getElementById('startupScreen');
+  const profileBtn = document.getElementById('profileBtn');
+  const profileOverlay = document.getElementById('profileOverlay');
+  const profileClose = document.getElementById('profileClose');
+  const profileContent = document.getElementById('profileContent');
+  const reportOverlay = document.getElementById('reportOverlay');
+  const reportClose = document.getElementById('reportClose');
+  const reportReasons = document.getElementById('reportReasons');
+  const toast = document.getElementById('toast');
   let startupHidden = false;
 
   function hideStartupScreen() {
@@ -942,6 +1204,156 @@
     streakEl.textContent = `✅ ${state.correct} · ❌ ${state.wrong}`;
   }
 
+  function showToast(message) {
+    toast.textContent = message;
+    toast.classList.add('show');
+    clearTimeout(showToast.timer);
+    showToast.timer = setTimeout(() => toast.classList.remove('show'), 2200);
+  }
+
+  function formatJoinDate(value) {
+    if (!value) return 'Профіль НМТ';
+    try {
+      return 'З нами з ' + new Intl.DateTimeFormat('uk-UA', { month: 'long', year: 'numeric' }).format(new Date(value));
+    } catch (_) {
+      return 'Профіль НМТ';
+    }
+  }
+
+  async function openProfile() {
+    profileOverlay.classList.add('show');
+    profileOverlay.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    profileContent.innerHTML = `<div class="status"><div class="spinner"></div><span>Завантажуємо профіль…</span></div>`;
+
+    try {
+      const res = await fetchWithTimeout(`${API_BASE}/api/profile`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData: tg?.initData || null }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Не вдалося завантажити профіль');
+
+      const initial = (data.first_name || 'У').trim().charAt(0).toUpperCase();
+      const topicRows = Array.isArray(data.topic_stats) && data.topic_stats.length
+        ? data.topic_stats.map((row) => `
+          <div class="topic-stat-row">
+            <div class="topic-stat-top">
+              <span>${escapeHtml(stripLeadingEmoji(row.label || row.topic))}</span>
+              <span class="topic-stat-accuracy">${Number(row.accuracy) || 0}%</span>
+            </div>
+            <div class="topic-stat-bar"><div class="topic-stat-fill" style="width:${Math.max(0, Math.min(100, Number(row.accuracy) || 0))}%"></div></div>
+          </div>`).join('')
+        : `<div class="topic-stat-row">Статистика по темах з’явиться після кількох відповідей.</div>`;
+
+      profileContent.innerHTML = `
+        <div class="profile-hero">
+          <div class="profile-avatar">${escapeHtml(initial)}</div>
+          <div>
+            <div class="profile-name">${escapeHtml(data.first_name || 'Учень')}</div>
+            <div class="profile-since">${escapeHtml(formatJoinDate(data.created_at))}</div>
+          </div>
+        </div>
+        <div class="profile-grid">
+          <div class="profile-stat"><div class="profile-stat-value">${Number(data.total) || 0}</div><div class="profile-stat-label">завдань</div></div>
+          <div class="profile-stat"><div class="profile-stat-value">${Number(data.accuracy) || 0}%</div><div class="profile-stat-label">точність</div></div>
+          <div class="profile-stat"><div class="profile-stat-value">${Number(data.correct) || 0}</div><div class="profile-stat-label">правильно</div></div>
+        </div>
+        <div class="profile-section-title">Результати за темами</div>
+        <div class="topic-stat-list">${topicRows}</div>`;
+    } catch (err) {
+      profileContent.innerHTML = `<div class="error-box">${escapeHtml(err.message)}</div>`;
+    }
+  }
+
+  function closeProfile() {
+    profileOverlay.classList.remove('show');
+    profileOverlay.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+  }
+
+  function openReport() {
+    reportOverlay.classList.add('show');
+    reportOverlay.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeReport() {
+    reportOverlay.classList.remove('show');
+    reportOverlay.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+  }
+
+  async function submitReport(reason) {
+    if (!state.currentQuestion) return;
+    closeReport();
+    try {
+      const res = await fetchWithTimeout(`${API_BASE}/api/report-question`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          initData: tg?.initData || null,
+          questionBankId: state.currentQuestion.bank_id || null,
+          reason,
+          question: state.currentQuestion,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.saved) throw new Error(data.error || 'Не вдалося надіслати');
+      showToast('Дякуємо — перевіримо це завдання');
+      tg?.HapticFeedback?.notificationOccurred?.('success');
+    } catch (err) {
+      showToast('Не вдалося надіслати скаргу');
+    }
+  }
+
+  async function requestAiHelp(mode) {
+    const q = state.currentQuestion;
+    if (!q) return;
+    const buttons = cardArea.querySelectorAll('.ai-chip');
+    buttons.forEach((b) => b.disabled = true);
+    const result = document.getElementById('aiHelpResult');
+    if (result) {
+      result.classList.add('show');
+      result.innerHTML = `<div class="status" style="min-height:90px"><div class="spinner"></div><span>AI готує пояснення…</span></div>`;
+    }
+
+    try {
+      const res = await fetchWithTimeout(`${API_BASE}/api/explain-more`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          initData: tg?.initData || null,
+          mode,
+          topic: q.topic || topicSelect.value,
+          difficulty: q.difficulty || 'середній',
+          question: {
+            question: q.question,
+            options: q.options,
+            correct_index: q.correct_index,
+            selected_index: state.selectedIndex,
+          },
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Помилка AI');
+
+      if (mode === 'similar' && data.question) {
+        renderQuestion(data.question);
+        return;
+      }
+
+      const steps = Array.isArray(data.steps) ? data.steps : [];
+      result.innerHTML = `<h4>${escapeHtml(data.title || 'Пояснення')}</h4><ol>${steps.map((x) => `<li>${escapeHtml(x)}</li>`).join('')}</ol>`;
+      renderMathSafely(result);
+    } catch (err) {
+      if (result) result.innerHTML = `<div class="error-box">${escapeHtml(err.message)}</div>`;
+    } finally {
+      cardArea.querySelectorAll('.ai-chip').forEach((b) => b.disabled = false);
+    }
+  }
+
   function renderLoading(message) {
     cardArea.innerHTML = `
       <div class="status">
@@ -995,7 +1407,10 @@
 
     cardArea.innerHTML = `
       <div class="card">
-        <div class="card-label">${topicSelect.options[topicSelect.selectedIndex]?.text || ''}</div>
+        <div class="card-top">
+          <div class="card-label">${topicSelect.options[topicSelect.selectedIndex]?.text || ''}</div>
+          <button class="report-btn" id="reportBtn" type="button" aria-label="Повідомити про проблему">⚑</button>
+        </div>
         <div class="question-text">${escapeHtml(q.question)}</div>
         <div class="options">
           ${q.options.map((opt, i) => `
@@ -1015,6 +1430,15 @@
               <li class="explanation-step">${escapeHtml(step)}</li>
             `).join('')}
           </ol>
+          <div class="ai-help" id="aiHelp">
+            <div class="ai-help-title">Потрібна ще допомога?</div>
+            <div class="ai-help-actions">
+              <button class="ai-chip" type="button" data-ai-mode="simple">✨ Поясни простіше</button>
+              <button class="ai-chip" type="button" data-ai-mode="why_wrong">💬 Чому моя відповідь неправильна?</button>
+              <button class="ai-chip" type="button" data-ai-mode="similar">↗ Дай схоже завдання</button>
+            </div>
+            <div class="ai-help-result" id="aiHelpResult"></div>
+          </div>
         </div>
         <div class="action-stack">
           <button class="primary-btn" id="checkBtn" type="button" disabled>Перевірити відповідь</button>
@@ -1035,7 +1459,13 @@
 
     document.getElementById('regenerateBtn').addEventListener('click', () => {
       tg?.HapticFeedback?.impactOccurred?.('light');
-      loadQuestion();
+      loadQuestion({ forceFresh: true });
+    });
+
+    document.getElementById('reportBtn')?.addEventListener('click', openReport);
+
+    cardArea.querySelectorAll('.ai-chip').forEach((btn) => {
+      btn.addEventListener('click', () => requestAiHelp(btn.dataset.aiMode));
     });
   }
 
@@ -1091,7 +1521,9 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           initData: tg?.initData || null,
-          isCorrect
+          isCorrect,
+          topic: q.topic || topicSelect.value,
+          questionBankId: q.bank_id || null
         }),
       });
 
@@ -1113,6 +1545,9 @@
     updateStreak();
 
     document.getElementById('explanation').classList.add('show');
+    document.getElementById('aiHelp')?.classList.add('show');
+    const whyWrongBtn = cardArea.querySelector('[data-ai-mode="why_wrong"]');
+    if (whyWrongBtn && isCorrect) whyWrongBtn.style.display = 'none';
     renderMathSafely(document.getElementById('explanation'));
 
     checkBtn.disabled = false;
@@ -1121,8 +1556,8 @@
     regenerateBtn.textContent = '↻ Інше завдання';
   }
 
-  async function loadQuestion() {
-    renderLoading('Генеруємо завдання…');
+  async function loadQuestion(options = {}) {
+    renderLoading(options.forceFresh ? 'Створюємо нове завдання…' : 'Готуємо завдання…');
     try {
       const res = await fetchWithTimeout(`${API_BASE}/api/generate-question`, {
         method: 'POST',
@@ -1132,6 +1567,7 @@
           difficulty: 'середній',
           verify: true,
           initData: tg?.initData || null,
+          forceFresh: !!options.forceFresh,
         }),
       });
 
@@ -1284,6 +1720,15 @@
   topicSheetClose.addEventListener('click', closeTopicSheet);
   topicOverlay.addEventListener('click', (event) => {
     if (event.target === topicOverlay) closeTopicSheet();
+  });
+
+  profileBtn.addEventListener('click', openProfile);
+  profileClose.addEventListener('click', closeProfile);
+  profileOverlay.addEventListener('click', (event) => { if (event.target === profileOverlay) closeProfile(); });
+  reportClose.addEventListener('click', closeReport);
+  reportOverlay.addEventListener('click', (event) => { if (event.target === reportOverlay) closeReport(); });
+  reportReasons.querySelectorAll('.report-reason').forEach((btn) => {
+    btn.addEventListener('click', () => submitReport(btn.dataset.reason || 'Інше'));
   });
 
   async function loadTopics() {
