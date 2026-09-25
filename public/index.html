@@ -2,7 +2,7 @@
 <html lang="uk">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 <title>НМТ Математика</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
@@ -30,6 +30,9 @@
   html, body {
     height: 100%;
     margin: 0;
+    touch-action: manipulation;
+    overscroll-behavior-y: none;
+    -webkit-text-size-adjust: 100%;
   }
 
   body {
@@ -987,6 +990,175 @@
   }
 
 
+
+  /* ---- Cheat sheet / reference view ---- */
+
+  .cheat-view {
+    max-width: 480px;
+    min-height: 100vh;
+    margin: 0 auto;
+    padding: 22px 18px calc(130px + env(safe-area-inset-bottom, 0px));
+    background:
+      radial-gradient(circle at 14% 3%, rgba(255,255,255,.96), transparent 34%),
+      radial-gradient(circle at 88% 18%, rgba(36,42,49,.045), transparent 28%),
+      linear-gradient(180deg, rgba(249,249,247,.99), rgba(242,243,242,.98));
+    animation: profileViewIn .36s cubic-bezier(.2,.8,.2,1);
+  }
+
+  .cheat-shell { width: 100%; }
+
+  .cheat-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 8px 2px 18px;
+  }
+
+  .cheat-kicker {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: .12em;
+    color: #858A90;
+    margin-bottom: 7px;
+  }
+
+  .cheat-head h2 {
+    margin: 0;
+    font-family: "Myriad Pro", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 30px;
+    line-height: 1.02;
+    letter-spacing: -.035em;
+    color: #15171A;
+  }
+
+  .cheat-head p {
+    margin: 7px 0 0;
+    font-size: 13.5px;
+    line-height: 1.45;
+    color: #777B82;
+    max-width: 290px;
+  }
+
+  .cheat-mark {
+    min-width: 58px;
+    height: 58px;
+    border-radius: 19px;
+    display: grid;
+    place-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 17px;
+    font-weight: 700;
+    color: #262A30;
+    background: linear-gradient(145deg, rgba(255,255,255,.83), rgba(224,228,233,.58));
+    border: 1px solid rgba(255,255,255,.92);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.96), inset 0 -1px 0 rgba(90,98,109,.08), 0 12px 30px rgba(34,39,46,.09);
+    backdrop-filter: blur(22px) saturate(160%);
+    -webkit-backdrop-filter: blur(22px) saturate(160%);
+  }
+
+  .cheat-source-card {
+    position: relative;
+    overflow: hidden;
+    padding: 16px;
+    margin-bottom: 12px;
+    border-radius: 23px;
+    color: #F8F9FA;
+    background: linear-gradient(145deg, rgba(27,30,34,.96), rgba(65,70,77,.93));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.09), 0 14px 34px rgba(29,33,38,.16);
+  }
+
+  .cheat-source-card::after {
+    content: '';
+    position: absolute;
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    right: -60px;
+    top: -65px;
+    background: radial-gradient(circle, rgba(255,255,255,.17), rgba(255,255,255,0) 66%);
+    pointer-events: none;
+  }
+
+  .cheat-source-top { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .cheat-source-badge { font-size:10px; letter-spacing:.09em; color:rgba(255,255,255,.58); }
+  .cheat-source-card strong { display:block; margin-top:7px; font-size:17px; letter-spacing:-.015em; }
+  .cheat-source-card p { margin:6px 0 0; font-size:12.5px; line-height:1.45; color:rgba(255,255,255,.65); }
+  .cheat-pdf-btn {
+    margin-top: 13px;
+    min-height: 40px;
+    padding: 0 13px;
+    border: 1px solid rgba(255,255,255,.16);
+    border-radius: 14px;
+    background: rgba(255,255,255,.09);
+    color: #fff;
+    font: inherit;
+    font-size: 12.5px;
+    font-weight: 650;
+    cursor: pointer;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .cheat-search-wrap { position:relative; margin: 13px 0 12px; }
+  .cheat-search-icon { position:absolute; left:14px; top:50%; transform:translateY(-50%); color:#8B8F95; pointer-events:none; }
+  .cheat-search {
+    width: 100%;
+    min-height: 48px;
+    border: 1px solid rgba(255,255,255,.82);
+    outline: none;
+    border-radius: 18px;
+    padding: 0 14px 0 42px;
+    color: #202226;
+    background: linear-gradient(145deg, rgba(255,255,255,.78), rgba(236,239,242,.62));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.96), 0 9px 24px rgba(31,35,41,.06);
+    backdrop-filter: blur(20px) saturate(150%);
+    -webkit-backdrop-filter: blur(20px) saturate(150%);
+    font-family: "Myriad Pro", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 14px;
+  }
+  .cheat-search::placeholder { color:#999DA3; }
+
+  .cheat-list { display:grid; gap:10px; }
+  .cheat-section {
+    overflow: hidden;
+    border-radius: 21px;
+    background: linear-gradient(145deg, rgba(255,255,255,.77), rgba(237,239,241,.6));
+    border: 1px solid rgba(255,255,255,.88);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.96), 0 11px 28px rgba(31,35,41,.065);
+    backdrop-filter: blur(22px) saturate(155%);
+    -webkit-backdrop-filter: blur(22px) saturate(155%);
+  }
+  .cheat-section[hidden] { display:none; }
+  .cheat-section-btn {
+    width:100%; min-height:64px; padding:12px 14px; border:0; background:transparent; color:#25282D;
+    display:flex; align-items:center; gap:12px; text-align:left; cursor:pointer; font:inherit;
+  }
+  .cheat-section-icon {
+    width:40px; height:40px; flex:0 0 40px; border-radius:13px; display:grid; place-items:center;
+    background:rgba(255,255,255,.66); border:1px solid rgba(255,255,255,.86); box-shadow:inset 0 1px 0 rgba(255,255,255,.95);
+    font-family:'JetBrains Mono', monospace; font-weight:700; font-size:13px; color:#464B52;
+  }
+  .cheat-section-copy { min-width:0; flex:1; }
+  .cheat-section-title { display:block; font-size:15px; font-weight:700; letter-spacing:-.015em; }
+  .cheat-section-meta { display:block; margin-top:3px; font-size:11px; color:#858990; }
+  .cheat-section-chevron { color:#8C9096; font-size:21px; transition:transform .3s cubic-bezier(.2,.8,.2,1); }
+  .cheat-section.open .cheat-section-chevron { transform:rotate(90deg); }
+  .cheat-formulas { display:grid; grid-template-rows:0fr; transition:grid-template-rows .34s cubic-bezier(.2,.8,.2,1), opacity .25s ease; opacity:0; }
+  .cheat-section.open .cheat-formulas { grid-template-rows:1fr; opacity:1; }
+  .cheat-formulas-inner { overflow:hidden; }
+  .cheat-formula-grid { display:grid; gap:8px; padding:0 12px 13px; }
+  .cheat-formula {
+    padding:11px 12px; border-radius:15px; background:rgba(255,255,255,.62); border:1px solid rgba(255,255,255,.83);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.9);
+  }
+  .cheat-formula-label { margin-bottom:7px; font-size:10.5px; color:#858990; }
+  .cheat-formula-math { color:#202328; font-size:14px; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .cheat-formula-note { margin-top:7px; color:#747980; font-size:11.5px; line-height:1.45; }
+  .cheat-empty { display:none; padding:22px 14px; text-align:center; color:#858990; font-size:13px; }
+  .cheat-empty.show { display:block; }
+
+
   /* ---- Liquid Glass bottom navigation + standalone profile ---- */
 
   .view-page {
@@ -1235,7 +1407,7 @@
     left: 50%;
     bottom: calc(14px + env(safe-area-inset-bottom, 0px));
     transform: translateX(-50%);
-    width: min(310px, calc(100vw - 34px));
+    width: min(390px, calc(100vw - 26px));
     z-index: 100;
     pointer-events: none;
   }
@@ -1243,7 +1415,7 @@
   .liquid-nav-track {
     position: relative;
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 8px;
     padding: 6px;
     border-radius: 25px;
@@ -1277,7 +1449,7 @@
     left: 6px;
     top: 6px;
     bottom: 6px;
-    width: calc(50% - 10px);
+    width: calc(33.333% - 9px);
     border-radius: 19px;
     background: linear-gradient(145deg, rgba(255,255,255,.78), rgba(225,231,239,.6));
     border: 1px solid rgba(255,255,255,.88);
@@ -1288,7 +1460,8 @@
     transition: transform .42s cubic-bezier(.22,1,.36,1), width .3s ease;
   }
 
-  .liquid-nav-indicator.profile { transform: translateX(calc(100% + 8px)); }
+  .liquid-nav-indicator.cheatsheet { transform: translateX(calc(100% + 8px)); }
+  .liquid-nav-indicator.profile { transform: translateX(calc(200% + 16px)); }
 
   .liquid-nav-item {
     position: relative;
@@ -1303,7 +1476,7 @@
     justify-content: center;
     gap: 8px;
     font-family: "Myriad Pro", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    font-size: 13px;
+    font-size: 11.8px;
     font-weight: 650;
     cursor: pointer;
     transition: color .28s ease, transform .18s ease;
@@ -1378,6 +1551,145 @@
   </div>
 </div>
 
+
+<section class="cheat-view view-page" id="cheatView" aria-hidden="true">
+  <div class="cheat-shell">
+    <div class="cheat-head">
+      <div>
+        <div class="cheat-kicker">ДОВІДКОВІ МАТЕРІАЛИ</div>
+        <h2>Шпаргалка</h2>
+        <p>Основні формули з офіційних довідкових матеріалів УЦОЯО — зручно для повторення перед НМТ.</p>
+      </div>
+      <div class="cheat-mark" aria-hidden="true">ƒx</div>
+    </div>
+
+    <div class="cheat-source-card">
+      <div class="cheat-source-top">
+        <div class="cheat-source-badge">ОФІЦІЙНЕ ДЖЕРЕЛО · УЦОЯО</div>
+        <div aria-hidden="true">↗</div>
+      </div>
+      <strong>Довідкові матеріали з математики</strong>
+      <p>Алгебра, тригонометрія, похідні, інтеграли, геометрія, координати та об’ємні тіла.</p>
+      <button class="cheat-pdf-btn" id="openOfficialPdf" type="button">Відкрити оригінальний PDF</button>
+    </div>
+
+    <div class="cheat-search-wrap">
+      <span class="cheat-search-icon" aria-hidden="true">⌕</span>
+      <input class="cheat-search" id="cheatSearch" type="search" inputmode="search" autocomplete="off" placeholder="Знайти формулу або тему" aria-label="Пошук у шпаргалці">
+    </div>
+
+    <div class="cheat-list" id="cheatList">
+      <article class="cheat-section" data-search="алгебра скорочене множення квадратне рівняння дискримінант модуль">
+        <button class="cheat-section-btn" type="button" aria-expanded="false">
+          <span class="cheat-section-icon">x²</span><span class="cheat-section-copy"><span class="cheat-section-title">Алгебра</span><span class="cheat-section-meta">Тотожності, квадратне рівняння, модуль</span></span><span class="cheat-section-chevron">›</span>
+        </button>
+        <div class="cheat-formulas"><div class="cheat-formulas-inner"><div class="cheat-formula-grid">
+          <div class="cheat-formula"><div class="cheat-formula-label">Формули скороченого множення</div><div class="cheat-formula-math">\(a^2-b^2=(a-b)(a+b)\)<br>\((a+b)^2=a^2+2ab+b^2\)<br>\((a-b)^2=a^2-2ab+b^2\)</div></div>
+          <div class="cheat-formula"><div class="cheat-formula-label">Квадратне рівняння</div><div class="cheat-formula-math">\(ax^2+bx+c=0,\ a\ne0\)<br>\(D=b^2-4ac\)<br>\(x_{1,2}=\frac{-b\pm\sqrt D}{2a}\)</div></div>
+          <div class="cheat-formula"><div class="cheat-formula-label">Модуль числа</div><div class="cheat-formula-math">\(|a|=a\), якщо \(a\ge0\); \(|a|=-a\), якщо \(a&lt;0\)</div></div>
+        </div></div></div>
+      </article>
+
+      <article class="cheat-section" data-search="степені логарифми корені power log">
+        <button class="cheat-section-btn" type="button" aria-expanded="false">
+          <span class="cheat-section-icon">log</span><span class="cheat-section-copy"><span class="cheat-section-title">Степені й логарифми</span><span class="cheat-section-meta">Властивості степенів та логарифмів</span></span><span class="cheat-section-chevron">›</span>
+        </button>
+        <div class="cheat-formulas"><div class="cheat-formulas-inner"><div class="cheat-formula-grid">
+          <div class="cheat-formula"><div class="cheat-formula-label">Степені</div><div class="cheat-formula-math">\(a^x\cdot a^y=a^{x+y}\)<br>\(\frac{a^x}{a^y}=a^{x-y}\)<br>\((a^x)^y=a^{xy}\)<br>\(a^{-n}=\frac1{a^n}\)</div></div>
+          <div class="cheat-formula"><div class="cheat-formula-label">Логарифми</div><div class="cheat-formula-math">\(a^{\log_a b}=b\)<br>\(\log_a(bc)=\log_a b+\log_a c\)<br>\(\log_a\frac bc=\log_a b-\log_a c\)<br>\(\log_a b^n=n\log_a b\)</div><div class="cheat-formula-note">Для \(a&gt;0, a\ne1, b&gt;0, c&gt;0\).</div></div>
+        </div></div></div>
+      </article>
+
+      <article class="cheat-section" data-search="прогресія арифметична геометрична комбінаторика ймовірність factorial">
+        <button class="cheat-section-btn" type="button" aria-expanded="false">
+          <span class="cheat-section-icon">Σ</span><span class="cheat-section-copy"><span class="cheat-section-title">Прогресії та комбінаторика</span><span class="cheat-section-meta">Послідовності, комбінації, ймовірність</span></span><span class="cheat-section-chevron">›</span>
+        </button>
+        <div class="cheat-formulas"><div class="cheat-formulas-inner"><div class="cheat-formula-grid">
+          <div class="cheat-formula"><div class="cheat-formula-label">Арифметична прогресія</div><div class="cheat-formula-math">\(a_n=a_1+d(n-1)\)<br>\(S_n=\frac{a_1+a_n}{2}\,n\)</div></div>
+          <div class="cheat-formula"><div class="cheat-formula-label">Геометрична прогресія</div><div class="cheat-formula-math">\(b_n=b_1q^{n-1}\)<br>\(S_n=\frac{b_1(q^n-1)}{q-1},\ q\ne1\)</div></div>
+          <div class="cheat-formula"><div class="cheat-formula-label">Комбінаторика та ймовірність</div><div class="cheat-formula-math">\(P_n=n!\)<br>\(C_n^k=\frac{n!}{k!(n-k)!}\)<br>\(A_n^k=\frac{n!}{(n-k)!}\)<br>\(P(A)=\frac{k}{n}\)</div></div>
+        </div></div></div>
+      </article>
+
+      <article class="cheat-section" data-search="похідна derivative ln sin cos tg добуток частка">
+        <button class="cheat-section-btn" type="button" aria-expanded="false">
+          <span class="cheat-section-icon">f′</span><span class="cheat-section-copy"><span class="cheat-section-title">Похідна</span><span class="cheat-section-meta">Таблиця похідних і правила</span></span><span class="cheat-section-chevron">›</span>
+        </button>
+        <div class="cheat-formulas"><div class="cheat-formulas-inner"><div class="cheat-formula-grid">
+          <div class="cheat-formula"><div class="cheat-formula-label">Основні похідні</div><div class="cheat-formula-math">\((C)'=0\), \(x'=1\)<br>\((x^\alpha)'=\alpha x^{\alpha-1}\)<br>\((\sqrt{x})'=\frac1{2\sqrt{x}}\)<br>\((e^x)'=e^x\), \((\ln x)'=\frac1x\)</div></div>
+          <div class="cheat-formula"><div class="cheat-formula-label">Тригонометричні функції</div><div class="cheat-formula-math">\((\sin x)'=\cos x\)<br>\((\cos x)'=-\sin x\)<br>\((\tan x)'=\frac1{\cos^2x}\)</div></div>
+          <div class="cheat-formula"><div class="cheat-formula-label">Правила</div><div class="cheat-formula-math">\((u\pm v)'=u'\pm v'\)<br>\((uv)'=u'v+uv'\)<br>\(\left(\frac uv\right)'=\frac{u'v-uv'}{v^2}\)</div></div>
+        </div></div></div>
+      </article>
+
+      <article class="cheat-section" data-search="тригонометрія sin cos tg кути подвійний кут">
+        <button class="cheat-section-btn" type="button" aria-expanded="false">
+          <span class="cheat-section-icon">sin</span><span class="cheat-section-copy"><span class="cheat-section-title">Тригонометрія</span><span class="cheat-section-meta">Основні тотожності та кути</span></span><span class="cheat-section-chevron">›</span>
+        </button>
+        <div class="cheat-formulas"><div class="cheat-formulas-inner"><div class="cheat-formula-grid">
+          <div class="cheat-formula"><div class="cheat-formula-label">Основні тотожності</div><div class="cheat-formula-math">\(\sin^2\alpha+\cos^2\alpha=1\)<br>\(\tan\alpha=\frac{\sin\alpha}{\cos\alpha}\)<br>\(1+\tan^2\alpha=\frac1{\cos^2\alpha}\)</div></div>
+          <div class="cheat-formula"><div class="cheat-formula-label">Подвійний кут</div><div class="cheat-formula-math">\(\sin2\alpha=2\sin\alpha\cos\alpha\)<br>\(\cos2\alpha=\cos^2\alpha-\sin^2\alpha\)</div></div>
+          <div class="cheat-formula"><div class="cheat-formula-label">Відомі кути</div><div class="cheat-formula-math">\(30^\circ=\frac\pi6\), \(45^\circ=\frac\pi4\), \(60^\circ=\frac\pi3\), \(90^\circ=\frac\pi2\)</div></div>
+        </div></div></div>
+      </article>
+
+      <article class="cheat-section" data-search="первісна інтеграл integral ньютон лейбніц">
+        <button class="cheat-section-btn" type="button" aria-expanded="false">
+          <span class="cheat-section-icon">∫</span><span class="cheat-section-copy"><span class="cheat-section-title">Первісна та інтеграл</span><span class="cheat-section-meta">Базові первісні й формула Ньютона—Лейбніца</span></span><span class="cheat-section-chevron">›</span>
+        </button>
+        <div class="cheat-formulas"><div class="cheat-formulas-inner"><div class="cheat-formula-grid">
+          <div class="cheat-formula"><div class="cheat-formula-label">Первісні</div><div class="cheat-formula-math">\(\int x^\alpha dx=\frac{x^{\alpha+1}}{\alpha+1}+C\), \(\alpha\ne-1\)<br>\(\int\frac1x dx=\ln|x|+C\)<br>\(\int e^x dx=e^x+C\)</div></div>
+          <div class="cheat-formula"><div class="cheat-formula-label">Тригонометричні первісні</div><div class="cheat-formula-math">\(\int\sin x\,dx=-\cos x+C\)<br>\(\int\cos x\,dx=\sin x+C\)</div></div>
+          <div class="cheat-formula"><div class="cheat-formula-label">Ньютон—Лейбніц</div><div class="cheat-formula-math">\(\int_a^b f(x)\,dx=F(b)-F(a)\)</div></div>
+        </div></div></div>
+      </article>
+
+      <article class="cheat-section" data-search="трикутники піфагор площа герон косинусів синусів планіметрія">
+        <button class="cheat-section-btn" type="button" aria-expanded="false">
+          <span class="cheat-section-icon">△</span><span class="cheat-section-copy"><span class="cheat-section-title">Трикутники</span><span class="cheat-section-meta">Площі, Піфагор, синуси й косинуси</span></span><span class="cheat-section-chevron">›</span>
+        </button>
+        <div class="cheat-formulas"><div class="cheat-formulas-inner"><div class="cheat-formula-grid">
+          <div class="cheat-formula"><div class="cheat-formula-label">Площа</div><div class="cheat-formula-math">\(S=\frac12 ah_a\)<br>\(S=\frac12bc\sin\alpha\)<br>\(S=\sqrt{p(p-a)(p-b)(p-c)}\)</div><div class="cheat-formula-note">\(p=\frac{a+b+c}{2}\) — півпериметр.</div></div>
+          <div class="cheat-formula"><div class="cheat-formula-label">Теореми</div><div class="cheat-formula-math">\(a^2=b^2+c^2-2bc\cos\alpha\)<br>\(\frac a{\sin\alpha}=\frac b{\sin\beta}=\frac c{\sin\gamma}=2R\)<br>\(a^2+b^2=c^2\) — прямокутний трикутник</div></div>
+        </div></div></div>
+      </article>
+
+      <article class="cheat-section" data-search="чотирикутники прямокутник ромб трапеція коло круг площа довжина">
+        <button class="cheat-section-btn" type="button" aria-expanded="false">
+          <span class="cheat-section-icon">▱</span><span class="cheat-section-copy"><span class="cheat-section-title">Чотирикутники та коло</span><span class="cheat-section-meta">Площі, довжина кола, круг</span></span><span class="cheat-section-chevron">›</span>
+        </button>
+        <div class="cheat-formulas"><div class="cheat-formulas-inner"><div class="cheat-formula-grid">
+          <div class="cheat-formula"><div class="cheat-formula-label">Чотирикутники</div><div class="cheat-formula-math">\(S_{\text{прям.}}=ab\)<br>\(S_{\text{ромба}}=\frac12d_1d_2\)<br>\(S_{\text{трап.}}=\frac{a+b}{2}\,h\)</div></div>
+          <div class="cheat-formula"><div class="cheat-formula-label">Коло та круг</div><div class="cheat-formula-math">\(L=2\pi R\)<br>\(S=\pi R^2\)<br>\((x-x_0)^2+(y-y_0)^2=R^2\)</div></div>
+        </div></div></div>
+      </article>
+
+      <article class="cheat-section" data-search="координати вектори середина відрізок скалярний добуток довжина">
+        <button class="cheat-section-btn" type="button" aria-expanded="false">
+          <span class="cheat-section-icon">→</span><span class="cheat-section-copy"><span class="cheat-section-title">Координати та вектори</span><span class="cheat-section-meta">Середина відрізка, довжина, скалярний добуток</span></span><span class="cheat-section-chevron">›</span>
+        </button>
+        <div class="cheat-formulas"><div class="cheat-formulas-inner"><div class="cheat-formula-grid">
+          <div class="cheat-formula"><div class="cheat-formula-label">Середина відрізка</div><div class="cheat-formula-math">\(x_0=\frac{x_1+x_2}{2}\), \(y_0=\frac{y_1+y_2}{2}\), \(z_0=\frac{z_1+z_2}{2}\)</div></div>
+          <div class="cheat-formula"><div class="cheat-formula-label">Вектор і довжина</div><div class="cheat-formula-math">\(\overrightarrow{AB}=(x_2-x_1,\ y_2-y_1,\ z_2-z_1)\)<br>\(|AB|=\sqrt{(x_2-x_1)^2+(y_2-y_1)^2+(z_2-z_1)^2}\)</div></div>
+          <div class="cheat-formula"><div class="cheat-formula-label">Скалярний добуток</div><div class="cheat-formula-math">\(\vec a\cdot\vec b=a_1b_1+a_2b_2+a_3b_3\)<br>\(\vec a\cdot\vec b=|\vec a||\vec b|\cos\varphi\)</div></div>
+        </div></div></div>
+      </article>
+
+      <article class="cheat-section" data-search="стереометрія призма піраміда циліндр конус куля сфера об'єм площа">
+        <button class="cheat-section-btn" type="button" aria-expanded="false">
+          <span class="cheat-section-icon">◇</span><span class="cheat-section-copy"><span class="cheat-section-title">Об’ємні тіла</span><span class="cheat-section-meta">Призма, піраміда, циліндр, конус, куля</span></span><span class="cheat-section-chevron">›</span>
+        </button>
+        <div class="cheat-formulas"><div class="cheat-formulas-inner"><div class="cheat-formula-grid">
+          <div class="cheat-formula"><div class="cheat-formula-label">Призма і піраміда</div><div class="cheat-formula-math">\(V_{\text{призми}}=S_{\text{осн}}H\)<br>\(V_{\text{піраміди}}=\frac13S_{\text{осн}}H\)</div></div>
+          <div class="cheat-formula"><div class="cheat-formula-label">Циліндр і конус</div><div class="cheat-formula-math">\(V_{\text{цил.}}=\pi R^2H\), \(S_{б}=2\pi RH\)<br>\(V_{\text{кон.}}=\frac13\pi R^2H\), \(S_{б}=\pi RL\)</div></div>
+          <div class="cheat-formula"><div class="cheat-formula-label">Куля та сфера</div><div class="cheat-formula-math">\(V=\frac43\pi R^3\)<br>\(S=4\pi R^2\)</div></div>
+        </div></div></div>
+      </article>
+    </div>
+    <div class="cheat-empty" id="cheatEmpty">Нічого не знайдено. Спробуй інше слово.</div>
+  </div>
+</section>
+
 <section class="profile-view view-page" id="profileView" aria-hidden="true">
   <div class="profile-page-shell">
     <div class="profile-page-head">
@@ -1434,6 +1746,12 @@
         <svg viewBox="0 0 24 24" fill="none"><path d="M7 4h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/><path d="M9 9h6M9 13h6M9 17h3"/></svg>
       </span>
       <span>Тести</span>
+    </button>
+    <button class="liquid-nav-item" type="button" data-view="cheatsheet">
+      <span class="liquid-nav-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M6.5 4.5h8.25A2.75 2.75 0 0 1 17.5 7.25V19.5H8.75A2.75 2.75 0 0 1 6 16.75V5a.5.5 0 0 1 .5-.5Z"/><path d="M8.5 8h6M8.5 11.5h4M17.5 7.5h1a1.5 1.5 0 0 1 1.5 1.5v10.5h-2.5"/></svg>
+      </span>
+      <span>Шпаргалка</span>
     </button>
     <button class="liquid-nav-item" type="button" data-view="profile">
       <span class="liquid-nav-icon" aria-hidden="true">
@@ -1537,7 +1855,12 @@
   const topicSheetClose = document.getElementById('topicSheetClose');
   const startupScreen = document.getElementById('startupScreen');
   const testView = document.getElementById('testView');
+  const cheatView = document.getElementById('cheatView');
   const profileView = document.getElementById('profileView');
+  const cheatSearch = document.getElementById('cheatSearch');
+  const cheatList = document.getElementById('cheatList');
+  const cheatEmpty = document.getElementById('cheatEmpty');
+  const openOfficialPdf = document.getElementById('openOfficialPdf');
   const profileContent = document.getElementById('profileContent');
   const navIndicator = document.getElementById('navIndicator');
   const navItems = Array.from(document.querySelectorAll('.liquid-nav-item'));
@@ -1642,16 +1965,24 @@
   }
 
   function switchView(viewName) {
-    const showProfile = viewName === 'profile';
+    const target = ['tests', 'cheatsheet', 'profile'].includes(viewName) ? viewName : 'tests';
+    const showTests = target === 'tests';
+    const showCheat = target === 'cheatsheet';
+    const showProfile = target === 'profile';
 
-    testView.classList.toggle('active', !showProfile);
+    testView.classList.toggle('active', showTests);
+    cheatView.classList.toggle('active', showCheat);
     profileView.classList.toggle('active', showProfile);
-    testView.setAttribute('aria-hidden', showProfile ? 'true' : 'false');
+
+    testView.setAttribute('aria-hidden', showTests ? 'false' : 'true');
+    cheatView.setAttribute('aria-hidden', showCheat ? 'false' : 'true');
     profileView.setAttribute('aria-hidden', showProfile ? 'false' : 'true');
+
+    navIndicator.classList.toggle('cheatsheet', showCheat);
     navIndicator.classList.toggle('profile', showProfile);
 
     navItems.forEach((btn) => {
-      const active = btn.dataset.view === (showProfile ? 'profile' : 'tests');
+      const active = btn.dataset.view === target;
       btn.classList.toggle('active', active);
       if (active) btn.setAttribute('aria-current', 'page');
       else btn.removeAttribute('aria-current');
@@ -1661,6 +1992,7 @@
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
     if (showProfile) loadProfilePage();
+    if (showCheat) setTimeout(() => renderMathSafely(cheatView), 20);
   }
 
   async function loadProfilePage() {
@@ -2187,6 +2519,46 @@
   topicOverlay.addEventListener('click', (event) => {
     if (event.target === topicOverlay) closeTopicSheet();
   });
+
+
+  document.querySelectorAll('.cheat-section-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const section = btn.closest('.cheat-section');
+      const willOpen = !section.classList.contains('open');
+      section.classList.toggle('open', willOpen);
+      btn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+      tg?.HapticFeedback?.selectionChanged?.();
+      if (willOpen) setTimeout(() => renderMathSafely(section), 30);
+    });
+  });
+
+  cheatSearch?.addEventListener('input', () => {
+    const q = cheatSearch.value.trim().toLocaleLowerCase('uk-UA');
+    let visible = 0;
+    cheatList?.querySelectorAll('.cheat-section').forEach((section) => {
+      const haystack = `${section.dataset.search || ''} ${section.textContent || ''}`.toLocaleLowerCase('uk-UA');
+      const match = !q || haystack.includes(q);
+      section.hidden = !match;
+      if (match) visible += 1;
+    });
+    cheatEmpty?.classList.toggle('show', visible === 0);
+  });
+
+  openOfficialPdf?.addEventListener('click', () => {
+    const url = 'https://testportal.gov.ua/wp-content/uploads/2022/04/ZNO_Math_dovidkovy-materialy.pdf';
+    tg?.HapticFeedback?.impactOccurred?.('light');
+    if (tg?.openLink) tg.openLink(url, { try_instant_view: false });
+    else window.open(url, '_blank', 'noopener,noreferrer');
+  });
+
+  // Telegram Mini App should behave like an app, not a zoomable website.
+  document.addEventListener('gesturestart', (event) => event.preventDefault(), { passive: false });
+  let lastTouchEnd = 0;
+  document.addEventListener('touchend', (event) => {
+    const now = Date.now();
+    if (now - lastTouchEnd <= 300) event.preventDefault();
+    lastTouchEnd = now;
+  }, { passive: false });
 
   navItems.forEach((btn) => {
     btn.addEventListener('click', () => switchView(btn.dataset.view || 'tests'));
