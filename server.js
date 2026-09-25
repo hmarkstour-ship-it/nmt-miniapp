@@ -167,11 +167,13 @@ ${topic.patterns.map((x) => `- ${x}`).join('\n')}
 - Не копіюй дослівно реальні завдання УЦОЯО та не відтворюй їх з мінімальними змінами.
 - Завдання має бути реально розв'язати приблизно за 1-3 хвилини на чернетці.
 - Уникай невиправдано громіздких обчислень і довгих десяткових дробів.
-- УСЮ математику оформлюй у LaTeX і завжди бери математичний вираз у delimiters \( ... \) для рядкового запису або \[ ... \] для окремого великого виразу.
+- УСЮ математику оформлюй у LaTeX і завжди бери математичний вираз у delimiters \\( ... \\) для рядкового запису або \\[ ... \\] для окремого великого виразу.
 - НІКОЛИ не показуй учневі програмістський запис на кшталт sqrt(9), x^2, a/b, *, <=, >=, log_2(8).
-- Використовуй нормальний шкільний математичний вигляд: \(\sqrt{9}\), \(x^{2}\), \(\frac{a}{b}\), \(a \cdot b\), \(x \le 5\), \(\log_{2} 8\).
+- Використовуй нормальний шкільний математичний вигляд: \\(\\sqrt{9}\\), \\(x^{2}\\), \\(\\frac{a}{b}\\), \\(a \\cdot b\\), \\(x \\le 5\\), \\(\\log_{2} 8\\).
+- КОЖНА формула повинна мати повну пару delimiters. Заборонено повертати сирий LaTeX на кшталт \\frac{1}{2}, \\sqrt{5}, \\left(...\\right) без \\( ... \\) або \\[ ... \\].
+- Не починай формулу зі звичайної дужки перед LaTeX-командою. Правильно: \\(\\left(\\frac{5}{6}-\\frac{3}{4}\\right)\\cdot 24\\). Неправильно: (\\left(\\frac{5}{6}... ).
 - У видимому українському тексті десятковий роздільник записуй комою: 2,5; 0,75. Крапку використовуй лише там, де це не десятковий дріб.
-- Звичайний текст пиши українською, а формули — LaTeX усередині \( ... \).
+- Звичайний текст пиши українською, а формули — LaTeX усередині \\( ... \\).
 - У поясненні дай коротке, правильне, покрокове розв'язання українською мовою з таким самим акуратним математичним оформленням.
 - Для тем, де потрібна схема/рисунок, сформулюй задачу так, щоб її можна було однозначно розв'язати БЕЗ зображення.
 ${avoidBlock}
@@ -207,7 +209,7 @@ ${options}
 1. Самостійно розв'яжи завдання та визнач фактичний правильний індекс.
 2. Перевір, чи завдання справді відповідає обраній темі.
 3. Перевір, чи воно відповідає шкільному рівню та рамкам НМТ, а не виходить у університетську/олімпіадну математику.
-4. Перевір математичне оформлення: учень не повинен бачити сирі записи sqrt(...), x^2, a/b, *, <=, >= або іншу програмістську нотацію. Формули мають бути коректним LaTeX у \( ... \) або \[ ... \].
+4. Перевір математичне оформлення: учень не повинен бачити сирі записи sqrt(...), x^2, a/b, *, <=, >= або іншу програмістську нотацію. Формули мають бути коректним LaTeX у \\( ... \\) або \\[ ... \\].
 
 Поверни ЛИШЕ валідний JSON:
 {
@@ -386,6 +388,43 @@ function normalizeQuestionMath(question) {
   };
 }
 
+
+// ---- Контроль математичного форматування -------------------------------------
+// KaTeX рендерить лише формули в явних delimiters. Якщо модель повернула
+// сирий LaTeX (наприклад, \\frac без \\( ... \\)), таке завдання не показуємо
+// учневі — генеруємо інше.
+
+function stripDelimitedMath(value) {
+  if (typeof value !== 'string') return '';
+  return value
+    .replace(/\\\([\s\S]*?\\\)/g, ' ')
+    .replace(/\\\[[\s\S]*?\\\]/g, ' ')
+    .replace(/\$\$[\s\S]*?\$\$/g, ' ');
+}
+
+function hasUnsafeRawMath(value) {
+  if (typeof value !== 'string') return false;
+
+  const outsideMath = stripDelimitedMath(value);
+
+  const rawLatexCommand = /\\(?:frac|dfrac|tfrac|sqrt|left|right|cdot|times|div|log|ln|sin|cos|tan|cot|le|ge|neq|approx|pi|infty|sum|prod|overline|vec|begin|end)\b/;
+  const legacyNotation = /\bsqrt\s*\(|\blog_[A-Za-z0-9]+\s*\(|(?:[A-Za-z0-9)}\]])\s*\^\s*(?:\{|[-+]?\d)/;
+
+  return rawLatexCommand.test(outsideMath) || legacyNotation.test(outsideMath);
+}
+
+function hasSafeQuestionMath(question) {
+  if (!question || typeof question !== 'object') return false;
+
+  const fields = [
+    question.question,
+    ...(Array.isArray(question.options) ? question.options : []),
+    question.explanation,
+  ];
+
+  return fields.every((value) => !hasUnsafeRawMath(value));
+}
+
 // ---- Перевірка Telegram initData -----------------------------------
 // Документація: https://core.telegram.org/bots/webapps#validating-data-received-via-the-mini-app
 
@@ -498,20 +537,39 @@ app.post('/api/generate-question', async (req, res) => {
         )
       : [];
 
-    const rawQuestion = await callGemini(
-      buildGeneratePrompt(
-        topic,
-        difficulty,
-        avoidList
-      )
-    );
+    let question = null;
 
-    const question = normalizeQuestionMath(rawQuestion);
+    // Форматування математики критичне для учня, тому не показуємо сирий LaTeX.
+    // Якщо модель один раз помилилась із delimiters — автоматично генеруємо ще раз.
+    for (let generationAttempt = 1; generationAttempt <= 3; generationAttempt++) {
+      const rawQuestion = await callGemini(
+        buildGeneratePrompt(
+          topic,
+          difficulty,
+          avoidList
+        )
+      );
 
-    if (!isValidQuestion(question)) {
+      const candidate = normalizeQuestionMath(rawQuestion);
+
+      if (!isValidQuestion(candidate)) {
+        console.warn(`⚠️ Generation ${generationAttempt}: невірна JSON-структура завдання`);
+        continue;
+      }
+
+      if (!hasSafeQuestionMath(candidate)) {
+        console.warn(`⚠️ Generation ${generationAttempt}: сирий LaTeX поза delimiters, генеруємо заново`);
+        continue;
+      }
+
+      question = candidate;
+      break;
+    }
+
+    if (!question) {
       return res.status(502).json({
         error:
-          'AI повернув завдання у невірному форматі. Спробуйте ще раз.',
+          'Не вдалося отримати коректно оформлене математичне завдання. Спробуйте ще раз.',
       });
     }
 
