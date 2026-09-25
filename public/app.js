@@ -8,7 +8,7 @@ const tg = window.Telegram?.WebApp;
   const FETCH_TIMEOUT_MS = 30000;
   const QUESTION_TIMEOUT_MS = 55000;
   const BACKEND_WAKE_MAX_MS = 75000;
-  const BUILD_VERSION = 'nmt-mode-v1.0.0';
+  const BUILD_VERSION = 'redesign-v1.0.0';
   console.log('[NMT build]', BUILD_VERSION);
 
   async function fetchWithTimeout(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS) {
@@ -33,7 +33,7 @@ const tg = window.Telegram?.WebApp;
     const startedAt = Date.now();
     let attempt = 0;
 
-    setStartupStatus('НМТ запускається…', 'Готуємо завдання для тебе ✨');
+    setStartupStatus('НМТ запускається…', 'Готуємо твою підготовку');
 
     while (Date.now() - startedAt < BACKEND_WAKE_MAX_MS) {
       attempt += 1;
@@ -179,7 +179,7 @@ const tg = window.Telegram?.WebApp;
   ];
 
   const TOPIC_UI = {
-    mixed: { icon: '🎯', subtitle: 'Завдання з усіх тем НМТ' },
+    mixed: { icon: 'N', subtitle: 'Завдання з усіх тем НМТ' },
     numbers: { icon: '123', subtitle: 'Числа, дроби та обчислення' },
     percents: { icon: '%', subtitle: 'Відсотки, пропорції та практичні задачі' },
     powers_roots: { icon: '√', subtitle: 'Степені, корені та перетворення' },
@@ -200,7 +200,7 @@ const tg = window.Telegram?.WebApp;
   let loadedTopics = [];
 
   function updateStreak() {
-    streakEl.textContent = `✅ ${state.correct} · ❌ ${state.wrong}`;
+    streakEl.innerHTML = `<span>✓ ${state.correct}</span><i></i><span>× ${state.wrong}</span>`;
   }
 
   function showToast(message) {
@@ -637,9 +637,9 @@ const tg = window.Telegram?.WebApp;
           <div class="ai-help" id="aiHelp">
             <div class="ai-help-title">Потрібна ще допомога?</div>
             <div class="ai-help-actions">
-              <button class="ai-chip" type="button" data-ai-mode="simple">✨ Поясни простіше</button>
-              <button class="ai-chip" type="button" data-ai-mode="why_wrong">💬 Чому моя відповідь неправильна?</button>
-              <button class="ai-chip" type="button" data-ai-mode="similar">↗ Дай схоже завдання</button>
+              <button class="ai-chip" type="button" data-ai-mode="simple">Поясни простіше</button>
+              <button class="ai-chip" type="button" data-ai-mode="why_wrong">Чому моя відповідь неправильна?</button>
+              <button class="ai-chip" type="button" data-ai-mode="similar">Дай схоже завдання</button>
             </div>
             <div class="ai-help-result" id="aiHelpResult"></div>
           </div>

@@ -7,24 +7,24 @@
 <meta http-equiv="Pragma" content="no-cache" />
 <meta http-equiv="Expires" content="0" />
 <title>НМТ Математика</title>
-<meta name="app-build" content="nmt-mode-v2.0.0">
+<meta name="app-build" content="redesign-v1.0.0">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
 
-<link rel="stylesheet" href="./styles.css?v=nmt2">
+<link rel="stylesheet" href="./styles.css?v=redesign1">
 </head>
 <body>
 
 <div class="startup-screen" id="startupScreen" role="status" aria-live="polite">
   <div class="startup-inner">
     <div class="startup-logo-shell" aria-hidden="true">
-      <div class="startup-robot">🤖</div>
+      <div class="startup-robot">∑</div>
     </div>
-    <div class="startup-badge">NMT · MATHEMATICS</div>
+    <div class="startup-badge">НМТ · МАТЕМАТИКА</div>
     <h2 class="startup-title">НМТ запускається…</h2>
-    <p class="startup-subtitle">Готуємо завдання для тебе ✨</p>
+    <p class="startup-subtitle">Готуємо твою підготовку</p>
     <div class="startup-dots" aria-hidden="true">
       <span class="startup-dot"></span>
       <span class="startup-dot"></span>
@@ -36,10 +36,13 @@
 
 <main class="app-viewport" id="appViewport">
 <div class="wrap view-page active is-center" id="testView" aria-hidden="false">
-  <header>
-    <h1>НМТ · Математика</h1>
+  <header class="test-header">
+    <div class="test-header-copy">
+      <div class="page-eyebrow">ТРЕНУВАННЯ</div>
+      <h1>Математика</h1>
+    </div>
     <div class="header-actions">
-      <div class="streak" id="streak">✅ 0 · ❌ 0</div>
+      <div class="streak" id="streak"><span>✓ 0</span><i></i><span>× 0</span></div>
     </div>
   </header>
 
@@ -68,11 +71,11 @@
   <div class="nmt-shell">
     <div class="nmt-page-head">
       <div>
-        <div class="nmt-kicker">СИМУЛЯЦІЯ НМТ · 2026</div>
+        <div class="nmt-kicker">ПРОБНИЙ ТЕСТ · 2026</div>
         <h2>Пробний НМТ</h2>
         <p>22 завдання за структурою НМТ. Результат і розбір — після завершення.</p>
       </div>
-      <div class="nmt-page-mark" aria-hidden="true">200</div>
+      <div class="nmt-page-mark" aria-hidden="true">22</div>
     </div>
     <div id="nmtContent" class="nmt-content">
       <div class="nmt-loading-card">
@@ -88,7 +91,7 @@
   <div class="cheat-shell">
     <div class="cheat-head">
       <div>
-        <div class="cheat-kicker">ДОВІДКОВІ МАТЕРІАЛИ</div>
+        <div class="cheat-kicker">ФОРМУЛИ НМТ</div>
         <h2>Шпаргалка</h2>
         <p>Формули з офіційних довідкових матеріалів УЦОЯО.</p>
       </div>
@@ -221,9 +224,9 @@
   <div class="profile-page-shell">
     <div class="profile-page-head">
       <div>
-        <div class="profile-page-kicker">ОСОБИСТИЙ КАБІНЕТ</div>
+        <div class="profile-page-kicker">ТВІЙ ПРОГРЕС</div>
         <h2>Профіль</h2>
-        <p>Твій прогрес, активність і результати підготовки</p>
+        <p>Активність, сильні теми та результати</p>
       </div>
       <div class="profile-page-mark" aria-hidden="true">НМТ</div>
     </div>
@@ -304,8 +307,8 @@
 </nav>
 <div class="toast" id="toast"></div>
 
-<script src="./nmt-exam.js?v=geom3" defer></script>
-<script src="./app.js?v=geom3" defer></script>
+<script src="./nmt-exam.js?v=redesign1" defer></script>
+<script src="./app.js?v=redesign1" defer></script>
 
 </body>
 </html>

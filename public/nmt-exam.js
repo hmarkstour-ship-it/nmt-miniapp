@@ -225,10 +225,10 @@
       </article>
 
       <div class="nmt-navigation-row">
-        <button class="nmt-nav-btn" id="nmtPrev" type="button" ${state.index === 0 ? 'disabled' : ''}>← Назад</button>
+        <button class="nmt-nav-btn" id="nmtPrev" type="button" ${state.index === 0 ? 'disabled' : ''}>Назад</button>
         ${state.index === state.questions.length - 1
           ? '<button class="nmt-finish-btn" id="nmtFinish" type="button">Завершити тест</button>'
-          : '<button class="nmt-nav-btn primary" id="nmtNext" type="button">Далі →</button>'}
+          : '<button class="nmt-nav-btn primary" id="nmtNext" type="button">Далі</button>'}
       </div>`;
 
     bindExamInteractions(q);
@@ -274,7 +274,7 @@
 
     const value = answer ?? '';
     return `<div class="nmt-short-wrap">
-      <label for="nmtShortInput">Ваша відповідь</label>
+      <label for="nmtShortInput">Твоя відповідь</label>
       <div class="nmt-short-input-shell"><input id="nmtShortInput" class="nmt-short-input" type="text" inputmode="decimal" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" value="${escapeHtml(String(value))}" placeholder="${escapeHtml(q.answer_hint || 'Введи число')}"><span>123</span></div>
       <div class="nmt-short-actions" aria-hidden="true">
         <span>Кома або крапка — однаково</span>
