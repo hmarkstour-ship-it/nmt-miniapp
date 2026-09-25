@@ -138,7 +138,7 @@ function makeMatching({ topic, question, left, options, correctPairs, explanatio
   };
 }
 
-function makeShort({ topic, question, correctValue, explanation, diagramSvg = null, answerHint = 'Введіть число' }) {
+function makeShort({ topic, question, correctValue, explanation, diagramSvg = null, answerHint = 'Введи число' }) {
   return {
     type: 'short',
     topic,
@@ -333,10 +333,10 @@ function choiceSystem() {
   const correct = x + y;
   return makeChoice({
     topic: 'systems',
-    question: `Розв'яжіть систему ${math(`\\begin{cases}2x+y=${r1}\\\\x-2y=${r2}\\end{cases}`)}. Знайдіть значення ${math('x+y')}.`,
+    question: `Розв’яжіть систему ${math(`\\begin{cases}2x+y=${r1}\\\\x-2y=${r2}\\end{cases}`)}. Знайдіть значення ${math('x+y')}.`,
     correct: math(String(correct)),
     distractors: [x, y, x - y, 2 * x + y].map(v => math(String(v))),
-    explanation: `1. Розв'язуючи систему, отримуємо ${math(`x=${x}`)} та ${math(`y=${y}`)}.\n2. Потрібно знайти не окремий корінь, а суму.\n3. ${math(`x+y=${x}+(${y})=${correct}`)}.`,
+    explanation: `1. Розв’язуючи систему, отримуємо ${math(`x=${x}`)} та ${math(`y=${y}`)}.\n2. Потрібно знайти не окремий корінь, а суму.\n3. ${math(`x+y=${x}+(${y})=${correct}`)}.`,
   });
 }
 
@@ -346,10 +346,10 @@ function choiceInequality() {
   if (r1 > r2) [r1, r2] = [r2, r1];
   return makeChoice({
     topic: 'inequalities',
-    question: `Розв'яжіть нерівність ${math(`(${xMinus(r1)})(${xMinus(r2)})<0`)}.`,
+    question: `Розв’яжіть нерівність ${math(`(${xMinus(r1)})(${xMinus(r2)})<0`)}.`,
     correct: math(`${r1}<x<${r2}`),
     distractors: [math(`x<${r1}\\;\\text{або}\\;x>${r2}`), math(`${r1}\\le x\\le ${r2}`), math(`x>${r1}`), math(`x<${r2}`)],
-    explanation: `1. Нулі добутку: ${math(`x=${r1}`)} і ${math(`x=${r2}`)}.\n2. Старший коефіцієнт додатний, тому добуток від'ємний між коренями.\n3. Отже, ${math(`${r1}<x<${r2}`)}.`,
+    explanation: `1. Нулі добутку: ${math(`x=${r1}`)} і ${math(`x=${r2}`)}.\n2. Старший коефіцієнт додатний, тому добуток від’ємний між коренями.\n3. Отже, ${math(`${r1}<x<${r2}`)}.`,
   });
 }
 
@@ -361,7 +361,7 @@ function choiceFunction() {
     question: `Функцію задано формулою ${math(`f(x)=(${xMinus(h)})^2${k >= 0 ? '+' : ''}${k}`)}. Знайдіть її найменше значення.`,
     correct: math(String(k)),
     distractors: [h, -h, h + k, Math.abs(k)].map(v => math(String(v))),
-    explanation: `1. Квадрат ${math(`(${xMinus(h)})^2`)} не може бути від'ємним.\n2. Найменше значення квадрата — 0, воно досягається при ${math(`x=${h}`)}.\n3. Тому найменше значення функції дорівнює ${math(String(k))}.`,
+    explanation: `1. Квадрат ${math(`(${xMinus(h)})^2`)} не може бути від’ємним.\n2. Найменше значення квадрата — 0, воно досягається при ${math(`x=${h}`)}.\n3. Тому найменше значення функції дорівнює ${math(String(k))}.`,
   });
 }
 

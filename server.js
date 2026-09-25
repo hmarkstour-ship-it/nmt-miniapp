@@ -1406,7 +1406,7 @@ app.post('/api/explain-more', async (req, res) => {
       const similar = await generateStrictQuestion(topic, difficulty, avoid, 4);
 
       if (!similar) {
-        return res.status(502).json({ error: 'Не вдалося створити схоже завдання. Спробуйте ще раз.' });
+        return res.status(502).json({ error: 'Не вдалося створити схоже завдання. Спробуй ще раз.' });
       }
 
       const bankId = await saveQuestionToBank(topic, difficulty, similar);
@@ -1429,7 +1429,7 @@ app.post('/api/explain-more', async (req, res) => {
 
     const help = await callGemini(buildExtraHelpPrompt(mode, question), 0.25);
     const steps = Array.isArray(help.steps) ? help.steps.filter((x) => typeof x === 'string' && x.trim()) : [];
-    if (!steps.length) return res.status(502).json({ error: 'AI не повернув пояснення.' });
+    if (!steps.length) return res.status(502).json({ error: 'ШІ не повернув пояснення.' });
 
     res.json({ title: help.title || 'Пояснення', steps: steps.slice(0, 6) });
   } catch (err) {
@@ -1497,7 +1497,7 @@ app.post('/api/questions-batch', async (req, res) => {
 
     if (!questions.length) {
       return res.status(503).json({
-        error: 'Не вдалося підготувати буфер завдань. Спробуйте ще раз.',
+        error: 'Не вдалося підготувати буфер завдань. Спробуй ще раз.',
       });
     }
 
@@ -1559,7 +1559,7 @@ app.post('/api/generate-question', async (req, res) => {
 
     if (!question) {
       return res.status(503).json({
-        error: 'Не вдалося безпечно підготувати завдання. Спробуйте ще раз за кілька секунд.',
+        error: 'Не вдалося безпечно підготувати завдання. Спробуй ще раз за кілька секунд.',
       });
     }
 
@@ -1588,7 +1588,7 @@ app.post('/api/generate-question', async (req, res) => {
     console.error('GENERATE ERROR:', err);
 
     res.status(500).json({
-      error: 'Не вдалося підготувати завдання. Спробуйте ще раз.',
+      error: 'Не вдалося підготувати завдання. Спробуй ще раз.',
     });
   }
 });

@@ -68,7 +68,7 @@ const tg = window.Telegram?.WebApp;
       await new Promise((resolve) => setTimeout(resolve, Math.min(1200 + attempt * 250, 2500)));
     }
 
-    throw new Error('Сервер не встиг запуститися. Спробуйте ще раз.');
+    throw new Error('Сервер не встиг запуститися. Спробуй ще раз.');
   }
 
   const state = {
@@ -187,7 +187,7 @@ const tg = window.Telegram?.WebApp;
     equations: { icon: 'x=', subtitle: 'Лінійні, квадратні та інші рівняння' },
     inequalities: { icon: '≠', subtitle: 'Нерівності та метод інтервалів' },
     systems: { icon: '{}', subtitle: 'Системи рівнянь і нерівностей' },
-    functions: { icon: 'f(x)', subtitle: 'Функції, графіки та їх властивості' },
+    functions: { icon: 'f(x)', subtitle: 'Функції, графіки та їхні властивості' },
     progressions: { icon: 'Σ', subtitle: 'Арифметична та геометрична прогресії' },
     trigonometry: { icon: 'sin', subtitle: 'sin, cos, tg і задачі з трикутниками' },
     calculus: { icon: "f′", subtitle: 'Похідна, первісна та інтеграл' },
@@ -211,11 +211,11 @@ const tg = window.Telegram?.WebApp;
   }
 
   function formatJoinDate(value) {
-    if (!value) return 'Профіль НМТ';
+    if (!value) return 'Профіль';
     try {
-      return 'З нами з ' + new Intl.DateTimeFormat('uk-UA', { month: 'long', year: 'numeric' }).format(new Date(value));
+      return 'У застосунку з ' + new Intl.DateTimeFormat('uk-UA', { month: 'long', year: 'numeric' }).format(new Date(value));
     } catch (_) {
-      return 'Профіль НМТ';
+      return 'Профіль';
     }
   }
 
@@ -290,6 +290,16 @@ const tg = window.Telegram?.WebApp;
       return 'днів';
     };
 
+    const taskWord = (value) => {
+      const n = Math.abs(Number(value) || 0);
+      const mod100 = n % 100;
+      const mod10 = n % 10;
+      if (mod100 >= 11 && mod100 <= 14) return 'завдань';
+      if (mod10 === 1) return 'завдання';
+      if (mod10 >= 2 && mod10 <= 4) return 'завдання';
+      return 'завдань';
+    };
+
     try {
       const res = await fetchWithTimeout(`${API_BASE}/api/profile`, {
         method: 'POST',
@@ -313,6 +323,10 @@ const tg = window.Telegram?.WebApp;
       const recentAccuracy = Math.max(0, Math.min(100, Number(recent.accuracy) || 0));
       const nmt = data.nmt || {};
       const strongest = data.strongest_topic || null;
+      const weakestRaw = data.weakest_topic || null;
+      const weakest = weakestRaw && strongest && weakestRaw.topic === strongest.topic
+        ? null
+        : weakestRaw;
 
       const topicRows = Array.isArray(data.topic_stats) && data.topic_stats.length
         ? data.topic_stats.map((row) => {
@@ -325,19 +339,23 @@ const tg = window.Telegram?.WebApp;
                   <span>${escapeHtml(stripLeadingEmoji(row.label || row.topic))}</span>
                   <strong>${rowAccuracy}%</strong>
                 </div>
-                <div class="topic-stat-meta">${rowCorrect} правильних із ${rowTotal}</div>
+                <div class="topic-stat-meta">${rowCorrect} правильних відповідей із ${rowTotal}</div>
                 <div class="topic-stat-bar-new"><div class="topic-stat-fill-new" style="width:${rowAccuracy}%"></div></div>
               </div>`;
           }).join('')
         : `<div class="profile-empty-state">Результати за темами з’являться після кількох відповідей.</div>`;
 
       const lastNmt = Number(nmt.completed) > 0
-        ? `<strong>${nmt.last_scaled_score != null ? Number(nmt.last_scaled_score) : '&lt;100'}</strong><span>із 200 · ${Number(nmt.last_raw_score) || 0}/32 тестових</span>`
-        : `<strong>Ще не проходив</strong><span>Пробний НМТ можна відкрити в окремій вкладці</span>`;
+        ? `<strong>${nmt.last_scaled_score != null ? Number(nmt.last_scaled_score) : '&lt;100'} із 200</strong><small>Останній завершений пробний тест</small>`
+        : `<strong>Результату ще немає</strong><small>Пройди пробний НМТ, щоб він з’явився тут</small>`;
 
       const strongestMarkup = strongest
-        ? `<strong>${escapeHtml(stripLeadingEmoji(strongest.label || strongest.topic))}</strong><span>${Number(strongest.accuracy) || 0}% точності</span>`
-        : `<strong>Ще визначаємо</strong><span>Потрібно трохи більше відповідей</span>`;
+        ? `<strong>${escapeHtml(stripLeadingEmoji(strongest.label || strongest.topic))}</strong><small>Точність — ${Number(strongest.accuracy) || 0}%</small>`
+        : `<strong>Ще визначаємо</strong><small>Потрібно трохи більше відповідей</small>`;
+
+      const weakestMarkup = weakest
+        ? `<strong>${escapeHtml(stripLeadingEmoji(weakest.label || weakest.topic))}</strong><small>Точність — ${Number(weakest.accuracy) || 0}%. Цю тему варто повторити</small>`
+        : `<strong>Поки без явних слабких тем</strong><small>Продовжуй тренування — рекомендація уточнюватиметься</small>`;
 
       profileContent.innerHTML = `
         <section class="profile-hero-v2 glass-card">
@@ -346,7 +364,6 @@ const tg = window.Telegram?.WebApp;
             <div class="profile-name-new">${escapeHtml(data.first_name || 'Учень')}</div>
             <div class="profile-since-new">${escapeHtml(formatJoinDate(data.created_at))}</div>
           </div>
-          <div class="profile-hero-streak">🔥 <strong>${streak}</strong><span>${dayWord(streak)}</span></div>
         </section>
 
         <section class="profile-overview-v2">
@@ -356,25 +373,29 @@ const tg = window.Telegram?.WebApp;
             <small>за всі тренування</small>
           </div>
           <div class="profile-overview-card glass-card">
-            <span class="profile-overview-label">Серія</span>
+            <span class="profile-overview-label">Серія днів</span>
             <div class="profile-streak-big">${streak}<small>${dayWord(streak)}</small></div>
-            <small>рекорд: ${bestStreak} ${dayWord(bestStreak)}</small>
+            <small>Найкраща серія — ${bestStreak} ${dayWord(bestStreak)}</small>
           </div>
         </section>
 
         <section class="profile-insights-v2 glass-card">
-          <div class="profile-section-title"><span>Огляд</span><small>останні дані</small></div>
+          <div class="profile-section-title"><span>Огляд підготовки</span><small>коротко про головне</small></div>
           <div class="profile-insight-row">
             <span class="profile-insight-icon">7д</span>
-            <div><strong>${recentTotal} завдань за 7 днів</strong><small>${recentTotal ? `${recentAccuracy}% правильних відповідей` : 'Почни тренування — тут з’явиться активність'}</small></div>
+            <div><span class="profile-insight-label">Активність за 7 днів</span><strong>${recentTotal} ${taskWord(recentTotal)}</strong><small>${recentTotal ? `${recentAccuracy}% правильних відповідей` : 'Поки немає відповідей за цей період'}</small></div>
           </div>
           <div class="profile-insight-row">
             <span class="profile-insight-icon">↗</span>
-            <div>${strongestMarkup}</div>
+            <div><span class="profile-insight-label">Сильна тема</span>${strongestMarkup}</div>
+          </div>
+          <div class="profile-insight-row">
+            <span class="profile-insight-icon">↺</span>
+            <div><span class="profile-insight-label">Варто повторити</span>${weakestMarkup}</div>
           </div>
           <div class="profile-insight-row">
             <span class="profile-insight-icon">НМТ</span>
-            <div>${lastNmt}</div>
+            <div><span class="profile-insight-label">Останній пробний НМТ</span>${lastNmt}</div>
           </div>
         </section>
 
@@ -452,7 +473,7 @@ const tg = window.Telegram?.WebApp;
     const result = document.getElementById('aiHelpResult');
     if (result) {
       result.classList.add('show');
-      result.innerHTML = `<div class="status" style="min-height:90px"><div class="spinner"></div><span>AI готує пояснення…</span></div>`;
+      result.innerHTML = `<div class="status" style="min-height:90px"><div class="spinner"></div><span>ШІ готує пояснення…</span></div>`;
     }
 
     try {
@@ -473,7 +494,7 @@ const tg = window.Telegram?.WebApp;
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Помилка AI');
+      if (!res.ok) throw new Error(data.error || 'Помилка ШІ');
 
       if (mode === 'similar' && data.question) {
         clearPrefetch();
@@ -524,7 +545,7 @@ const tg = window.Telegram?.WebApp;
     cardArea.innerHTML = `
       <div class="card">
         <div class="error-box">${message}</div>
-        <button class="primary-btn" id="retryBtn">Спробувати ще раз</button>
+        <button class="primary-btn" id="retryBtn">Спробуй ще раз</button>
       </div>`;
     document.getElementById('retryBtn').addEventListener('click', loadQuestion);
   }
@@ -625,7 +646,7 @@ const tg = window.Telegram?.WebApp;
         </div>
         <div class="action-stack">
           <button class="primary-btn" id="checkBtn" type="button" disabled>Перевірити відповідь</button>
-          <button class="secondary-btn" id="regenerateBtn" type="button">↻ Перегенерувати завдання</button>
+          <button class="secondary-btn" id="regenerateBtn" type="button">↻ Інше завдання</button>
         </div>
       </div>`;
 
@@ -850,7 +871,7 @@ const tg = window.Telegram?.WebApp;
       setCurrentCardWaiting(false);
       renderError(err?.name === 'AbortError'
         ? 'Підготовка зайняла надто довго. Натисни «Спробувати ще раз».'
-        : (err?.message || 'Немає з’єднання з сервером. Спробуйте ще раз.'));
+        : (err?.message || 'Немає з’єднання із сервером. Спробуй ще раз.'));
     } finally {
       stopLoadingMessages();
     }
@@ -1156,6 +1177,6 @@ const tg = window.Telegram?.WebApp;
       }
     } catch (err) {
       console.error('INIT ERROR:', err);
-      renderError(err?.message || 'Не вдалося запустити застосунок. Спробуйте ще раз.');
+      renderError(err?.message || 'Не вдалося запустити застосунок. Спробуй ще раз.');
     }
   })();

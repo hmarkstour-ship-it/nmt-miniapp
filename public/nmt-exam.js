@@ -94,7 +94,7 @@
         <div class="nmt-resume-dot"></div>
         <div class="nmt-resume-copy">
           <strong>Є незавершений тест</strong>
-          <span>Залишилось ${escapeHtml(formatTime(active.remaining_seconds))}</span>
+          <span>Залишилося ${escapeHtml(formatTime(active.remaining_seconds))}</span>
         </div>
         <button class="nmt-inline-btn" id="nmtResumeBtn" type="button">Продовжити</button>
       </div>` : '';
@@ -104,7 +104,7 @@
       <section class="nmt-hero-card">
         <div class="nmt-hero-badge">ФОРМАТ НМТ-2026</div>
         <h3>Пробний тест з математики</h3>
-        <p>22 завдання у структурі реального НМТ: вибір відповіді, встановлення відповідності та коротка числова відповідь.</p>
+        <p>22 завдання за структурою НМТ: вибір однієї відповіді, встановлення відповідності та коротка числова відповідь.</p>
         <div class="nmt-facts-grid">
           <div><strong>22</strong><span>завдання</span></div>
           <div><strong>60</strong><span>хвилин</span></div>
@@ -113,7 +113,7 @@
         </div>
         <div class="nmt-hero-note">
           <span>◉</span>
-          <p>Правильні відповіді відкриються лише після завершення. Завдання стали складнішими: більше багатокрокових обчислень, геометричних схем та комбінованих тем.</p>
+          <p>Під час тесту правильні відповіді не показуються. Після завершення отримаєш результат і зможеш розібрати помилки.</p>
         </div>
         <button class="nmt-start-btn" id="nmtStartBtn" type="button">${active ? 'Почати новий тест' : 'Почати пробний НМТ'}</button>
       </section>
@@ -143,7 +143,7 @@
   }
 
   async function startExam(forceNew = false) {
-    content.innerHTML = `<div class="nmt-loading-card"><div class="spinner"></div><strong>Збираємо твій варіант НМТ…</strong><span>22 завдання формуються локально на сервері — без очікування AI</span></div>`;
+    content.innerHTML = `<div class="nmt-loading-card"><div class="spinner"></div><strong>Збираємо твій варіант НМТ…</strong><span>Готуємо 22 завдання за структурою НМТ</span></div>`;
     try {
       const data = await post('/api/nmt/start', { forceNew }, 30000);
       activateAttempt(data.attempt);
@@ -277,7 +277,7 @@
     const value = answer ?? '';
     return `<div class="nmt-short-wrap">
       <label for="nmtShortInput">Ваша відповідь</label>
-      <div class="nmt-short-input-shell"><input id="nmtShortInput" class="nmt-short-input" type="text" inputmode="decimal" autocomplete="off" enterkeyhint="done" value="${escapeHtml(String(value))}" placeholder="${escapeHtml(q.answer_hint || 'Введіть число')}"><span>123</span></div>
+      <div class="nmt-short-input-shell"><input id="nmtShortInput" class="nmt-short-input" type="text" inputmode="decimal" autocomplete="off" enterkeyhint="done" value="${escapeHtml(String(value))}" placeholder="${escapeHtml(q.answer_hint || 'Введи число')}"><span>123</span></div>
       <p class="nmt-answer-help">Кома й крапка сприймаються однаково: <b>2,5</b> = <b>2.5</b>. Зайві пробіли і кінцеві нулі не впливають на перевірку.</p>
     </div>`;
   }
@@ -344,7 +344,7 @@
     const usedBy = Object.fromEntries(Object.entries(current).map(([key, code]) => [code, Number(key) + 1]));
 
     overlay.innerHTML = `
-      <section class="nmt-match-sheet" role="dialog" aria-modal="true" aria-label="Оберіть відповідність">
+      <section class="nmt-match-sheet" role="dialog" aria-modal="true" aria-label="Обери відповідність">
         <div class="nmt-match-sheet-handle"></div>
         <div class="nmt-match-sheet-head">
           <div><small>ПУНКТ ${row + 1}</small><strong>${escapeHtml(q.left[row])}</strong></div>
@@ -425,7 +425,7 @@
     state.finishing = true;
     closeFinishOverlay();
     clearTimer();
-    content.innerHTML = `<div class="nmt-loading-card"><div class="spinner"></div><strong>${auto ? 'Час вийшов — підраховуємо результат…' : 'Підраховуємо результат…'}</strong><span>Перевіряємо 22 відповіді та визначаємо теми для повторення</span></div>`;
+    content.innerHTML = `<div class="nmt-loading-card"><div class="spinner"></div><strong>${auto ? 'Час вийшов — підраховуємо результат…' : 'Підраховуємо результат…'}</strong><span>Перевіряємо відповіді та готуємо короткий розбір</span></div>`;
     try {
       const data = await post('/api/nmt/finish', { attemptId: state.activeAttempt.id, answers: state.answers }, 30000);
       state.result = data.result;
@@ -440,22 +440,59 @@
     }
   }
 
+  function joinTopics(labels) {
+    const clean = labels.filter(Boolean).slice(0, 3);
+    if (!clean.length) return '';
+    if (clean.length === 1) return `«${clean[0]}»`;
+    if (clean.length === 2) return `«${clean[0]}» та «${clean[1]}»`;
+    return `«${clean[0]}», «${clean[1]}» та «${clean[2]}»`;
+  }
+
+  function buildResultConclusion(result) {
+    const weak = Array.isArray(result.weak_topics) ? result.weak_topics : [];
+    const topics = weak.map(item => item?.label).filter(Boolean);
+    const focus = joinTopics(topics);
+    const raw = Number(result.raw_score) || 0;
+
+    if (!weak.length) {
+      return {
+        title: 'Дуже сильна робота',
+        text: 'У цьому варіанті немає тем, які потребують обов’язкового повторення. Переглянь розбір нижче й переходь до наступного пробного тесту, коли будеш готовий.',
+        topics: [],
+      };
+    }
+
+    let opening = 'Є кілька тем, які варто підтягнути.';
+    if (raw >= 28) opening = 'Результат дуже сильний, але кілька неточностей ще можна прибрати.';
+    else if (raw >= 22) opening = 'База вже впевнена, однак є теми, на яких можна добрати результат.';
+    else if (raw >= 16) opening = 'Основу ти тримаєш, але частину тем варто системно повторити.';
+    else if (raw >= 10) opening = 'Є помітні прогалини, тому краще спочатку закріпити ключові теми.';
+    else opening = 'Зараз найкраще зосередитися на базових темах і рухатися поступово.';
+
+    return {
+      title: 'Короткий висновок',
+      text: `${opening} Найбільше уваги варто приділити ${focus}. Перед наступною спробою повтори основні правила й розбери завдання з помилками нижче.`,
+      topics: topics.slice(0, 3),
+    };
+  }
+
   function renderResult(result) {
     nmtView?.classList.remove('exam-running');
     hideKeyboardDone();
     const scoreText = result.scaled_score ? String(result.scaled_score) : '<100';
-    const weak = Array.isArray(result.weak_topics) ? result.weak_topics : [];
+    const conclusion = buildResultConclusion(result);
     content.innerHTML = `
       <section class="nmt-result-hero">
         <div class="nmt-result-kicker">ТВІЙ РЕЗУЛЬТАТ</div>
         <div class="nmt-result-score"><strong>${escapeHtml(scoreText)}</strong><span>/ 200</span></div>
-        <div class="nmt-result-raw">${result.raw_score} / 32 тестових балів</div>
-        <div class="nmt-result-status ${result.passed_threshold ? 'ok' : 'low'}">${result.passed_threshold ? 'Пороговий бал набрано' : 'Потрібно щонайменше 5 тестових балів для шкали 100–200'}</div>
+        <div class="nmt-result-raw">${result.raw_score} із 32 тестових балів</div>
+        <div class="nmt-result-status ${result.passed_threshold ? 'ok' : 'low'}">${result.passed_threshold ? 'Поріг подолано' : 'Для шкали 100–200 потрібно щонайменше 5 тестових балів'}</div>
       </section>
 
-      <section class="nmt-result-card">
-        <div class="nmt-result-card-head"><h3>Що повторити</h3><span>${weak.length ? `${weak.length} тем` : 'Все добре'}</span></div>
-        ${weak.length ? `<div class="nmt-weak-list">${weak.slice(0, 6).map(item => `<div class="nmt-weak-row"><div><strong>${escapeHtml(item.label)}</strong><span>помилок у темі: ${item.count}</span></div><b>−${item.lost} б.</b></div>`).join('')}</div>` : '<p class="nmt-perfect-copy">Жодної теми для обов’язкового повторення — сильна робота.</p>'}
+      <section class="nmt-result-card nmt-result-summary-card">
+        <div class="nmt-result-card-head"><h3>${escapeHtml(conclusion.title)}</h3><span>за твоїми відповідями</span></div>
+        <p class="nmt-result-summary-copy">${escapeHtml(conclusion.text)}</p>
+        ${conclusion.topics.length ? `<div class="nmt-result-focus-topics">${conclusion.topics.map(topic => `<span>${escapeHtml(topic)}</span>`).join('')}</div>` : ''}
       </section>
 
       <section class="nmt-review-section">
@@ -478,7 +515,7 @@
     return `<article class="nmt-review-item ${item.score_awarded === item.max_score ? 'correct' : 'wrong'}">
       <button class="nmt-review-toggle" type="button">
         <span class="nmt-review-number">${item.number}</span>
-        <div><strong>${escapeHtml(item.topic_label)}</strong><small>${item.score_awarded}/${item.max_score} б.</small></div>
+        <div><strong>${escapeHtml(item.topic_label)}</strong><small>${item.is_correct ? 'Правильно' : (item.user_answer === 'Не відповіли' ? 'Без відповіді' : 'Є помилка')}</small></div>
         <span class="nmt-review-state">${item.score_awarded === item.max_score ? '✓' : '!'}</span>
       </button>
       <div class="nmt-review-body">
