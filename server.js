@@ -134,8 +134,7 @@ function buildGeneratePrompt(topicKey, difficulty, avoidList = []) {
 Користувач уже бачив ці завдання. НЕ копіюй їх, НЕ перефразовуй і НЕ роби ту саму задачу з іншими числами:
 ${avoidList
         .map((q, i) => `${i + 1}. ${q}`)
-        .join('
-')}`
+        .join('\n')}`
     : '';
 
   return `Ти — укладач тренувальних завдань для НМТ-${NMT_META.year} з математики в Україні.
@@ -150,12 +149,10 @@ ${avoidList
 Межі теми: ${topic.scope}.
 
 Дозволені навички для цієї теми:
-${topic.skills.map((x) => `- ${x}`).join('
-')}
+${topic.skills.map((x) => `- ${x}`).join('\n')}
 
 Типові ПАТЕРНИ завдань, на які можна орієнтуватися:
-${topic.patterns.map((x) => `- ${x}`).join('
-')}
+${topic.patterns.map((x) => `- ${x}`).join('\n')}
 
 РІВЕНЬ СКЛАДНОСТІ: ${difficulty}.
 
@@ -186,15 +183,13 @@ ${avoidBlock}
 
 function buildVerifyPrompt(q, topicKey) {
   const topic = getTopic(topicKey);
-  const options = q.options.map((option, index) => `${index}: ${option}`).join('
-');
+  const options = q.options.map((option, index) => `${index}: ${option}`).join('\n');
 
   return `Ти — незалежний редактор і перевіряючий завдань НМТ з математики.
 
 ОБРАНА ТЕМА: ${topic.label}
 Допустимі навички:
-${topic.skills.map((x) => `- ${x}`).join('
-')}
+${topic.skills.map((x) => `- ${x}`).join('\n')}
 
 Завдання:
 ${q.question}
