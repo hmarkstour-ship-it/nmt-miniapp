@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import pg from 'pg';
 import 'dotenv/config';
 import { NMT_META, getTopic, getPublicTopics } from './nmt-knowledge.js';
+import { GENERATOR_VERSION, generateDeterministicQuestion, validateDeterministicQuestion } from './deterministic-math.js';
 
 const { Pool } = pg;
 
@@ -25,7 +26,7 @@ const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MO
 
 if (!GEMINI_API_KEY) {
   console.warn(
-    '⚠️  GEMINI_API_KEY не знайдено в .env — сервер запуститься, але /api/generate-question поверне помилку.'
+    '⚠️  GEMINI_API_KEY не знайдено в .env — тренувальні завдання працюватимуть, але AI-пояснення будуть недоступні.'
   );
 }
 if (!DATABASE_URL) {
@@ -103,6 +104,12 @@ async function initDb() {
     CREATE UNIQUE INDEX IF NOT EXISTS idx_question_bank_unique_text
     ON question_bank (topic, question_text);
   `);
+
+  // Старі AI-завдання більше не віддаємо: банк версії нижче поточного генератора вимикаємо.
+  await pool.query(
+    `UPDATE question_bank SET is_active = false WHERE verification_version < $1`,
+    [BANK_VERIFICATION_VERSION]
+  );
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS user_answers (
@@ -551,8 +558,8 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const RETRYABLE_STATUSES = new Set([429, 503]);
 const DEFAULT_GEMINI_RETRIES = 1;
 const DEFAULT_GEMINI_TIMEOUT_MS = 12_000;
-const BANK_VERIFICATION_VERSION = 2;
-const BANK_TARGET_PER_TOPIC = 6;
+const BANK_VERIFICATION_VERSION = GENERATOR_VERSION;
+const BANK_TARGET_PER_TOPIC = 12;
 const bankRefillLocks = new Set();
 
 
@@ -890,29 +897,26 @@ async function strictVerifyQuestion(candidate, topicKey) {
 }
 
 async function generateStrictQuestion(topic, difficulty, avoidList = [], attempts = 3, promptBuilder = null) {
+  // Нова архітектура: математику створює детермінований рушій.
+  // Gemini більше НЕ визначає правильну відповідь, НЕ рахує арифметику
+  // і НЕ впливає на те, який варіант позначено правильним.
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
-      const prompt = promptBuilder
-        ? promptBuilder(attempt)
-        : buildGeneratePrompt(topic, difficulty, avoidList);
+      const candidate = generateDeterministicQuestion(topic, difficulty, avoidList);
 
-      const raw = await callGemini(prompt, 0.35, { timeoutMs: 12_000, maxRetries: 1 });
-      const candidate = normalizeQuestionMath(raw);
-
-      if (!isValidQuestion(candidate) || !hasSafeQuestionMath(candidate)) {
-        console.warn(`⚠️ Strict generation ${attempt}: формат кандидата відхилено`);
+      if (!validateDeterministicQuestion(candidate)) {
+        console.warn(`⚠️ Deterministic generation ${attempt}: внутрішня валідація не пройдена`);
         continue;
       }
 
-      const verification = await strictVerifyQuestion(candidate, topic);
-      if (!verification.ok) {
-        console.warn(`⚠️ Strict generation ${attempt}: подвійна перевірка не пройдена`, verification.reason || '');
+      if (!isValidQuestion(candidate) || !hasSafeQuestionMath(candidate)) {
+        console.warn(`⚠️ Deterministic generation ${attempt}: формат кандидата відхилено`);
         continue;
       }
 
       return candidate;
     } catch (err) {
-      console.warn(`⚠️ Strict generation ${attempt}: ${err.message}`);
+      console.warn(`⚠️ Deterministic generation ${attempt}: ${err.message}`);
     }
   }
 
@@ -1141,33 +1145,28 @@ app.post('/api/explain-more', async (req, res) => {
     if (!question?.question || !Array.isArray(question.options)) return res.status(400).json({ error: 'Немає даних завдання.' });
 
     if (mode === 'similar') {
-      let similar = null;
-      let verified = false;
+      const recent = await getRecentQuestions(telegramUser.id, topic, 12);
+      const avoid = [question.question, ...recent].filter(Boolean);
+      const similar = await generateStrictQuestion(topic, difficulty, avoid, 4);
 
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        try {
-          const raw = await callGemini(buildSimilarPrompt(topic, difficulty, question), 0.35, { timeoutMs: 12_000, maxRetries: 1 });
-          const candidate = normalizeQuestionMath(raw);
-          if (!isValidQuestion(candidate) || !hasSafeQuestionMath(candidate)) continue;
-
-          const strictCheck = await strictVerifyQuestion(candidate, topic);
-          if (strictCheck.ok) {
-            similar = candidate;
-            verified = true;
-            break;
-          }
-        } catch (verifyErr) {
-          console.warn('SIMILAR VERIFY ERROR:', verifyErr.message);
-        }
+      if (!similar) {
+        return res.status(502).json({ error: 'Не вдалося створити схоже завдання. Спробуйте ще раз.' });
       }
 
-      if (!similar) return res.status(502).json({ error: 'Не вдалося створити схоже завдання. Спробуйте ще раз.' });
-
-      let bankId = null;
-      if (verified) bankId = await saveQuestionToBank(topic, difficulty, similar);
+      const bankId = await saveQuestionToBank(topic, difficulty, similar);
       await saveQuestionToHistory(telegramUser.id, topic, similar.question);
 
-      return res.json({ mode: 'similar', question: { ...similar, topic, difficulty, verified, bank_id: bankId, source: 'ai' } });
+      return res.json({
+        mode: 'similar',
+        question: {
+          ...similar,
+          topic,
+          difficulty,
+          verified: true,
+          bank_id: bankId,
+          source: 'engine',
+        },
+      });
     }
 
     if (!['simple', 'why_wrong'].includes(mode)) return res.status(400).json({ error: 'Невідомий режим пояснення.' });
@@ -1213,10 +1212,10 @@ app.post('/api/generate-question', async (req, res) => {
       bankId = bankQuestion.id;
     }
 
-    // Якщо запасу немає — створюємо нове питання і показуємо його ТІЛЬКИ після подвійної перевірки.
+    // Якщо запасу немає — створюємо нове питання детермінованим математичним рушієм.
     if (!question) {
-      source = 'ai';
-      question = await generateStrictQuestion(topic, difficulty, avoidList, 3);
+      source = 'engine';
+      question = await generateStrictQuestion(topic, difficulty, avoidList, 4);
 
       if (question) {
         bankId = await saveQuestionToBank(topic, difficulty, question);
