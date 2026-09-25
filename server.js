@@ -1183,6 +1183,85 @@ app.post('/api/explain-more', async (req, res) => {
 });
 
 
+// Віддає невеликий буфер готових завдань одним HTTP-запитом.
+// Це прибирає мережеву паузу між «Наступне завдання» і новою карткою.
+app.post('/api/questions-batch', async (req, res) => {
+  const {
+    topic = 'mixed',
+    difficulty = 'середній',
+    initData,
+    count = 4,
+  } = req.body;
+
+  const batchSize = Math.max(1, Math.min(5, Number(count) || 4));
+
+  try {
+    const telegramUser = verifyTelegramInitData(initData);
+    const user = await getOrCreateUser(telegramUser);
+    const telegramId = user?.telegram_id ?? null;
+    const avoidList = telegramId
+      ? await getRecentQuestions(telegramId, topic, 30)
+      : [];
+
+    const questions = [];
+
+    for (let i = 0; i < batchSize; i++) {
+      let question = null;
+      let bankId = null;
+      let source = 'bank';
+
+      const bankQuestion = await getQuestionFromBank(topic, difficulty, avoidList);
+      if (bankQuestion?.question && isValidQuestion(bankQuestion.question) && hasSafeQuestionMath(bankQuestion.question)) {
+        question = bankQuestion.question;
+        bankId = bankQuestion.id;
+      }
+
+      if (!question) {
+        source = 'engine';
+        question = await generateStrictQuestion(topic, difficulty, avoidList, 4);
+        if (question) bankId = await saveQuestionToBank(topic, difficulty, question);
+      }
+
+      if (!question) break;
+
+      avoidList.push(question.question);
+      if (telegramId) {
+        await saveQuestionToHistory(telegramId, topic, question.question);
+      }
+
+      questions.push({
+        ...question,
+        topic,
+        difficulty,
+        verified: true,
+        bank_id: bankId,
+        source,
+      });
+    }
+
+    if (!questions.length) {
+      return res.status(503).json({
+        error: 'Не вдалося підготувати буфер завдань. Спробуйте ще раз.',
+      });
+    }
+
+    const freshUser = telegramUser ? await getOrCreateUser(telegramUser) : null;
+    scheduleBankRefill(topic, difficulty);
+
+    res.json({
+      questions,
+      progress: {
+        correct: freshUser?.correct_count ?? 0,
+        wrong: freshUser?.wrong_count ?? 0,
+      },
+    });
+  } catch (err) {
+    console.error('QUESTIONS BATCH ERROR:', err);
+    res.status(500).json({ error: 'Не вдалося підготувати завдання.' });
+  }
+});
+
+
 // Генерує нове питання
 app.post('/api/generate-question', async (req, res) => {
   const {
