@@ -154,15 +154,28 @@ function makeShort({ topic, question, correctValue, explanation, diagramSvg = nu
 }
 
 function rightTriangleSvg(a, b, c, labels = {}) {
-  return `<svg viewBox="0 0 340 230" role="img" aria-label="Прямокутний трикутник" xmlns="http://www.w3.org/2000/svg">
-    <defs><style>.g{stroke:#202329;stroke-width:3.2;fill:none;stroke-linecap:round;stroke-linejoin:round}.t{font:700 17px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;fill:#202329}.m{font:600 15px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;fill:#4f5661}.f{fill:#f7f8fb;stroke:#e5e8ee;stroke-width:1.2}</style></defs>
-    <rect class="f" x="1" y="1" width="338" height="228" rx="20"/>
-    <path class="g" d="M66 177 L66 46 L282 177 Z"/>
-    <path class="g" d="M66 156 L87 156 L87 177"/>
-    <text class="t" x="51" y="199">A</text><text class="t" x="50" y="38">B</text><text class="t" x="289" y="199">C</text>
-    <text class="m" x="18" y="113">${labels.ab || `${a}`}</text>
-    <text class="m" x="164" y="205">${labels.ac || `${b}`}</text>
-    <text class="m" x="176" y="99">${labels.bc || `${c}`}</text>
+  const maxW = 235;
+  const maxH = 135;
+  const scale = Math.min(maxW / Math.max(1, b), maxH / Math.max(1, a));
+  const ax = 64;
+  const ay = 188;
+  const bx = ax;
+  const by = ay - a * scale;
+  const cx = ax + b * scale;
+  const cy = ay;
+  const midHypX = (bx + cx) / 2;
+  const midHypY = (by + cy) / 2;
+  return `<svg viewBox="0 0 340 225" role="img" aria-label="Прямокутний трикутник ABC" xmlns="http://www.w3.org/2000/svg">
+    <defs><style>.g{stroke:#202329;stroke-width:2.7;fill:none;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}.m{stroke:#3156c8;stroke-width:2.4;fill:none;vector-effect:non-scaling-stroke}.t{font:700 16px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;fill:#202329}.v{font:650 14px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;fill:#555c66}.s{font:650 10px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;fill:#9499a1;letter-spacing:.08em}</style></defs>
+    <text class="s" x="18" y="22">СХЕМА</text>
+    <path class="g" d="M${ax} ${ay} L${bx.toFixed(1)} ${by.toFixed(1)} L${cx.toFixed(1)} ${cy} Z"/>
+    <path class="m" d="M${ax} ${ay-18} L${ax+18} ${ay-18} L${ax+18} ${ay}"/>
+    <text class="t" x="${ax-17}" y="${ay+20}">A</text>
+    <text class="t" x="${bx-17}" y="${by-8}">B</text>
+    <text class="t" x="${cx+8}" y="${cy+18}">C</text>
+    <text class="v" x="${ax-42}" y="${((ay+by)/2+5).toFixed(1)}">${labels.ab || a}</text>
+    <text class="v" x="${((ax+cx)/2-8).toFixed(1)}" y="${ay+22}">${labels.ac || b}</text>
+    <text class="v" x="${(midHypX+10).toFixed(1)}" y="${(midHypY-7).toFixed(1)}">${labels.bc || c}</text>
   </svg>`;
 }
 
@@ -214,22 +227,115 @@ function prismSvg(a, b, h) {
 
 function triangleAngleSvg(a, b, angle) {
   const rad = angle * Math.PI / 180;
-  const scale = 18;
-  const ax = 78, ay = 188;
-  const bx = ax + a * scale, by = ay;
-  const cx = ax + b * scale * Math.cos(rad), cy = ay - b * scale * Math.sin(rad);
-  const midABx = (ax + bx) / 2, midABy = ay + 22;
-  const midACx = (ax + cx) / 2 - 20, midACy = (ay + cy) / 2;
-  const labelAx = ax - 16, labelAy = ay + 20;
-  const labelBx = bx + 8, labelBy = by + 18;
-  const labelCx = cx - 3, labelCy = cy - 10;
-  return `<svg viewBox="0 0 360 240" role="img" aria-label="Трикутник із заданими сторонами та кутом" xmlns="http://www.w3.org/2000/svg">
-    <defs><style>.g{stroke:#202329;stroke-width:3.2;fill:none;stroke-linecap:round;stroke-linejoin:round}.t{font:700 17px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;fill:#202329}.m{font:600 14px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;fill:#4f5661}.f{fill:#f7f8fb;stroke:#e5e8ee;stroke-width:1.2}</style></defs>
-    <rect class="f" x="1" y="1" width="358" height="238" rx="20"/>
-    <path class="g" d="M${ax} ${ay} L${bx.toFixed(1)} ${by.toFixed(1)} L${cx.toFixed(1)} ${cy.toFixed(1)} Z"/>
-    <path class="g" d="M${ax + 30} ${ay} A30 30 0 0 ${angle > 90 ? 0 : 0} ${(ax + 30 * Math.cos(rad)).toFixed(1)} ${(ay - 30 * Math.sin(rad)).toFixed(1)}"/>
-    <text class="t" x="${labelAx}" y="${labelAy}">A</text><text class="t" x="${labelBx.toFixed(1)}" y="${labelBy.toFixed(1)}">B</text><text class="t" x="${labelCx.toFixed(1)}" y="${labelCy.toFixed(1)}">C</text>
-    <text class="m" x="${midABx.toFixed(1)}" y="${midABy.toFixed(1)}">${a}</text><text class="m" x="${midACx.toFixed(1)}" y="${midACy.toFixed(1)}">${b}</text><text class="m" x="${ax + 34}" y="${ay - 22}">${angle}°</text>
+  const raw = [
+    { x: 0, y: 0 },
+    { x: a, y: 0 },
+    { x: b * Math.cos(rad), y: -b * Math.sin(rad) },
+  ];
+  const minX = Math.min(...raw.map(p => p.x));
+  const maxX = Math.max(...raw.map(p => p.x));
+  const minY = Math.min(...raw.map(p => p.y));
+  const maxY = Math.max(...raw.map(p => p.y));
+  const scale = Math.min(255 / Math.max(1, maxX-minX), 135 / Math.max(1, maxY-minY));
+  const left = 52;
+  const top = 46;
+  const px = (p) => left + (p.x-minX)*scale;
+  const py = (p) => top + (p.y-minY)*scale;
+  const A = {x:px(raw[0]), y:py(raw[0])};
+  const B = {x:px(raw[1]), y:py(raw[1])};
+  const C = {x:px(raw[2]), y:py(raw[2])};
+  const arcR = 28;
+  const arcEndX = A.x + arcR * Math.cos(rad);
+  const arcEndY = A.y - arcR * Math.sin(rad);
+  const sideBC = Math.sqrt(a*a+b*b-2*a*b*Math.cos(rad));
+  return `<svg viewBox="0 0 360 225" role="img" aria-label="Трикутник ABC із заданими сторонами та кутом" xmlns="http://www.w3.org/2000/svg">
+    <defs><style>.g{stroke:#202329;stroke-width:2.7;fill:none;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}.a{stroke:#3156c8;stroke-width:2.3;fill:none;vector-effect:non-scaling-stroke}.t{font:700 16px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;fill:#202329}.v{font:650 14px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;fill:#555c66}.s{font:650 10px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;fill:#9499a1;letter-spacing:.08em}</style></defs>
+    <text class="s" x="18" y="22">СХЕМА</text>
+    <path class="g" d="M${A.x.toFixed(1)} ${A.y.toFixed(1)} L${B.x.toFixed(1)} ${B.y.toFixed(1)} L${C.x.toFixed(1)} ${C.y.toFixed(1)} Z"/>
+    <path class="a" d="M${(A.x+arcR).toFixed(1)} ${A.y.toFixed(1)} A${arcR} ${arcR} 0 0 0 ${arcEndX.toFixed(1)} ${arcEndY.toFixed(1)}"/>
+    <text class="t" x="${(A.x-16).toFixed(1)}" y="${(A.y+20).toFixed(1)}">A</text>
+    <text class="t" x="${(B.x+7).toFixed(1)}" y="${(B.y+18).toFixed(1)}">B</text>
+    <text class="t" x="${(C.x-4).toFixed(1)}" y="${(C.y-10).toFixed(1)}">C</text>
+    <text class="v" x="${((A.x+B.x)/2-6).toFixed(1)}" y="${((A.y+B.y)/2+21).toFixed(1)}">${a}</text>
+    <text class="v" x="${((A.x+C.x)/2-28).toFixed(1)}" y="${((A.y+C.y)/2-4).toFixed(1)}">${b}</text>
+    <text class="v" x="${(A.x+35).toFixed(1)}" y="${(A.y-13).toFixed(1)}">${angle}°</text>
+    <text class="v" x="${((B.x+C.x)/2+8).toFixed(1)}" y="${((B.y+C.y)/2).toFixed(1)}">?</text>
+  </svg>`;
+}
+
+function inscribedArcSvg(inscribedAngle, arcLength) {
+  const cx = 180, cy = 112, r = 78;
+  const central = 2 * inscribedAngle;
+  const start = -90 - central/2;
+  const end = -90 + central/2;
+  const point = (deg) => {
+    const q = deg * Math.PI / 180;
+    return { x: cx + r*Math.cos(q), y: cy + r*Math.sin(q) };
+  };
+  const A = point(start), B = point(end), C = point(90);
+  const sweep = 1;
+  return `<svg viewBox="0 0 360 235" role="img" aria-label="Коло з вписаним кутом і дугою AB" xmlns="http://www.w3.org/2000/svg">
+    <defs><style>.g{stroke:#202329;stroke-width:2.6;fill:none;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}.arc{stroke:#3156c8;stroke-width:4.5;fill:none;stroke-linecap:round;vector-effect:non-scaling-stroke}.t{font:700 16px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;fill:#202329}.v{font:650 13px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;fill:#555c66}.s{font:650 10px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;fill:#9499a1;letter-spacing:.08em}</style></defs>
+    <text class="s" x="18" y="22">СХЕМА</text>
+    <circle class="g" cx="${cx}" cy="${cy}" r="${r}"/>
+    <path class="g" d="M${C.x.toFixed(1)} ${C.y.toFixed(1)} L${A.x.toFixed(1)} ${A.y.toFixed(1)} M${C.x.toFixed(1)} ${C.y.toFixed(1)} L${B.x.toFixed(1)} ${B.y.toFixed(1)}"/>
+    <path class="arc" d="M${A.x.toFixed(1)} ${A.y.toFixed(1)} A${r} ${r} 0 0 ${sweep} ${B.x.toFixed(1)} ${B.y.toFixed(1)}"/>
+    <text class="t" x="${(A.x-18).toFixed(1)}" y="${(A.y-8).toFixed(1)}">A</text>
+    <text class="t" x="${(B.x+8).toFixed(1)}" y="${(B.y-8).toFixed(1)}">B</text>
+    <text class="t" x="${(C.x-5).toFixed(1)}" y="${(C.y+22).toFixed(1)}">C</text>
+    <text class="v" x="${(cx-16).toFixed(1)}" y="${(cy+71).toFixed(1)}">${inscribedAngle}°</text>
+    <text class="v" x="${(cx-37).toFixed(1)}" y="${(cy-r-12).toFixed(1)}">дуга AB = ${arcLength} см</text>
+  </svg>`;
+}
+
+function squarePyramidSvg(a, apothem) {
+  return `<svg viewBox="0 0 360 245" role="img" aria-label="Правильна чотирикутна піраміда" xmlns="http://www.w3.org/2000/svg">
+    <defs><style>.g{stroke:#202329;stroke-width:2.5;fill:none;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}.d{stroke:#8b929c;stroke-width:1.8;stroke-dasharray:5 5;fill:none;vector-effect:non-scaling-stroke}.a{stroke:#3156c8;stroke-width:2.8;fill:none;vector-effect:non-scaling-stroke}.t{font:700 15px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;fill:#202329}.v{font:650 13px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;fill:#555c66}.s{font:650 10px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;fill:#9499a1;letter-spacing:.08em}</style></defs>
+    <text class="s" x="18" y="22">СХЕМА</text>
+    <path class="g" d="M66 188 L226 204 L296 158 L136 142 Z"/>
+    <path class="g" d="M181 44 L66 188 M181 44 L226 204 M181 44 L296 158 M181 44 L136 142"/>
+    <path class="d" d="M181 44 L181 173 M66 188 L296 158 M136 142 L226 204"/>
+    <path class="a" d="M181 44 L261 181"/>
+    <circle cx="181" cy="173" r="3.3" fill="#202329"/>
+    <text class="t" x="173" y="36">S</text><text class="t" x="51" y="207">A</text><text class="t" x="229" y="222">B</text><text class="t" x="300" y="160">C</text><text class="t" x="122" y="139">D</text>
+    <text class="v" x="132" y="220">a = ${a}</text>
+    <text class="v" x="245" y="112">m = ${apothem}</text>
+    <text class="v" x="187" y="112">h</text>
+  </svg>`;
+}
+
+function rightTrapezoidMatchingSvg(bigBase, smallBase, diagonal) {
+  const h = Math.sqrt(diagonal*diagonal-smallBase*smallBase);
+  const scale = Math.min(220/bigBase, 130/h);
+  const A={x:62,y:190};
+  const B={x:A.x+bigBase*scale,y:A.y};
+  const D={x:A.x,y:A.y-h*scale};
+  const C={x:A.x+smallBase*scale,y:D.y};
+  const O={x:(A.x+C.x)/2,y:(A.y+C.y)/2};
+  return `<svg viewBox="0 0 360 235" role="img" aria-label="Прямокутна трапеція ABCD з діагоналлю AC" xmlns="http://www.w3.org/2000/svg">
+    <defs><style>.g{stroke:#202329;stroke-width:2.7;fill:none;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}.d{stroke:#3156c8;stroke-width:2.3;fill:none;vector-effect:non-scaling-stroke}.r{stroke:#6d7480;stroke-width:1.8;fill:none;vector-effect:non-scaling-stroke}.t{font:700 16px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;fill:#202329}.v{font:650 13px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;fill:#555c66}.s{font:650 10px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;fill:#9499a1;letter-spacing:.08em}</style></defs>
+    <text class="s" x="18" y="22">СХЕМА</text>
+    <path class="g" d="M${A.x} ${A.y} L${B.x.toFixed(1)} ${B.y} L${C.x.toFixed(1)} ${C.y.toFixed(1)} L${D.x} ${D.y.toFixed(1)} Z"/>
+    <path class="d" d="M${A.x} ${A.y} L${C.x.toFixed(1)} ${C.y.toFixed(1)}"/>
+    <path class="r" d="M${D.x} ${(D.y+16).toFixed(1)} L${(D.x+16).toFixed(1)} ${(D.y+16).toFixed(1)} L${(D.x+16).toFixed(1)} ${D.y.toFixed(1)}"/>
+    <circle cx="${O.x.toFixed(1)}" cy="${O.y.toFixed(1)}" r="4" fill="#3156c8"/>
+    <text class="t" x="${A.x-17}" y="${A.y+20}">A</text><text class="t" x="${B.x+6}" y="${B.y+18}">B</text><text class="t" x="${C.x+7}" y="${C.y-7}">C</text><text class="t" x="${D.x-18}" y="${D.y-7}">D</text><text class="t" x="${O.x+7}" y="${O.y-6}">O</text>
+    <text class="v" x="${((A.x+B.x)/2-17).toFixed(1)}" y="${A.y+22}">AB = ${bigBase}</text>
+    <text class="v" x="${((D.x+C.x)/2-16).toFixed(1)}" y="${D.y-10}">CD = ${smallBase}</text>
+    <text class="v" x="${(O.x+11).toFixed(1)}" y="${(O.y+17).toFixed(1)}">AC = ${diagonal}</text>
+  </svg>`;
+}
+
+function rhombusPrismSvg(heightCoeff, sectionCoeff) {
+  return `<svg viewBox="0 0 360 250" role="img" aria-label="Пряма призма з ромбом в основі та більшим діагональним перерізом" xmlns="http://www.w3.org/2000/svg">
+    <defs><style>.g{stroke:#202329;stroke-width:2.4;fill:none;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}.d{stroke:#8d949e;stroke-width:1.7;stroke-dasharray:5 5;fill:none;vector-effect:non-scaling-stroke}.cut{fill:#3156c8;fill-opacity:.10;stroke:#3156c8;stroke-width:2.3;vector-effect:non-scaling-stroke}.v{font:650 13px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;fill:#555c66}.s{font:650 10px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;fill:#9499a1;letter-spacing:.08em}</style></defs>
+    <text class="s" x="18" y="22">СХЕМА ДІАГОНАЛЬНОГО ПЕРЕРІЗУ</text>
+    <path class="cut" d="M72 190 L267 157 L267 66 L72 99 Z"/>
+    <path class="g" d="M72 190 L165 211 L267 157 L174 136 Z M72 99 L165 120 L267 66 L174 45 Z M72 190 L72 99 M165 211 L165 120 M267 157 L267 66 M174 136 L174 45"/>
+    <path class="d" d="M72 190 L267 157 M72 99 L267 66"/>
+    <text class="v" x="279" y="116">H = ${heightCoeff}√3</text>
+    <text class="v" x="124" y="126">Sпер = ${sectionCoeff}√3</text>
+    <text class="v" x="183" y="230">∠ основи = 60°</text>
   </svg>`;
 }
 
@@ -416,8 +522,11 @@ function choiceProbability() {
 
 function choicePlanimetry() {
   const variant = choice([
+    { a: 3, b: 8, angle: 60, side: 7 },
     { a: 5, b: 8, angle: 60, side: 7 },
     { a: 3, b: 5, angle: 120, side: 7 },
+    { a: 6, b: 10, angle: 120, side: 14 },
+    { a: 7, b: 8, angle: 120, side: 13 },
   ]);
   const { a, b, angle, side } = variant;
   const cosText = angle === 60 ? '\\frac12' : '-\\frac12';
@@ -432,28 +541,41 @@ function choicePlanimetry() {
 }
 
 function choiceCircle() {
-  const central = choice([80, 100, 120, 140]);
-  const inscribed = central / 2;
+  const variant = choice([
+    { angle: 30, arc: 18, circumference: 108 },
+    { angle: 36, arc: 24, circumference: 120 },
+    { angle: 45, arc: 20, circumference: 80 },
+    { angle: 60, arc: 28, circumference: 84 },
+  ]);
+  const { angle, arc, circumference } = variant;
   return makeChoice({
     topic: 'planimetry',
-    question: `Центральний кут, що спирається на ту саму дугу, що й вписаний кут ${math('\\angle ABC')}, дорівнює ${math(`${central}^\\circ`)}. Знайдіть ${math('\\angle ABC')}.`,
-    correct: math(`${inscribed}^\\circ`),
-    distractors: [central, 180 - central, 90 - inscribed, inscribed + 20].map(v => math(`${v}^\\circ`)),
-    explanation: `1. Вписаний кут дорівнює половині центрального кута, який спирається на ту саму дугу.\n2. ${math(`\\angle ABC=\\frac{${central}^\\circ}{2}`)}.\n3. Отже, ${math(`\\angle ABC=${inscribed}^\\circ`)}.`,
-    diagramSvg: circleAngleSvg(central),
+    question: `На колі вибрано точки ${math('A')}, ${math('B')} і ${math('C')}. Вписаний кут ${math(String.raw`\angle ACB=${angle}^\circ`)} спирається на меншу дугу ${math('AB')}, довжина якої дорівнює ${arc} см. Визначте довжину кола.`,
+    correct: math(String(circumference)),
+    distractors: [circumference/2, circumference*2, circumference-arc, circumference+arc].map(v => math(latexNumber(v))),
+    explanation: `1. Вписаний кут ${math(String.raw`${angle}^\circ`)} спирається на дугу градусної міри ${math(String.raw`${2*angle}^\circ`)}.
+2. Дуга становить ${math(String.raw`\frac{${2*angle}}{360}`)} довжини всього кола.
+3. Тому ${math(String.raw`L=${arc}\cdot\frac{360}{${2*angle}}=${circumference}`)} см.`,
+    diagramSvg: inscribedArcSvg(angle, arc),
   });
 }
 
 function choiceStereometry() {
-  const triples = [[2,3,6,7],[3,4,12,13],[6,8,24,26]];
-  const [a,b,h,d] = choice(triples);
+  const variant = choice([
+    { a: 10, m: 13, h: 12, volume: 400 },
+    { a: 12, m: 10, h: 8, volume: 384 },
+    { a: 16, m: 10, h: 6, volume: 512 },
+  ]);
+  const { a, m, h, volume } = variant;
   return makeChoice({
     topic: 'stereometry',
-    question: `Прямокутний паралелепіпед має виміри ${math(String(a))}, ${math(String(b))} і ${math(String(h))}. Знайдіть довжину його просторової діагоналі.`,
-    correct: math(String(d)),
-    distractors: [a + b + h, Math.sqrt(a*a+b*b), a*b*h, d - 1].map(v => math(latexNumber(v))),
-    explanation: `1. Для просторової діагоналі: ${math('d^2=a^2+b^2+h^2')}.\n2. ${math(`d^2=${a}^2+${b}^2+${h}^2=${d*d}`)}.\n3. ${math(`d=${d}`)}.`,
-    diagramSvg: prismSvg(a,b,h),
+    question: `Основа правильної чотирикутної піраміди — квадрат зі стороною ${math(String(a))}. Апофема піраміди дорівнює ${math(String(m))}. Знайдіть об’єм піраміди.`,
+    correct: math(String(volume)),
+    distractors: [a*a*m/3, a*a*h, 2*a*h, volume + a*a/2].map(v => math(latexNumber(v))),
+    explanation: `1. Відстань від центра квадрата до середини його сторони дорівнює ${math(String.raw`\frac{${a}}2=${a/2}`)}.
+2. Із прямокутного трикутника ${math(String.raw`h=\sqrt{${m}^2-${a/2}^2}=${h}`)}.
+3. ${math(String.raw`V=\frac13\cdot ${a}^2\cdot ${h}=${volume}`)}.`,
+    diagramSvg: squarePyramidSvg(a, m),
   });
 }
 
@@ -493,19 +615,23 @@ function matchingAlgebra() {
 
 // Corrected geometry matching with unique answers.
 function matchingGeometryUnique() {
-  const a = 6, b = 8, c = 10;
-  const area = 24;
-  const perimeter = 24;
-  // Area and perimeter coincide for 6-8-10, so use altitude to hypotenuse instead of perimeter.
-  const altitude = a * b / c; // 4.8
+  const k = choice([1, 2]);
+  const bigBase = 14 * k;
+  const smallBase = 9 * k;
+  const diagonal = 15 * k;
+  const height = 12 * k;
+  const leg = 13 * k;
+  const midpoint = diagonal / 2;
   return makeMatching({
     topic: 'planimetry',
-    question: `На рисунку ${math('\\angle A=90^\\circ')}, ${math('AB=6')}, ${math('AC=8')}. Установіть відповідність між величиною (1–3) та її значенням (А–Д).`,
-    left: ['Довжина BC', 'Площа трикутника ABC', 'Висота, проведена з вершини A до BC'],
-    options: [math('4{,}8'), math('10'), math('14'), math('24'), math('48')],
-    correctPairs: { '0': 'Б', '1': 'Г', '2': 'А' },
-    explanation: `1. За теоремою Піфагора ${math('BC=10')} → Б.\n2. ${math('S=\\frac{6\\cdot8}{2}=24')} → Г.\n3. Із ${math('S=\\frac{BC\\cdot h}{2}')} маємо ${math('h=\\frac{2\\cdot24}{10}=4{,}8')} → А.`,
-    diagramSvg: rightTriangleSvg(a,b,c,{ab:'6',ac:'8',bc:'?'}),
+    question: `На рисунку зображено прямокутну трапецію ${math('ABCD')}, де ${math(String.raw`AB\parallel CD`)}. Точка ${math('O')} — середина діагоналі ${math('AC')}. Відомо: ${math(`AB=${bigBase}`)}, ${math(`CD=${smallBase}`)}, ${math(`AC=${diagonal}`)}. Установіть відповідність між відрізком (1–3) та його довжиною (А–Д).`,
+    left: [math('AO'), math('AD'), math('BC')],
+    options: [math(latexNumber(midpoint)), math(String(height)), math(String(leg)), math(String(diagonal)), math(String(21*k))],
+    correctPairs: { '0': 'А', '1': 'Б', '2': 'В' },
+    explanation: `1. Оскільки ${math('O')} — середина ${math('AC')}, то ${math(`AO=${latexNumber(midpoint)}`)} → А.
+2. У прямокутному трикутнику ${math('ADC')}: ${math(String.raw`AD=\sqrt{${diagonal}^2-${smallBase}^2}=${height}`)} → Б.
+3. Горизонтальна проєкція ${math('BC')} дорівнює ${math(`${bigBase}-${smallBase}=${bigBase-smallBase}`)}, тому ${math(String.raw`BC=\sqrt{${bigBase-smallBase}^2+${height}^2}=${leg}`)} → В.`,
+    diagramSvg: rightTrapezoidMatchingSvg(bigBase, smallBase, diagonal),
   });
 }
 
@@ -552,16 +678,22 @@ function shortPercentReverse() {
 
 function shortGeometry() {
   const variant = choice([
-    { big: 14, small: 8, leg: 5, h: 4, area: 44 },
-    { big: 18, small: 8, leg: 13, h: 12, area: 156 },
+    { m: 6, n: 4 },
+    { m: 8, n: 4 },
+    { m: 8, n: 6 },
   ]);
-  const halfDiff = (variant.big - variant.small) / 2;
+  const { m, n } = variant;
+  const sectionCoeff = 3 * m * n;
+  const volume = 9 * m * m * n / 2;
   return makeShort({
-    topic: 'planimetry',
-    question: `Рівнобічна трапеція має основи ${math(String(variant.big))} і ${math(String(variant.small))}, а бічну сторону ${math(String(variant.leg))}. Знайдіть площу трапеції.`,
-    correctValue: variant.area,
-    explanation: `1. Половина різниці основ: ${math(`\\frac{${variant.big}-${variant.small}}{2}=${halfDiff}`)}.\n2. Із прямокутного трикутника висота ${math(`h=\\sqrt{${variant.leg}^2-${halfDiff}^2}=${variant.h}`)}.\n3. ${math(`S=\\frac{(${variant.big}+${variant.small})\\cdot${variant.h}}{2}=${variant.area}`)}.`,
-    diagramSvg: isoscelesTrapezoidSvg(variant.big, variant.small, variant.leg),
+    topic: 'stereometry',
+    question: `Основою прямої призми є ромб із гострим кутом ${math(String.raw`60^\circ`)}. Площа більшого діагонального перерізу призми дорівнює ${math(String.raw`${sectionCoeff}\sqrt3`)}, а висота призми — ${math(String.raw`${n}\sqrt3`)}. Обчисліть об’єм призми.`,
+    correctValue: volume,
+    explanation: `1. Нехай сторона ромба дорівнює ${math('a')}. Його більша діагональ при куті ${math(String.raw`60^\circ`)} дорівнює ${math(String.raw`a\sqrt3`)}.
+2. Із площі діагонального перерізу: ${math(String.raw`a\sqrt3\cdot ${n}\sqrt3=${sectionCoeff}\sqrt3`)}, звідки ${math(String.raw`a=${m}\sqrt3`)}.
+3. Площа основи: ${math(String.raw`S=a^2\sin60^\circ=(${m}\sqrt3)^2\cdot\frac{\sqrt3}{2}`)}.
+4. ${math(String.raw`V=S\cdot H=${volume}`)}.`,
+    diagramSvg: rhombusPrismSvg(n, sectionCoeff),
   });
 }
 
@@ -603,7 +735,7 @@ export function generateNmtExam() {
     shortPercentReverse(),
     shortGeometry(),
     shortIntegral(),
-  ].map((q, index) => ({ ...q, number: index + 1, id: `nmt-${index + 1}`, engine_version: 2 }));
+  ].map((q, index) => ({ ...q, number: index + 1, id: `nmt-${index + 1}`, engine_version: 3 }));
 
   validateNmtExam(questions);
   return questions;
@@ -775,5 +907,5 @@ export const NMT_EXAM_META = Object.freeze({
   maxRawScore: 32,
   durationMinutes: 60,
   minimumRawForScale: 5,
-  generatorVersion: 2,
+  generatorVersion: 3,
 });

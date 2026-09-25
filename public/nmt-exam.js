@@ -6,8 +6,6 @@
   const finishSummary = document.getElementById('nmtFinishSummary');
   const finishCancel = document.getElementById('nmtFinishCancel');
   const finishConfirm = document.getElementById('nmtFinishConfirm');
-  const keyboardDone = document.getElementById('nmtKeyboardDone');
-  const keyboardToolbar = document.getElementById('nmtKeyboardToolbar');
   const nmtView = document.getElementById('nmtView');
 
   const state = {
@@ -277,8 +275,12 @@
     const value = answer ?? '';
     return `<div class="nmt-short-wrap">
       <label for="nmtShortInput">Ваша відповідь</label>
-      <div class="nmt-short-input-shell"><input id="nmtShortInput" class="nmt-short-input" type="text" inputmode="decimal" autocomplete="off" enterkeyhint="done" value="${escapeHtml(String(value))}" placeholder="${escapeHtml(q.answer_hint || 'Введи число')}"><span>123</span></div>
-      <p class="nmt-answer-help">Кома й крапка сприймаються однаково: <b>2,5</b> = <b>2.5</b>. Зайві пробіли і кінцеві нулі не впливають на перевірку.</p>
+      <div class="nmt-short-input-shell"><input id="nmtShortInput" class="nmt-short-input" type="text" inputmode="decimal" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" value="${escapeHtml(String(value))}" placeholder="${escapeHtml(q.answer_hint || 'Введи число')}"><span>123</span></div>
+      <div class="nmt-short-actions" aria-hidden="true">
+        <span>Кома або крапка — однаково</span>
+        <button class="nmt-inline-done" id="nmtInlineDone" type="button">Готово <b>✓</b></button>
+      </div>
+      <p class="nmt-answer-help">Наприклад: <b>2,5</b> і <b>2.5</b> — однакова відповідь.</p>
     </div>`;
   }
 
@@ -308,9 +310,11 @@
     } else {
       const input = document.getElementById('nmtShortInput');
       if (input) {
+        const shortWrap = input.closest('.nmt-short-wrap');
+        const done = document.getElementById('nmtInlineDone');
         input.addEventListener('focus', () => {
-          showKeyboardDone();
-          setTimeout(() => input.scrollIntoView({ block: 'center', behavior: 'smooth' }), 140);
+          showKeyboardDone(shortWrap);
+          setTimeout(() => ensureShortAnswerVisible(input), 120);
         });
         const inputIndex = state.index;
         input.addEventListener('input', () => {
@@ -318,12 +322,14 @@
           debounceSave(input.value, inputIndex);
         });
         input.addEventListener('blur', () => {
-          hideKeyboardDone();
+          hideKeyboardDone(shortWrap);
           saveCurrentAnswer(input.value, inputIndex);
         });
         input.addEventListener('keydown', (e) => {
           if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
         });
+        done?.addEventListener('pointerdown', (event) => event.preventDefault());
+        done?.addEventListener('click', () => input.blur());
       }
     }
   }
@@ -533,25 +539,30 @@
     return `<ol>${steps.map(step => `<li>${escapeHtml(step)}</li>`).join('')}</ol>`;
   }
 
-  function showKeyboardDone() {
+  function showKeyboardDone(shortWrap = null) {
     document.body.classList.add('keyboard-open');
-    keyboardToolbar?.classList.add('show');
-    keyboardToolbar?.setAttribute('aria-hidden', 'false');
-    positionKeyboardDone();
+    shortWrap?.classList.add('is-active');
+    shortWrap?.querySelector('.nmt-short-actions')?.setAttribute('aria-hidden', 'false');
   }
 
-  function hideKeyboardDone() {
+  function hideKeyboardDone(shortWrap = null) {
     document.body.classList.remove('keyboard-open');
-    keyboardToolbar?.classList.remove('show');
-    keyboardToolbar?.setAttribute('aria-hidden', 'true');
-    document.documentElement.style.setProperty('--keyboard-offset', '0px');
+    shortWrap?.classList.remove('is-active');
+    shortWrap?.querySelector('.nmt-short-actions')?.setAttribute('aria-hidden', 'true');
   }
 
-  function positionKeyboardDone() {
-    if (!window.visualViewport) return;
-    const vv = window.visualViewport;
-    const keyboardHeight = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
-    document.documentElement.style.setProperty('--keyboard-offset', `${keyboardHeight}px`);
+  function ensureShortAnswerVisible(input) {
+    if (!input?.classList?.contains('nmt-short-input')) return;
+    const wrap = input.closest('.nmt-short-wrap');
+    const scroller = content?.closest('.nmt-view');
+    if (!wrap || !scroller) return;
+    requestAnimationFrame(() => {
+      const vv = window.visualViewport;
+      const visibleBottom = vv ? vv.offsetTop + vv.height : window.innerHeight;
+      const rect = wrap.getBoundingClientRect();
+      const overflow = rect.bottom - (visibleBottom - 14);
+      if (overflow > 0) scroller.scrollBy({ top: overflow + 16, behavior: 'smooth' });
+    });
   }
 
   function showLocalToast(message) {
@@ -565,15 +576,15 @@
   finishCancel?.addEventListener('click', closeFinishOverlay);
   finishConfirm?.addEventListener('click', () => finishExam(false));
   finishOverlay?.addEventListener('click', (e) => { if (e.target === finishOverlay) closeFinishOverlay(); });
-  keyboardDone?.addEventListener('pointerdown', (event) => event.preventDefault());
-  keyboardDone?.addEventListener('click', () => { document.activeElement?.blur?.(); hideKeyboardDone(); });
-  window.visualViewport?.addEventListener('resize', positionKeyboardDone);
-  window.visualViewport?.addEventListener('scroll', positionKeyboardDone);
+  window.visualViewport?.addEventListener('resize', () => {
+    const active = document.activeElement;
+    if (active?.classList?.contains('nmt-short-input')) ensureShortAnswerVisible(active);
+  });
 
   document.addEventListener('pointerdown', (event) => {
     const active = document.activeElement;
-    if (active?.classList?.contains('nmt-short-input') && event.target !== active && event.target !== keyboardDone) {
-      if (!event.target.closest('.nmt-short-input-shell') && !event.target.closest('.nmt-keyboard-toolbar')) active.blur();
+    if (active?.classList?.contains('nmt-short-input') && event.target !== active && !event.target.closest?.('.nmt-inline-done')) {
+      if (!event.target.closest('.nmt-short-input-shell') && !event.target.closest('.nmt-short-actions')) active.blur();
     }
   }, { passive: true });
 
