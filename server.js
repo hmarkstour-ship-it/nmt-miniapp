@@ -3,6 +3,7 @@ import cors from 'cors';
 import crypto from 'crypto';
 import pg from 'pg';
 import 'dotenv/config';
+import { NMT_META, getTopic, getPublicTopics } from './nmt-knowledge.js';
 
 const { Pool } = pg;
 
@@ -122,69 +123,99 @@ async function recordAnswer(telegramId, isCorrect) {
   return rows[0] || null;
 }
 
-// ---- Теми НМТ з математики -------------------------------------------------
-
-const TOPICS = {
-  algebra: 'алгебраїчні вирази, рівняння та нерівності',
-  functions: 'функції та їхні властивості (лінійна, квадратична, графіки)',
-  geometry: 'планіметрія: трикутники, кола, чотирикутники, площі та периметри',
-  word_problems: 'текстові задачі (рух, спільна робота, суміші, відсотки)',
-  stats: 'елементи комбінаторики, теорії ймовірностей і статистики',
-  progressions: 'арифметична та геометрична прогресії',
-};
-
 // ---- Промпти ----------------------------------------------------------------
 
 function buildGeneratePrompt(topicKey, difficulty, avoidList = []) {
-  const topicDesc = TOPICS[topicKey] || TOPICS.algebra;
+  const topic = getTopic(topicKey);
 
   const avoidBlock = avoidList.length
-    ? `\n\nЦі завдання користувач уже бачив — придумай щось ІНШЕ, з іншими числами й іншим сюжетом, не перефразовуй їх:\n${avoidList
+    ? `
+
+Користувач уже бачив ці завдання. НЕ копіюй їх, НЕ перефразовуй і НЕ роби ту саму задачу з іншими числами:
+${avoidList
         .map((q, i) => `${i + 1}. ${q}`)
-        .join('\n')}`
+        .join('
+')}`
     : '';
 
-  return `Ти — укладач тестових завдань для НМТ (Національний мультипредметний тест) з математики в Україні.
+  return `Ти — укладач тренувальних завдань для НМТ-${NMT_META.year} з математики в Україні.
 
-Згенеруй ОДНЕ тестове завдання з вибором відповіді на тему: "${topicDesc}".
-Рівень складності: ${difficulty} (легкий / середній / складний).
+ОФІЦІЙНА РАМКА:
+- НМТ-${NMT_META.year} з математики базується на чинній програмі ЗНО з математики.
+- Офіційні великі розділи: ${NMT_META.officialSections.join('; ')}.
+- У реальному НМТ є 22 завдання. Поточний режим застосунку тренує формат "одна правильна відповідь із п'яти варіантів".
+- Не виходь за межі шкільної програми НМТ. Не використовуй університетську математику, олімпіадні трюки або матеріал, якого немає в програмі.
 
-Вимоги:
-- Завдання має відповідати формату та стилю реального НМТ з математики.
-- Рівно 4 варіанти відповіді, лише один правильний.
-- Числа мають бути "красивими" (без довгих десяткових дробів чи громіздких коренів), щоб задачу можна було розв'язати на чернетці за 1-2 хвилини.
-- Формули записуй у звичайному текстовому вигляді (наприклад: x^2, sqrt(9), (a+b)/2), без LaTeX.
-- Пояснення розв'язку — стисле, покрокове, українською мовою.
-- Щоразу вигадуй інший сюжет і інші числа, навіть у межах однієї теми — уникай шаблонних "класичних" прикладів з підручника.${avoidBlock}
+ОБРАНА ТЕМА: ${topic.label}
+Межі теми: ${topic.scope}.
 
-Поверни ЛИШЕ валідний JSON без жодного тексту навколо, точно в такому форматі:
+Дозволені навички для цієї теми:
+${topic.skills.map((x) => `- ${x}`).join('
+')}
+
+Типові ПАТЕРНИ завдань, на які можна орієнтуватися:
+${topic.patterns.map((x) => `- ${x}`).join('
+')}
+
+РІВЕНЬ СКЛАДНОСТІ: ${difficulty}.
+
+Згенеруй ОДНЕ нове тренувальне завдання в стилі НМТ.
+
+ЖОРСТКІ ВИМОГИ:
+- Рівно 5 варіантів відповіді.
+- Лише один варіант правильний.
+- Завдання має однозначно належати до обраної теми.
+- Правильна відповідь повинна точно бути серед 5 варіантів.
+- Неправильні варіанти мають бути правдоподібними результатами типових учнівських помилок, а не випадковими числами.
+- Не копіюй дослівно реальні завдання УЦОЯО та не відтворюй їх з мінімальними змінами.
+- Завдання має бути реально розв'язати приблизно за 1-3 хвилини на чернетці.
+- Уникай невиправдано громіздких обчислень і довгих десяткових дробів.
+- Формули записуй простим текстом: x^2, sqrt(9), log_2(8), sin(x), (a+b)/2. Без LaTeX.
+- У поясненні дай коротке, правильне, покрокове розв'язання українською мовою.
+- Для тем, де потрібна схема/рисунок, сформулюй задачу так, щоб її можна було однозначно розв'язати БЕЗ зображення.
+${avoidBlock}
+
+Поверни ЛИШЕ валідний JSON без markdown і без тексту навколо:
 {
   "question": "текст завдання",
-  "options": ["варіант 1", "варіант 2", "варіант 3", "варіант 4"],
+  "options": ["варіант 1", "варіант 2", "варіант 3", "варіант 4", "варіант 5"],
   "correct_index": 0,
   "explanation": "короткий покроковий розв'язок"
 }`;
 }
 
-function buildVerifyPrompt(q) {
-  return `Ти — незалежний перевіряючий. Розв'яжи це завдання з математики самостійно, з нуля, не довіряючи вказаній відповіді.
+function buildVerifyPrompt(q, topicKey) {
+  const topic = getTopic(topicKey);
+  const options = q.options.map((option, index) => `${index}: ${option}`).join('
+');
 
-Завдання: ${q.question}
+  return `Ти — незалежний редактор і перевіряючий завдань НМТ з математики.
+
+ОБРАНА ТЕМА: ${topic.label}
+Допустимі навички:
+${topic.skills.map((x) => `- ${x}`).join('
+')}
+
+Завдання:
+${q.question}
+
 Варіанти:
-0: ${q.options[0]}
-1: ${q.options[1]}
-2: ${q.options[2]}
-3: ${q.options[3]}
+${options}
 
-Вказаний як правильний індекс: ${q.correct_index}
+Автор позначив правильним індекс: ${q.correct_index}
 
-Розв'яжи задачу і визнач правильний індекс сам. Порівняй зі вказаним.
+Зроби три перевірки:
+1. Самостійно розв'яжи завдання та визнач фактичний правильний індекс.
+2. Перевір, чи завдання справді відповідає обраній темі.
+3. Перевір, чи воно відповідає шкільному рівню та рамкам НМТ, а не виходить у університетську/олімпіадну математику.
 
 Поверни ЛИШЕ валідний JSON:
 {
-  "actual_correct_index": число,
-  "is_correct": true або false,
-  "note": "коротка причина розбіжності, якщо вона є, інакше порожній рядок"
+  "actual_correct_index": 0,
+  "is_correct": true,
+  "topic_match": true,
+  "is_nmt_appropriate": true,
+  "note": "коротка причина, якщо є проблема; інакше порожній рядок"
 }`;
 }
 
@@ -281,12 +312,16 @@ function isValidQuestion(q) {
   return (
     q &&
     typeof q.question === 'string' &&
+    q.question.trim().length > 0 &&
     Array.isArray(q.options) &&
-    q.options.length === 4 &&
-    q.options.every((o) => typeof o === 'string') &&
+    q.options.length === 5 &&
+    q.options.every((o) => typeof o === 'string' && o.trim().length > 0) &&
+    new Set(q.options.map((o) => o.trim())).size === 5 &&
     Number.isInteger(q.correct_index) &&
     q.correct_index >= 0 &&
-    q.correct_index <= 3
+    q.correct_index <= 4 &&
+    typeof q.explanation === 'string' &&
+    q.explanation.trim().length > 0
   );
 }
 
@@ -317,7 +352,7 @@ function verifyTelegramInitData(initData) {
 // ---- Роути --------------------------------------------------------------------
 
 app.get('/api/topics', (req, res) => {
-  res.json(Object.entries(TOPICS).map(([key, label]) => ({ key, label })));
+  res.json(getPublicTopics());
 });
 
 // Повертає збережений прогрес користувача
@@ -381,7 +416,7 @@ app.post('/api/answer', async (req, res) => {
 // Генерує нове питання
 app.post('/api/generate-question', async (req, res) => {
   const {
-    topic = 'algebra',
+    topic = 'mixed',
     difficulty = 'середній',
     verify = true,
     initData,
@@ -423,15 +458,19 @@ app.post('/api/generate-question', async (req, res) => {
       try {
         const verification =
           await callGemini(
-            buildVerifyPrompt(question)
+            buildVerifyPrompt(question, topic)
           );
 
-        if (
-          verification.is_correct === false
-        ) {
+        const verificationFailed =
+          verification.is_correct !== true ||
+          verification.actual_correct_index !== question.correct_index ||
+          verification.topic_match !== true ||
+          verification.is_nmt_appropriate !== true;
+
+        if (verificationFailed) {
           return res.status(422).json({
             error:
-              'Завдання не пройшло самоперевірку — можлива помилка в правильній відповіді. Спробуйте ще раз.',
+              'Завдання не пройшло перевірку на правильність або відповідність НМТ. Спробуйте ще раз.',
             details: verification,
           });
         }

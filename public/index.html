@@ -269,6 +269,17 @@
 
   // Бекенд лежить на тому ж домені, що й фронтенд (express.static)
   const API_BASE = '';
+  const FETCH_TIMEOUT_MS = 25000;
+
+  async function fetchWithTimeout(url, options = {}) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    try {
+      return await fetch(url, { ...options, signal: controller.signal });
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
 
   const state = {
     correct: 0,
@@ -303,10 +314,19 @@
   }
 
   function renderQuestion(q) {
-    state.currentQuestion = q;
-    state.answered = false;
+  state.currentQuestion = q;
+  state.answered = false;
 
-    const letters = ['А', 'Б', 'В', 'Г'];
+  // Підтягуємо збережений прогрес із Supabase
+  if (q.progress) {
+    state.correct = Number(q.progress.correct) || 0;
+    state.wrong = Number(q.progress.wrong) || 0;
+    updateStreak();
+
+    console.log('PROGRESS LOADED:', q.progress);
+  }
+
+    const letters = ['А', 'Б', 'В', 'Г', 'Д'];
 
     cardArea.innerHTML = `
       <div class="card">
@@ -336,60 +356,68 @@
   }
 
   async function handleAnswer(selectedIndex) {
-    if (state.answered) return;
-    state.answered = true;
+  if (state.answered) return;
+  state.answered = true;
 
-    const q = state.currentQuestion;
-    const options = cardArea.querySelectorAll('.option');
-    options.forEach((btn) => (btn.disabled = true));
+  const q = state.currentQuestion;
+  const options = cardArea.querySelectorAll('.option');
+  options.forEach((btn) => (btn.disabled = true));
 
-    const isCorrect = selectedIndex === q.correct_index;
+  const isCorrect = selectedIndex === q.correct_index;
 
-    options[selectedIndex].classList.add(isCorrect ? 'correct' : 'wrong');
+  options[selectedIndex].classList.add(isCorrect ? 'correct' : 'wrong');
 
-    if (!isCorrect) {
-      options[q.correct_index].classList.add('correct');
-    }
+  if (!isCorrect) {
+    options[q.correct_index].classList.add('correct');
+  }
 
-    try {
-      const res = await fetch(`${API_BASE}/api/answer`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          initData: tg?.initData || null,
-          isCorrect
-        })
-      });
+  if (isCorrect) {
+    tg?.HapticFeedback?.notificationOccurred('success');
+  } else {
+    tg?.HapticFeedback?.notificationOccurred('error');
+  }
 
-      const data = await res.json();
+  try {
+    const res = await fetchWithTimeout(`${API_BASE}/api/answer`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        initData: tg?.initData || null,
+        isCorrect
+      }),
+    });
 
-      if (data.saved) {
-        state.correct = Number(data.correct_count) || 0;
-        state.wrong = Number(data.wrong_count) || 0;
-      } else {
-        if (isCorrect) state.correct++;
-        else state.wrong++;
-      }
-    } catch (err) {
-      console.error('ANSWER ERROR:', err);
+    const data = await res.json();
 
+    if (data.saved) {
+      state.correct = Number(data.correct_count) || 0;
+      state.wrong = Number(data.wrong_count) || 0;
+    } else {
+      // Якщо сервер не зберіг — хоча б показуємо локально
       if (isCorrect) state.correct++;
       else state.wrong++;
     }
 
-    updateStreak();
+  } catch (err) {
+    console.warn('Не вдалося зберегти відповідь:', err);
 
-    document.getElementById('explanation').classList.add('show');
-
-    const nextBtn = document.getElementById('nextBtn');
-    nextBtn.disabled = false;
-    nextBtn.textContent = 'Наступне завдання →';
+    if (isCorrect) state.correct++;
+    else state.wrong++;
   }
+
+  updateStreak();
+
+  document.getElementById('explanation').classList.add('show');
+
+  const nextBtn = document.getElementById('nextBtn');
+  nextBtn.disabled = false;
+  nextBtn.textContent = 'Наступне завдання →';
+}
 
   async function loadQuestion() {
     renderLoading('Генеруємо завдання…');
     try {
-      const res = await fetch(`${API_BASE}/api/generate-question`, {
+      const res = await fetchWithTimeout(`${API_BASE}/api/generate-question`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -409,39 +437,89 @@
 
       renderQuestion(data);
     } catch (err) {
-      renderError('Немає з\'єднання з сервером. Перевірте, чи запущений бекенд.');
+      if (err.name === 'AbortError') {
+        renderError('Сервер не відповів вчасно (тайм-аут). Спробуйте ще раз.');
+      } else {
+        renderError('Немає з\'єднання з сервером. Перевірте, чи запущений бекенд.');
+      }
     }
+  }
+
+  const sleepMs = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  async function getTelegramInitData() {
+    // Чекаємо до 3 секунд, поки Telegram віддасть initData
+    for (let i = 0; i < 30; i++) {
+      const initData = tg?.initData || '';
+
+      if (initData.length > 0) {
+        console.log('Telegram initData ready:', initData.length);
+        return initData;
+      }
+
+      await sleepMs(100);
+    }
+
+    return tg?.initData || '';
   }
 
   async function loadProgress() {
     try {
-      const res = await fetch(`${API_BASE}/api/progress`, {
+      const initData = await getTelegramInitData();
+
+      console.log('LOAD PROGRESS initData:', initData.length);
+
+      if (!initData) {
+        console.warn('Telegram initData порожній — прогрес поки не завантажено');
+        return false;
+      }
+
+      const res = await fetchWithTimeout(`${API_BASE}/api/progress`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({
-          initData: tg?.initData || null
-        })
+          initData
+        }),
       });
 
       const data = await res.json();
 
-      state.correct = Number(data.correct) || 0;
-      state.wrong = Number(data.wrong) || 0;
+      console.log('PROGRESS FROM SERVER:', data);
+
+      if (!res.ok) {
+        throw new Error('Помилка /api/progress');
+      }
+
+      state.correct = Number(data.correct ?? 0);
+      state.wrong = Number(data.wrong ?? 0);
 
       updateStreak();
 
+      return true;
+
     } catch (err) {
-      console.error('PROGRESS ERROR:', err);
+      console.error('Помилка завантаження прогресу:', err);
+      return false;
     }
   }
 
   async function loadTopics() {
     try {
-      const res = await fetch(`${API_BASE}/api/topics`);
+      const res = await fetchWithTimeout(`${API_BASE}/api/topics`);
       const topics = await res.json();
-      topicSelect.innerHTML = topics.map((t) => `<option value="${t.key}">${t.label}</option>`).join('');
-    } catch {
-      topicSelect.innerHTML = `<option value="algebra">алгебраїчні вирази, рівняння та нерівності</option>`;
+
+      topicSelect.innerHTML = topics
+        .map((t) => `<option value="${t.key}">${t.label}</option>`)
+        .join('');
+
+    } catch (err) {
+      console.error('Помилка завантаження тем:', err);
+
+      topicSelect.innerHTML = `
+        <option value="mixed">🎯 Змішані завдання НМТ</option>
+      `;
     }
   }
 
@@ -449,15 +527,26 @@
 
   function escapeHtml(str) {
     const div = document.createElement('div');
-    div.textContent = str;
+    div.textContent = str ?? '';
     return div.innerHTML;
   }
 
   (async function init() {
     await loadTopics();
-    await loadProgress();
+
+    // Спочатку намагаємось підтягнути збережений прогрес
+    const progressLoaded = await loadProgress();
+
+    // Потім генеруємо перше питання
     await loadQuestion();
+
+    // Якщо Telegram не встиг віддати initData —
+    // пробуємо підтягнути прогрес ще раз
+    if (!progressLoaded) {
+      await loadProgress();
+    }
   })();
+
 </script>
 
 </body>
