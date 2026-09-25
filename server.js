@@ -167,8 +167,12 @@ ${topic.patterns.map((x) => `- ${x}`).join('\n')}
 - Не копіюй дослівно реальні завдання УЦОЯО та не відтворюй їх з мінімальними змінами.
 - Завдання має бути реально розв'язати приблизно за 1-3 хвилини на чернетці.
 - Уникай невиправдано громіздких обчислень і довгих десяткових дробів.
-- Формули записуй простим текстом: x^2, sqrt(9), log_2(8), sin(x), (a+b)/2. Без LaTeX.
-- У поясненні дай коротке, правильне, покрокове розв'язання українською мовою.
+- УСЮ математику оформлюй у LaTeX і завжди бери математичний вираз у delimiters \( ... \) для рядкового запису або \[ ... \] для окремого великого виразу.
+- НІКОЛИ не показуй учневі програмістський запис на кшталт sqrt(9), x^2, a/b, *, <=, >=, log_2(8).
+- Використовуй нормальний шкільний математичний вигляд: \(\sqrt{9}\), \(x^{2}\), \(\frac{a}{b}\), \(a \cdot b\), \(x \le 5\), \(\log_{2} 8\).
+- У видимому українському тексті десятковий роздільник записуй комою: 2,5; 0,75. Крапку використовуй лише там, де це не десятковий дріб.
+- Звичайний текст пиши українською, а формули — LaTeX усередині \( ... \).
+- У поясненні дай коротке, правильне, покрокове розв'язання українською мовою з таким самим акуратним математичним оформленням.
 - Для тем, де потрібна схема/рисунок, сформулюй задачу так, щоб її можна було однозначно розв'язати БЕЗ зображення.
 ${avoidBlock}
 
@@ -203,6 +207,7 @@ ${options}
 1. Самостійно розв'яжи завдання та визнач фактичний правильний індекс.
 2. Перевір, чи завдання справді відповідає обраній темі.
 3. Перевір, чи воно відповідає шкільному рівню та рамкам НМТ, а не виходить у університетську/олімпіадну математику.
+4. Перевір математичне оформлення: учень не повинен бачити сирі записи sqrt(...), x^2, a/b, *, <=, >= або іншу програмістську нотацію. Формули мають бути коректним LaTeX у \( ... \) або \[ ... \].
 
 Поверни ЛИШЕ валідний JSON:
 {
@@ -210,6 +215,7 @@ ${options}
   "is_correct": true,
   "topic_match": true,
   "is_nmt_appropriate": true,
+  "math_format_ok": true,
   "note": "коротка причина, якщо є проблема; інакше порожній рядок"
 }`;
 }
@@ -318,6 +324,66 @@ function isValidQuestion(q) {
     typeof q.explanation === 'string' &&
     q.explanation.trim().length > 0
   );
+}
+
+
+// ---- Нормалізація математичного запису ---------------------------------------
+// Страховка на випадок, якщо модель інколи поверне старий текстовий формат.
+// Основний формат — LaTeX у \( ... \) / \[ ... \], а ці перетворення ловлять
+// найтиповіші записи на кшталт sqrt(9), log_2(8), (a+b)/2 тощо.
+
+function normalizeLegacyMathNotation(value) {
+  if (typeof value !== 'string') return value;
+
+  let text = value;
+
+  // sqrt(25) -> \(\sqrt{25}\)
+  text = text.replace(/(?<!\\)sqrt\(([^()]+)\)/gi, (_, inside) =>
+    `\\(\\sqrt{${inside}}\\)`
+  );
+
+  // log_2(8) -> \(\log_{2}\left(8\right)\)
+  text = text.replace(/(?<!\\)log_([0-9a-zA-Z]+)\(([^()]+)\)/g, (_, base, inside) =>
+    `\\(\\log_{${base}}\\left(${inside}\\right)\\)`
+  );
+
+  // (a+b)/2 -> \(\frac{a+b}{2}\)
+  text = text.replace(/\(([^()]+)\)\s*\/\s*([0-9a-zA-Z]+)/g, (_, numerator, denominator) =>
+    `\\(\\frac{${numerator}}{${denominator}}\\)`
+  );
+
+  // 3/4 або a/b -> \(\frac{3}{4}\)
+  text = text.replace(/\b([0-9a-zA-Z]+)\s*\/\s*([0-9a-zA-Z]+)\b/g, (_, numerator, denominator) =>
+    `\\(\\frac{${numerator}}{${denominator}}\\)`
+  );
+
+  // x^2 -> \(x^{2}\) (для простих legacy-випадків)
+  text = text.replace(/\b([a-zA-Z0-9]+)\^(-?[0-9]+)\b/g, (_, base, exponent) =>
+    `\\(${base}^{${exponent}}\\)`
+  );
+
+  // Зрозумілі символи навіть якщо це не було оформлено як LaTeX.
+  text = text
+    .replace(/<=/g, '≤')
+    .replace(/>=/g, '≥')
+    .replace(/!=/g, '≠')
+    .replace(/\s\*\s/g, ' · ')
+    .replace(/\bpi\b/gi, 'π');
+
+  return text;
+}
+
+function normalizeQuestionMath(question) {
+  if (!question || typeof question !== 'object') return question;
+
+  return {
+    ...question,
+    question: normalizeLegacyMathNotation(question.question),
+    options: Array.isArray(question.options)
+      ? question.options.map(normalizeLegacyMathNotation)
+      : question.options,
+    explanation: normalizeLegacyMathNotation(question.explanation),
+  };
 }
 
 // ---- Перевірка Telegram initData -----------------------------------
@@ -432,13 +498,15 @@ app.post('/api/generate-question', async (req, res) => {
         )
       : [];
 
-    const question = await callGemini(
+    const rawQuestion = await callGemini(
       buildGeneratePrompt(
         topic,
         difficulty,
         avoidList
       )
     );
+
+    const question = normalizeQuestionMath(rawQuestion);
 
     if (!isValidQuestion(question)) {
       return res.status(502).json({
@@ -460,7 +528,8 @@ app.post('/api/generate-question', async (req, res) => {
           verification.is_correct !== true ||
           verification.actual_correct_index !== question.correct_index ||
           verification.topic_match !== true ||
-          verification.is_nmt_appropriate !== true;
+          verification.is_nmt_appropriate !== true ||
+          verification.math_format_ok !== true;
 
         if (verificationFailed) {
           return res.status(422).json({

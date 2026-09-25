@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>НМТ Математика</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -302,11 +305,30 @@
   }
 
   .question-text {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 16px;
-    line-height: 1.55;
+    font-family: "Myriad Pro", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 16.5px;
+    line-height: 1.62;
     margin-bottom: 22px;
     white-space: pre-wrap;
+  }
+
+  .question-text .katex,
+  .option .katex,
+  .explanation .katex {
+    font-size: 1.08em;
+  }
+
+  .question-text .katex-display,
+  .explanation .katex-display {
+    margin: 12px 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 3px 0;
+  }
+
+  .option > span:last-child {
+    min-width: 0;
+    line-height: 1.5;
   }
 
   .options {
@@ -734,6 +756,32 @@
     setTimeout(() => startupScreen.remove(), 520);
   }
 
+  function renderMathSafely(root, attempt = 0) {
+    if (!root) return;
+
+    if (typeof window.renderMathInElement === 'function') {
+      try {
+        window.renderMathInElement(root, {
+          delimiters: [
+            { left: '$$', right: '$$', display: true },
+            { left: '\\[', right: '\\]', display: true },
+            { left: '\\(', right: '\\)', display: false }
+          ],
+          throwOnError: false,
+          strict: false,
+        });
+        return;
+      } catch (err) {
+        console.warn('KaTeX render error:', err);
+      }
+    }
+
+    // CDN може завантажитися на долю секунди пізніше за основний HTML.
+    if (attempt < 20) {
+      setTimeout(() => renderMathSafely(root, attempt + 1), 120);
+    }
+  }
+
 
   const FALLBACK_TOPICS = [
     { key: 'mixed', label: '🎯 Змішані завдання НМТ' },
@@ -830,6 +878,8 @@
         </div>
         <button class="primary-btn" id="nextBtn" disabled>Оберіть відповідь</button>
       </div>`;
+
+    renderMathSafely(cardArea);
 
     cardArea.querySelectorAll('.option').forEach((btn) => {
       btn.addEventListener('click', () => handleAnswer(Number(btn.dataset.index)));
