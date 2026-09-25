@@ -5,6 +5,7 @@ import pg from 'pg';
 import 'dotenv/config';
 import { NMT_META, getTopic, getPublicTopics } from './nmt-knowledge.js';
 import { GENERATOR_VERSION, generateDeterministicQuestion, validateDeterministicQuestion } from './deterministic-math.js';
+import { NMT_EXAM_META, generateNmtExam, sanitizeExamQuestions, gradeNmtExam } from './nmt-exam-engine.js';
 
 const { Pool } = pg;
 
@@ -136,6 +137,28 @@ async function initDb() {
       question_snapshot JSONB,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
+  `);
+
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS nmt_exam_attempts (
+      id BIGSERIAL PRIMARY KEY,
+      telegram_id BIGINT NOT NULL REFERENCES users(telegram_id),
+      status TEXT NOT NULL DEFAULT 'in_progress',
+      questions JSONB NOT NULL,
+      answers JSONB NOT NULL DEFAULT '{}'::jsonb,
+      started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      finished_at TIMESTAMPTZ,
+      raw_score INT,
+      scaled_score INT,
+      weak_topics JSONB,
+      result_json JSONB
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_nmt_exam_attempts_user_status
+    ON nmt_exam_attempts (telegram_id, status, started_at DESC);
   `);
 
   await pool.query(`
@@ -366,6 +389,66 @@ function calculateStreaks(dayKeys = []) {
   }
 
   return { current, best };
+}
+
+
+// ---- Пробний НМТ --------------------------------------------------------------
+
+function nmtRemainingSeconds(startedAt) {
+  const elapsed = Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000);
+  return Math.max(0, NMT_EXAM_META.durationMinutes * 60 - elapsed);
+}
+
+async function getActiveNmtAttempt(telegramId) {
+  if (!pool || !telegramId) return null;
+  const { rows } = await pool.query(
+    `SELECT * FROM nmt_exam_attempts
+     WHERE telegram_id = $1 AND status = 'in_progress'
+     ORDER BY started_at DESC
+     LIMIT 1`,
+    [telegramId]
+  );
+  return rows[0] || null;
+}
+
+async function getNmtAttemptById(telegramId, attemptId) {
+  if (!pool || !telegramId) return null;
+  const { rows } = await pool.query(
+    `SELECT * FROM nmt_exam_attempts WHERE id = $1 AND telegram_id = $2 LIMIT 1`,
+    [attemptId, telegramId]
+  );
+  return rows[0] || null;
+}
+
+function nmtAttemptPayload(attempt) {
+  if (!attempt) return null;
+  return {
+    id: Number(attempt.id),
+    status: attempt.status,
+    questions: sanitizeExamQuestions(attempt.questions || []),
+    answers: attempt.answers || {},
+    started_at: attempt.started_at,
+    duration_seconds: NMT_EXAM_META.durationMinutes * 60,
+    remaining_seconds: nmtRemainingSeconds(attempt.started_at),
+    meta: NMT_EXAM_META,
+  };
+}
+
+async function finishNmtAttempt(attempt) {
+  if (!attempt) return null;
+  if (attempt.status === 'finished' && attempt.result_json) return attempt.result_json;
+
+  const result = gradeNmtExam(attempt.questions || [], attempt.answers || {});
+  if (pool) {
+    await pool.query(
+      `UPDATE nmt_exam_attempts
+       SET status = 'finished', finished_at = now(), raw_score = $2, scaled_score = $3,
+           weak_topics = $4::jsonb, result_json = $5::jsonb
+       WHERE id = $1`,
+      [attempt.id, result.raw_score, result.scaled_score, JSON.stringify(result.weak_topics), JSON.stringify(result)]
+    );
+  }
+  return result;
 }
 
 // ---- Промпти ----------------------------------------------------------------
@@ -1037,6 +1120,111 @@ app.post('/api/answer', async (req, res) => {
   }
 });
 
+
+
+// ---- Пробний НМТ: 15 вибір + 3 відповідність + 4 коротка відповідь ----------
+
+app.post('/api/nmt/resume', async (req, res) => {
+  const { initData } = req.body;
+  try {
+    const telegramUser = verifyTelegramInitData(initData);
+    if (!telegramUser?.id) return res.status(401).json({ error: 'Потрібно відкрити застосунок через Telegram.' });
+    await getOrCreateUser(telegramUser);
+    const attempt = await getActiveNmtAttempt(telegramUser.id);
+    res.json({ attempt: nmtAttemptPayload(attempt) });
+  } catch (err) {
+    console.error('NMT RESUME ERROR:', err);
+    res.status(500).json({ error: 'Не вдалося перевірити активний пробний НМТ.' });
+  }
+});
+
+app.post('/api/nmt/start', async (req, res) => {
+  const { initData, forceNew = false } = req.body;
+  try {
+    const telegramUser = verifyTelegramInitData(initData);
+    if (!telegramUser?.id) return res.status(401).json({ error: 'Потрібно відкрити застосунок через Telegram.' });
+    await getOrCreateUser(telegramUser);
+
+    const current = await getActiveNmtAttempt(telegramUser.id);
+    if (current && !forceNew) {
+      return res.json({ attempt: nmtAttemptPayload(current), resumed: true });
+    }
+
+    if (current && forceNew && pool) {
+      await pool.query(`UPDATE nmt_exam_attempts SET status = 'abandoned', finished_at = now() WHERE id = $1`, [current.id]);
+    }
+
+    const questions = generateNmtExam();
+    if (!pool) {
+      return res.status(503).json({ error: 'База даних тимчасово недоступна.' });
+    }
+
+    const { rows } = await pool.query(
+      `INSERT INTO nmt_exam_attempts (telegram_id, questions, answers)
+       VALUES ($1, $2::jsonb, '{}'::jsonb)
+       RETURNING *`,
+      [telegramUser.id, JSON.stringify(questions)]
+    );
+
+    res.json({ attempt: nmtAttemptPayload(rows[0]), resumed: false });
+  } catch (err) {
+    console.error('NMT START ERROR:', err);
+    res.status(500).json({ error: 'Не вдалося створити пробний НМТ.' });
+  }
+});
+
+app.post('/api/nmt/save-answer', async (req, res) => {
+  const { initData, attemptId, index, answer } = req.body;
+  try {
+    const telegramUser = verifyTelegramInitData(initData);
+    if (!telegramUser?.id) return res.status(401).json({ error: 'Потрібно відкрити застосунок через Telegram.' });
+    const attempt = await getNmtAttemptById(telegramUser.id, Number(attemptId));
+    if (!attempt || attempt.status !== 'in_progress') return res.status(404).json({ error: 'Активний тест не знайдено.' });
+
+    const i = Number(index);
+    if (!Number.isInteger(i) || i < 0 || i >= 22) return res.status(400).json({ error: 'Некоректний номер завдання.' });
+
+    await pool.query(
+      `UPDATE nmt_exam_attempts
+       SET answers = COALESCE(answers, '{}'::jsonb) || jsonb_build_object($2::text, $3::jsonb)
+       WHERE id = $1`,
+      [attempt.id, String(i), JSON.stringify(answer ?? null)]
+    );
+
+    res.json({ saved: true });
+  } catch (err) {
+    console.error('NMT SAVE ANSWER ERROR:', err);
+    res.status(500).json({ saved: false, error: 'Не вдалося зберегти відповідь.' });
+  }
+});
+
+app.post('/api/nmt/finish', async (req, res) => {
+  const { initData, attemptId, answers = null } = req.body;
+  try {
+    const telegramUser = verifyTelegramInitData(initData);
+    if (!telegramUser?.id) return res.status(401).json({ error: 'Потрібно відкрити застосунок через Telegram.' });
+    let attempt = await getNmtAttemptById(telegramUser.id, Number(attemptId));
+    if (!attempt) return res.status(404).json({ error: 'Пробний НМТ не знайдено.' });
+
+    if (attempt.status === 'finished' && attempt.result_json) {
+      return res.json({ result: attempt.result_json });
+    }
+
+    if (answers && typeof answers === 'object' && !Array.isArray(answers)) {
+      const { rows } = await pool.query(
+        `UPDATE nmt_exam_attempts SET answers = $2::jsonb WHERE id = $1 RETURNING *`,
+        [attempt.id, JSON.stringify(answers)]
+      );
+      attempt = rows[0];
+    }
+
+    const result = await finishNmtAttempt(attempt);
+    res.json({ result });
+  } catch (err) {
+    console.error('NMT FINISH ERROR:', err);
+    res.status(500).json({ error: 'Не вдалося завершити пробний НМТ.' });
+  }
+});
 
 // Профіль користувача та статистика по темах
 app.post('/api/profile', async (req, res) => {

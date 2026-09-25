@@ -8,7 +8,7 @@ const tg = window.Telegram?.WebApp;
   const FETCH_TIMEOUT_MS = 30000;
   const QUESTION_TIMEOUT_MS = 55000;
   const BACKEND_WAKE_MAX_MS = 75000;
-  const BUILD_VERSION = 'performance-v3.0.0';
+  const BUILD_VERSION = 'nmt-mode-v1.0.0';
   console.log('[NMT build]', BUILD_VERSION);
 
   async function fetchWithTimeout(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS) {
@@ -82,7 +82,7 @@ const tg = window.Telegram?.WebApp;
     batchTopic: null,
     batchToken: 0,
     currentView: 'tests',
-    viewScroll: { tests: 0, cheatsheet: 0, profile: 0 },
+    viewScroll: { tests: 0, nmt: 0, cheatsheet: 0, profile: 0 },
   };
 
   let profileLoaded = false;
@@ -100,6 +100,7 @@ const tg = window.Telegram?.WebApp;
   const topicSheetClose = document.getElementById('topicSheetClose');
   const startupScreen = document.getElementById('startupScreen');
   const testView = document.getElementById('testView');
+  const nmtView = document.getElementById('nmtView');
   const cheatView = document.getElementById('cheatView');
   const profileView = document.getElementById('profileView');
   const cheatList = document.getElementById('cheatList');
@@ -108,8 +109,8 @@ const tg = window.Telegram?.WebApp;
   const navIndicator = document.getElementById('navIndicator');
   const navItems = Array.from(document.querySelectorAll('.liquid-nav-item'));
   const appViewport = document.getElementById('appViewport');
-  const VIEW_ORDER = ['tests', 'cheatsheet', 'profile'];
-  const VIEW_MAP = { tests: testView, cheatsheet: cheatView, profile: profileView };
+  const VIEW_ORDER = ['tests', 'nmt', 'cheatsheet', 'profile'];
+  const VIEW_MAP = { tests: testView, nmt: nmtView, cheatsheet: cheatView, profile: profileView };
   const reportOverlay = document.getElementById('reportOverlay');
   const reportClose = document.getElementById('reportClose');
   const reportReasons = document.getElementById('reportReasons');
@@ -231,16 +232,24 @@ const tg = window.Telegram?.WebApp;
   }
 
   function updateNavIndicator(target) {
-    const index = Math.max(0, VIEW_ORDER.indexOf(target));
-    navIndicator.classList.remove('cheatsheet', 'profile');
-    navIndicator.style.transform = `translate3d(calc(${index * 100}% + ${index * 8}px),0,0)`;
+    const activeBtn = navItems.find((btn) => btn.dataset.view === target) || navItems[0];
 
     navItems.forEach((btn) => {
-      const active = btn.dataset.view === target;
+      const active = btn === activeBtn;
       btn.classList.toggle('active', active);
       if (active) btn.setAttribute('aria-current', 'page');
       else btn.removeAttribute('aria-current');
     });
+
+    if (navIndicator && activeBtn) {
+      requestAnimationFrame(() => {
+        const track = activeBtn.parentElement;
+        const baseLeft = 6;
+        const x = Math.max(0, activeBtn.offsetLeft - baseLeft);
+        navIndicator.style.width = `${activeBtn.offsetWidth}px`;
+        navIndicator.style.transform = `translate3d(${x}px,0,0)`;
+      });
+    }
   }
 
   function switchView(viewName) {
@@ -261,6 +270,7 @@ const tg = window.Telegram?.WebApp;
     });
 
     if (target === 'profile') loadProfilePage();
+    if (target === 'nmt') window.NMTExamController?.onViewOpen?.();
   }
 
   async function loadProfilePage() {
@@ -1018,6 +1028,8 @@ const tg = window.Telegram?.WebApp;
   navItems.forEach((btn) => {
     btn.addEventListener('click', () => switchView(btn.dataset.view || 'tests'));
   });
+
+  window.addEventListener('resize', () => updateNavIndicator(state.currentView), { passive: true });
   reportClose.addEventListener('click', closeReport);
   reportOverlay.addEventListener('click', (event) => { if (event.target === reportOverlay) closeReport(); });
   reportReasons.querySelectorAll('.report-reason').forEach((btn) => {

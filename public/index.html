@@ -7,13 +7,13 @@
 <meta http-equiv="Pragma" content="no-cache" />
 <meta http-equiv="Expires" content="0" />
 <title>НМТ Математика</title>
-<meta name="app-build" content="performance-v3.0.0">
+<meta name="app-build" content="nmt-mode-v1.0.0">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
 
-<link rel="stylesheet" href="./styles.css?v=perf3">
+<link rel="stylesheet" href="./styles.css?v=nmt1">
 </head>
 <body>
 
@@ -62,6 +62,26 @@
     </div>
   </div>
 </div>
+
+
+<section class="nmt-view view-page is-right" id="nmtView" aria-hidden="true">
+  <div class="nmt-shell">
+    <div class="nmt-page-head">
+      <div>
+        <div class="nmt-kicker">СИМУЛЯЦІЯ НМТ · 2026</div>
+        <h2>Пробний НМТ</h2>
+        <p>22 завдання у форматі реального тесту. Результат і розбір — лише після завершення.</p>
+      </div>
+      <div class="nmt-page-mark" aria-hidden="true">200</div>
+    </div>
+    <div id="nmtContent" class="nmt-content">
+      <div class="nmt-loading-card">
+        <div class="spinner"></div>
+        <span>Перевіряємо активний тест…</span>
+      </div>
+    </div>
+  </div>
+</section>
 
 
 <section class="cheat-view view-page is-right" id="cheatView" aria-hidden="true">
@@ -246,33 +266,47 @@
   </section>
 </div>
 
+
+<div class="nmt-finish-overlay" id="nmtFinishOverlay" aria-hidden="true">
+  <section class="nmt-finish-panel" role="dialog" aria-modal="true" aria-label="Завершити пробний НМТ">
+    <div class="topic-sheet-handle"></div>
+    <div class="nmt-finish-icon">✓</div>
+    <h3>Завершити тест?</h3>
+    <p id="nmtFinishSummary">Перевір відповіді перед завершенням.</p>
+    <div class="nmt-finish-actions">
+      <button class="secondary-btn" id="nmtFinishCancel" type="button">Повернутися</button>
+      <button class="primary-btn" id="nmtFinishConfirm" type="button">Завершити й побачити результат</button>
+    </div>
+  </section>
+</div>
+
+<button class="nmt-keyboard-done" id="nmtKeyboardDone" type="button">Готово ✓</button>
+
 <nav class="liquid-bottom-nav" id="bottomNav" aria-label="Навігація застосунку">
   <div class="liquid-nav-track">
     <div class="liquid-nav-indicator" id="navIndicator" aria-hidden="true"></div>
     <button class="liquid-nav-item active" type="button" data-view="tests" aria-current="page">
-      <span class="liquid-nav-icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none"><path d="M7 4h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/><path d="M9 9h6M9 13h6M9 17h3"/></svg>
-      </span>
+      <span class="liquid-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M7 4h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/><path d="M9 9h6M9 13h6M9 17h3"/></svg></span>
       <span>Тести</span>
     </button>
+    <button class="liquid-nav-item" type="button" data-view="nmt">
+      <span class="liquid-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M5 5.5A2.5 2.5 0 0 1 7.5 3h9A2.5 2.5 0 0 1 19 5.5v13A2.5 2.5 0 0 1 16.5 21h-9A2.5 2.5 0 0 1 5 18.5v-13Z"/><path d="m8 9 1.4 1.4L12 7.8M14 9h2M8 14l1.4 1.4L12 12.8M14 14h2"/></svg></span>
+      <span>НМТ</span>
+    </button>
     <button class="liquid-nav-item" type="button" data-view="cheatsheet">
-      <span class="liquid-nav-icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none"><path d="M6.5 4.5h8.25A2.75 2.75 0 0 1 17.5 7.25V19.5H8.75A2.75 2.75 0 0 1 6 16.75V5a.5.5 0 0 1 .5-.5Z"/><path d="M8.5 8h6M8.5 11.5h4M17.5 7.5h1a1.5 1.5 0 0 1 1.5 1.5v10.5h-2.5"/></svg>
-      </span>
+      <span class="liquid-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M6.5 4.5h8.25A2.75 2.75 0 0 1 17.5 7.25V19.5H8.75A2.75 2.75 0 0 1 6 16.75V5a.5.5 0 0 1 .5-.5Z"/><path d="M8.5 8h6M8.5 11.5h4M17.5 7.5h1a1.5 1.5 0 0 1 1.5 1.5v10.5h-2.5"/></svg></span>
       <span>Шпаргалка</span>
     </button>
     <button class="liquid-nav-item" type="button" data-view="profile">
-      <span class="liquid-nav-icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.5"/><path d="M5.5 20c.6-4 3-6 6.5-6s5.9 2 6.5 6"/></svg>
-      </span>
+      <span class="liquid-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.5"/><path d="M5.5 20c.6-4 3-6 6.5-6s5.9 2 6.5 6"/></svg></span>
       <span>Профіль</span>
     </button>
   </div>
 </nav>
-
 <div class="toast" id="toast"></div>
 
-<script src="./app.js?v=perf3" defer></script>
+<script src="./nmt-exam.js?v=nmt1" defer></script>
+<script src="./app.js?v=nmt1" defer></script>
 
 </body>
 </html>
