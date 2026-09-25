@@ -175,7 +175,7 @@ ${topic.patterns.map((x) => `- ${x}`).join('\n')}
 - Не починай формулу зі звичайної дужки перед LaTeX-командою. Правильно: \\(\\left(\\frac{5}{6}-\\frac{3}{4}\\right)\\cdot 24\\). Неправильно: (\\left(\\frac{5}{6}... ).
 - У видимому українському тексті десятковий роздільник записуй комою: 2,5; 0,75. Крапку використовуй лише там, де це не десятковий дріб.
 - Звичайний текст пиши українською, а формули — LaTeX усередині \\( ... \\).
-- У поясненні дай коротке, правильне, покрокове розв'язання українською мовою з таким самим акуратним математичним оформленням.
+- Пояснення ОБОВ'ЯЗКОВО поділи на 2-5 коротких послідовних кроків. Кожен крок має бути самодостатнім і зрозумілим учневі: спочатку дія/правило, потім обчислення, в останньому кроці — висновок. Не пиши суцільний абзац.
 - Для тем, де потрібна схема/рисунок, сформулюй задачу так, щоб її можна було однозначно розв'язати БЕЗ зображення.
 ${avoidBlock}
 
@@ -184,7 +184,7 @@ ${avoidBlock}
   "question": "текст завдання",
   "options": ["варіант 1", "варіант 2", "варіант 3", "варіант 4", "варіант 5"],
   "correct_index": 0,
-  "explanation": "короткий покроковий розв'язок"
+  "explanation_steps": ["перший крок", "другий крок", "висновок"]
 }`;
 }
 
@@ -420,8 +420,10 @@ function isValidQuestion(q) {
     Number.isInteger(q.correct_index) &&
     q.correct_index >= 0 &&
     q.correct_index <= 4 &&
-    typeof q.explanation === 'string' &&
-    q.explanation.trim().length > 0
+    Array.isArray(q.explanation_steps) &&
+    q.explanation_steps.length >= 2 &&
+    q.explanation_steps.length <= 6 &&
+    q.explanation_steps.every((step) => typeof step === 'string' && step.trim().length > 0)
   );
 }
 
@@ -472,8 +474,46 @@ function normalizeLegacyMathNotation(value) {
   return text;
 }
 
+function normalizeExplanationSteps(question) {
+  if (!question || typeof question !== 'object') return [];
+
+  if (Array.isArray(question.explanation_steps)) {
+    return question.explanation_steps
+      .filter((step) => typeof step === 'string' && step.trim())
+      .map((step) => step.trim())
+      .slice(0, 6);
+  }
+
+  // Backward compatibility: якщо модель раптом повернула старе поле explanation,
+  // перетворюємо його на послідовні кроки замість того, щоб показувати суцільний текст.
+  if (typeof question.explanation === 'string' && question.explanation.trim()) {
+    const raw = question.explanation.trim();
+
+    const byLines = raw
+      .split(/\n+|(?=\s*\d+[.)]\s+)/)
+      .map((part) => part.replace(/^\s*\d+[.)]\s*/, '').trim())
+      .filter(Boolean);
+
+    if (byLines.length >= 2) return byLines.slice(0, 6);
+
+    const bySentences = raw
+      .split(/(?<=[.!?])\s+(?=[А-ЯІЇЄA-Z0-9\(])/u)
+      .map((part) => part.trim())
+      .filter(Boolean);
+
+    if (bySentences.length >= 2) return bySentences.slice(0, 6);
+
+    return [raw, 'Отже, отримуємо правильну відповідь.'];
+  }
+
+  return [];
+}
+
 function normalizeQuestionMath(question) {
   if (!question || typeof question !== 'object') return question;
+
+  const explanationSteps = normalizeExplanationSteps(question)
+    .map(normalizeLegacyMathNotation);
 
   return {
     ...question,
@@ -481,7 +521,9 @@ function normalizeQuestionMath(question) {
     options: Array.isArray(question.options)
       ? question.options.map(normalizeLegacyMathNotation)
       : question.options,
-    explanation: normalizeLegacyMathNotation(question.explanation),
+    explanation_steps: explanationSteps,
+    // Лишаємо поле для сумісності зі старими клієнтами, але новий UI використовує steps.
+    explanation: explanationSteps.join('\n'),
   };
 }
 
@@ -516,7 +558,7 @@ function hasSafeQuestionMath(question) {
   const fields = [
     question.question,
     ...(Array.isArray(question.options) ? question.options : []),
-    question.explanation,
+    ...(Array.isArray(question.explanation_steps) ? question.explanation_steps : []),
   ];
 
   return fields.every((value) => !hasUnsafeRawMath(value));

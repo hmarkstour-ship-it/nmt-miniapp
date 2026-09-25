@@ -286,13 +286,14 @@
   /* ---- Картка завдання ---- */
 
   .card {
-    background: #fff;
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    padding: 22px 18px;
+    background: rgba(255,255,255,.97);
+    border: 1px solid rgba(27,27,31,.08);
+    border-radius: 20px;
+    padding: 22px 18px 18px;
     min-height: 340px;
     display: flex;
     flex-direction: column;
+    box-shadow: 0 14px 42px rgba(27,27,31,.07);
   }
 
   .card-label {
@@ -340,85 +341,198 @@
 
   .option {
     display: flex;
-    align-items: flex-start;
-    gap: 10px;
+    align-items: center;
+    gap: 12px;
     text-align: left;
-    padding: 12px 13px;
-    background: var(--paper);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 14.5px;
+    padding: 13px 14px;
+    min-height: 56px;
+    background: #fff;
+    border: 1px solid rgba(27,27,31,.10);
+    border-radius: 16px;
+    font-family: "Myriad Pro", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 15px;
     color: var(--ink);
     cursor: pointer;
-    transition: border-color 0.15s ease, background 0.15s ease;
+    box-shadow: 0 5px 16px rgba(27,27,31,.035);
+    transition: transform .14s ease, border-color .16s ease, background .16s ease, box-shadow .16s ease;
   }
 
   .option:hover:not(:disabled) {
-    border-color: var(--accent);
+    border-color: rgba(47,79,208,.45);
+    box-shadow: 0 7px 20px rgba(27,27,31,.055);
   }
 
+  .option:active:not(:disabled) { transform: scale(.992); }
   .option:disabled { cursor: default; }
 
   .option-letter {
+    width: 30px;
+    height: 30px;
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    background: #F1F2F4;
     font-family: 'JetBrains Mono', monospace;
-    font-weight: 600;
+    font-size: 12px;
+    font-weight: 700;
     color: var(--ink-soft);
-    flex-shrink: 0;
+    flex: 0 0 30px;
+    transition: background .16s ease, color .16s ease;
+  }
+
+  .option.selected {
+    background: #F4F6FF;
+    border-color: rgba(47,79,208,.70);
+    box-shadow: 0 8px 24px rgba(47,79,208,.10);
+  }
+
+  .option.selected .option-letter {
+    background: var(--accent);
+    color: #fff;
   }
 
   .option.correct {
     background: var(--good-soft);
     border-color: var(--good);
   }
-  .option.correct .option-letter { color: var(--good); }
+  .option.correct .option-letter { background: var(--good); color: #fff; }
 
   .option.wrong {
     background: var(--bad-soft);
     border-color: var(--bad);
   }
-  .option.wrong .option-letter { color: var(--bad); }
+  .option.wrong .option-letter { background: var(--bad); color: #fff; }
 
   /* ---- Пояснення ---- */
 
   .explanation {
-    margin-top: 16px;
-    padding-top: 16px;
-    border-top: 1px dashed var(--line);
-    font-size: 13.5px;
-    line-height: 1.6;
+    margin-top: 18px;
+    padding: 16px;
+    border: 1px solid rgba(27,27,31,.08);
+    border-radius: 16px;
+    background: #F8F8F6;
+    font-size: 14px;
+    line-height: 1.58;
     color: var(--ink-soft);
     display: none;
   }
 
-  .explanation.show { display: block; }
+  .explanation.show {
+    display: block;
+    animation: explanationIn .24s ease-out both;
+  }
 
-  .explanation strong {
+  @keyframes explanationIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .explanation-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
     color: var(--ink);
-    font-weight: 600;
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .explanation-title-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 9px;
+    display: grid;
+    place-items: center;
+    background: #ECEEF2;
+    font-size: 14px;
+  }
+
+  .explanation-steps {
+    list-style: none;
+    counter-reset: solution-step;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .explanation-step {
+    counter-increment: solution-step;
+    position: relative;
+    padding: 10px 11px 10px 42px;
+    min-height: 40px;
+    border-radius: 12px;
+    background: rgba(255,255,255,.78);
+    color: #484B51;
+  }
+
+  .explanation-step::before {
+    content: counter(solution-step);
+    position: absolute;
+    left: 10px;
+    top: 9px;
+    width: 22px;
+    height: 22px;
+    border-radius: 8px;
+    display: grid;
+    place-items: center;
+    background: #23262B;
+    color: #fff;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
   }
 
   /* ---- Кнопка дії ---- */
 
-  .primary-btn {
-    width: 100%;
+  .action-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
     margin-top: 18px;
-    padding: 13px;
-    background: var(--accent);
-    color: #fff;
-    border: none;
-    border-radius: var(--radius);
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
   }
 
+  .primary-btn,
+  .secondary-btn {
+    width: 100%;
+    min-height: 50px;
+    padding: 13px 15px;
+    border-radius: 15px;
+    font-family: "Myriad Pro", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 15.5px;
+    font-weight: 650;
+    cursor: pointer;
+    transition: transform .14s ease, opacity .14s ease, box-shadow .16s ease, background .16s ease;
+  }
+
+  .primary-btn {
+    background: linear-gradient(180deg, #3458E2 0%, #294BCB 100%);
+    color: #fff;
+    border: 1px solid rgba(31,61,181,.28);
+    box-shadow: 0 9px 24px rgba(47,79,208,.22);
+  }
+
+  .primary-btn:active:not(:disabled),
+  .secondary-btn:active:not(:disabled) { transform: scale(.992); }
+
   .primary-btn:disabled {
-    background: var(--line);
-    color: var(--ink-soft);
+    background: #E7E8EB;
+    border-color: #E2E3E6;
+    box-shadow: none;
+    color: #95989E;
     cursor: default;
   }
+
+  .secondary-btn {
+    background: #F7F7F5;
+    color: #3F434A;
+    border: 1px solid rgba(27,27,31,.09);
+    box-shadow: none;
+  }
+
+  .secondary-btn:hover:not(:disabled) { background: #F0F1F2; }
+  .secondary-btn:disabled { opacity: .5; cursor: default; }
 
   /* ---- Стани завантаження / помилки ---- */
 
@@ -733,6 +847,7 @@
     correct: 0,
     wrong: 0,
     currentQuestion: null,
+    selectedIndex: null,
     answered: false,
   };
 
@@ -845,21 +960,38 @@
     document.getElementById('retryBtn').addEventListener('click', loadQuestion);
   }
 
-  function renderQuestion(q) {
-  hideStartupScreen();
-  state.currentQuestion = q;
-  state.answered = false;
+  function getExplanationSteps(q) {
+    if (Array.isArray(q?.explanation_steps) && q.explanation_steps.length) {
+      return q.explanation_steps;
+    }
 
-  // Підтягуємо збережений прогрес із Supabase
-  if (q.progress) {
-    state.correct = Number(q.progress.correct) || 0;
-    state.wrong = Number(q.progress.wrong) || 0;
-    updateStreak();
+    if (typeof q?.explanation === 'string' && q.explanation.trim()) {
+      const parts = q.explanation
+        .split(/\n+|(?=\s*\d+[.)]\s+)/)
+        .map((part) => part.replace(/^\s*\d+[.)]\s*/, '').trim())
+        .filter(Boolean);
 
-    console.log('PROGRESS LOADED:', q.progress);
+      return parts.length ? parts : [q.explanation.trim()];
+    }
+
+    return ['Розв’язання для цього завдання не надійшло.'];
   }
 
+  function renderQuestion(q) {
+    hideStartupScreen();
+    state.currentQuestion = q;
+    state.selectedIndex = null;
+    state.answered = false;
+
+    if (q.progress) {
+      state.correct = Number(q.progress.correct) || 0;
+      state.wrong = Number(q.progress.wrong) || 0;
+      updateStreak();
+      console.log('PROGRESS LOADED:', q.progress);
+    }
+
     const letters = ['А', 'Б', 'В', 'Г', 'Д'];
+    const explanationSteps = getExplanationSteps(q);
 
     cardArea.innerHTML = `
       <div class="card">
@@ -867,87 +999,127 @@
         <div class="question-text">${escapeHtml(q.question)}</div>
         <div class="options">
           ${q.options.map((opt, i) => `
-            <button class="option" data-index="${i}">
+            <button class="option" data-index="${i}" type="button">
               <span class="option-letter">${letters[i]}</span>
               <span>${escapeHtml(opt)}</span>
             </button>
           `).join('')}
         </div>
         <div class="explanation" id="explanation">
-          <strong>Розв'язання.</strong> ${escapeHtml(q.explanation)}
+          <div class="explanation-title">
+            <span class="explanation-title-icon">✦</span>
+            <span>Розв’язання</span>
+          </div>
+          <ol class="explanation-steps">
+            ${explanationSteps.map((step) => `
+              <li class="explanation-step">${escapeHtml(step)}</li>
+            `).join('')}
+          </ol>
         </div>
-        <button class="primary-btn" id="nextBtn" disabled>Оберіть відповідь</button>
+        <div class="action-stack">
+          <button class="primary-btn" id="checkBtn" type="button" disabled>Перевірити відповідь</button>
+          <button class="secondary-btn" id="regenerateBtn" type="button">↻ Перегенерувати завдання</button>
+        </div>
       </div>`;
 
     renderMathSafely(cardArea);
 
     cardArea.querySelectorAll('.option').forEach((btn) => {
-      btn.addEventListener('click', () => handleAnswer(Number(btn.dataset.index)));
+      btn.addEventListener('click', () => selectAnswer(Number(btn.dataset.index)));
     });
 
-    document.getElementById('nextBtn').addEventListener('click', () => {
+    document.getElementById('checkBtn').addEventListener('click', () => {
       if (state.answered) loadQuestion();
+      else submitAnswer();
+    });
+
+    document.getElementById('regenerateBtn').addEventListener('click', () => {
+      tg?.HapticFeedback?.impactOccurred?.('light');
+      loadQuestion();
     });
   }
 
-  async function handleAnswer(selectedIndex) {
-  if (state.answered) return;
-  state.answered = true;
+  function selectAnswer(selectedIndex) {
+    if (state.answered) return;
 
-  const q = state.currentQuestion;
-  const options = cardArea.querySelectorAll('.option');
-  options.forEach((btn) => (btn.disabled = true));
+    state.selectedIndex = selectedIndex;
+    const options = cardArea.querySelectorAll('.option');
 
-  const isCorrect = selectedIndex === q.correct_index;
-
-  options[selectedIndex].classList.add(isCorrect ? 'correct' : 'wrong');
-
-  if (!isCorrect) {
-    options[q.correct_index].classList.add('correct');
-  }
-
-  if (isCorrect) {
-    tg?.HapticFeedback?.notificationOccurred('success');
-  } else {
-    tg?.HapticFeedback?.notificationOccurred('error');
-  }
-
-  try {
-    const res = await fetchWithTimeout(`${API_BASE}/api/answer`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        initData: tg?.initData || null,
-        isCorrect
-      }),
+    options.forEach((btn) => {
+      btn.classList.toggle('selected', Number(btn.dataset.index) === selectedIndex);
     });
 
-    const data = await res.json();
+    const checkBtn = document.getElementById('checkBtn');
+    checkBtn.disabled = false;
+    checkBtn.textContent = 'Перевірити відповідь';
 
-    if (data.saved) {
-      state.correct = Number(data.correct_count) || 0;
-      state.wrong = Number(data.wrong_count) || 0;
+    tg?.HapticFeedback?.selectionChanged?.();
+  }
+
+  async function submitAnswer() {
+    if (state.answered || state.selectedIndex === null) return;
+
+    state.answered = true;
+
+    const selectedIndex = state.selectedIndex;
+    const q = state.currentQuestion;
+    const options = cardArea.querySelectorAll('.option');
+    const checkBtn = document.getElementById('checkBtn');
+    const regenerateBtn = document.getElementById('regenerateBtn');
+
+    checkBtn.disabled = true;
+    regenerateBtn.disabled = true;
+    options.forEach((btn) => {
+      btn.disabled = true;
+      btn.classList.remove('selected');
+    });
+
+    const isCorrect = selectedIndex === q.correct_index;
+
+    options[selectedIndex].classList.add(isCorrect ? 'correct' : 'wrong');
+    if (!isCorrect) options[q.correct_index].classList.add('correct');
+
+    if (isCorrect) {
+      tg?.HapticFeedback?.notificationOccurred('success');
     } else {
-      // Якщо сервер не зберіг — хоча б показуємо локально
+      tg?.HapticFeedback?.notificationOccurred('error');
+    }
+
+    try {
+      const res = await fetchWithTimeout(`${API_BASE}/api/answer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          initData: tg?.initData || null,
+          isCorrect
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data.saved) {
+        state.correct = Number(data.correct_count) || 0;
+        state.wrong = Number(data.wrong_count) || 0;
+      } else {
+        if (isCorrect) state.correct++;
+        else state.wrong++;
+      }
+    } catch (err) {
+      console.warn('Не вдалося зберегти відповідь:', err);
       if (isCorrect) state.correct++;
       else state.wrong++;
     }
 
-  } catch (err) {
-    console.warn('Не вдалося зберегти відповідь:', err);
+    updateStreak();
 
-    if (isCorrect) state.correct++;
-    else state.wrong++;
+    document.getElementById('explanation').classList.add('show');
+    renderMathSafely(document.getElementById('explanation'));
+
+    checkBtn.disabled = false;
+    checkBtn.textContent = 'Наступне завдання →';
+    regenerateBtn.disabled = false;
+    regenerateBtn.textContent = '↻ Інше завдання';
   }
-
-  updateStreak();
-
-  document.getElementById('explanation').classList.add('show');
-
-  const nextBtn = document.getElementById('nextBtn');
-  nextBtn.disabled = false;
-  nextBtn.textContent = 'Наступне завдання →';
-}
 
   async function loadQuestion() {
     renderLoading('Генеруємо завдання…');
