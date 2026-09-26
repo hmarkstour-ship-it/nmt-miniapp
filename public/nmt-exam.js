@@ -113,7 +113,7 @@
           <div><strong>200</strong><span>максимум</span></div>
         </div>
         <div class="nmt-hero-note">
-          <span>✦</span>
+          <span>i</span>
           <p>Після завершення побачиш результат, короткий висновок і розбір кожного завдання.</p>
         </div>
         <button class="nmt-start-btn" id="nmtStartBtn" type="button"><span>${active ? 'Новий варіант' : 'Почати тест'}</span><i>↗</i></button>
@@ -204,7 +204,7 @@
     content.innerHTML = `
       <div class="nmt-exam-topbar">
         <div>
-          <span class="nmt-exam-label">НМТ · Математика</span>
+          <span class="nmt-exam-label">НМТ · математика</span>
           <strong>Завдання ${state.index + 1} з ${state.questions.length}</strong>
         </div>
         <div class="nmt-timer" id="nmtTimer">${formatTime(state.remainingSeconds)}</div>
@@ -493,9 +493,9 @@
     const conclusion = buildResultConclusion(result);
     content.innerHTML = `
       <section class="nmt-result-hero">
-        <div class="nmt-result-kicker">ТВІЙ РЕЗУЛЬТАТ</div>
+        <div class="nmt-result-kicker">Твій результат</div>
         <div class="nmt-result-score"><strong>${escapeHtml(scoreText)}</strong><span>/ 200</span></div>
-        <div class="nmt-result-raw">${result.raw_score} із 32 тестових балів</div>
+        <div class="nmt-result-raw">Тестові бали: ${result.raw_score} із 32</div>
         <div class="nmt-result-status ${result.passed_threshold ? 'ok' : 'low'}">${result.passed_threshold ? 'Поріг подолано' : 'Для шкали 100–200 потрібно щонайменше 5 тестових балів'}</div>
       </section>
 

@@ -8,7 +8,7 @@ const tg = window.Telegram?.WebApp;
   const FETCH_TIMEOUT_MS = 30000;
   const QUESTION_TIMEOUT_MS = 55000;
   const BACKEND_WAKE_MAX_MS = 75000;
-  const BUILD_VERSION = 'full-rebrand-v3.0.0';
+  const BUILD_VERSION = 'full-rebrand-v4.0.0';
   console.log('[NMT build]', BUILD_VERSION);
 
   async function fetchWithTimeout(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS) {
@@ -179,15 +179,15 @@ const tg = window.Telegram?.WebApp;
   ];
 
   const TOPIC_UI = {
-    mixed: { icon: 'N', subtitle: 'Завдання з усіх тем НМТ' },
+    mixed: { icon: 'NMT', subtitle: 'Завдання з усіх тем НМТ' },
     numbers: { icon: '123', subtitle: 'Числа, дроби та обчислення' },
     percents: { icon: '%', subtitle: 'Відсотки, пропорції та практичні задачі' },
     powers_roots: { icon: '√', subtitle: 'Степені, корені та перетворення' },
     logarithms: { icon: 'log', subtitle: 'Логарифми, властивості та рівняння' },
-    equations: { icon: 'x=', subtitle: 'Лінійні, квадратні та інші рівняння' },
-    inequalities: { icon: '≠', subtitle: 'Нерівності та метод інтервалів' },
-    systems: { icon: '{}', subtitle: 'Системи рівнянь і нерівностей' },
-    functions: { icon: 'f(x)', subtitle: 'Функції, графіки та їхні властивості' },
+    equations: { icon: 'x', subtitle: 'Лінійні, квадратні та інші рівняння' },
+    inequalities: { icon: '≤', subtitle: 'Нерівності та метод інтервалів' },
+    systems: { icon: '{ }', subtitle: 'Системи рівнянь і нерівностей' },
+    functions: { icon: 'f', subtitle: 'Функції, графіки та їхні властивості' },
     progressions: { icon: 'Σ', subtitle: 'Арифметична та геометрична прогресії' },
     trigonometry: { icon: 'sin', subtitle: 'sin, cos, tg і задачі з трикутниками' },
     calculus: { icon: "f′", subtitle: 'Похідна, первісна та інтеграл' },
@@ -357,6 +357,14 @@ const tg = window.Telegram?.WebApp;
         ? `<strong>${escapeHtml(stripLeadingEmoji(weakest.label || weakest.topic))}</strong><small>Точність — ${Number(weakest.accuracy) || 0}%. Цю тему варто повторити</small>`
         : `<strong>Поки без явних слабких тем</strong><small>Продовжуй тренування — рекомендація уточнюватиметься</small>`;
 
+      const rhythmText = recentTotal === 0
+        ? 'Цього тижня ще немає тренувань. Почни з короткої сесії на 5–10 завдань.'
+        : recentTotal < 10
+          ? 'Спокійний старт. Кілька коротких сесій допоможуть зробити підготовку регулярнішою.'
+          : recentTotal < 25
+            ? 'Хороший ритм: ти вже тренуєшся регулярно. Тримай темп і закривай слабкі теми.'
+            : 'Високий темп за останні 7 днів. Зараз важливіше якість розбору, а не просто кількість.';
+
       profileContent.innerHTML = `
         <section class="profile-identity-card">
           <div class="profile-avatar-new">${avatarMarkup}</div>
@@ -365,7 +373,7 @@ const tg = window.Telegram?.WebApp;
             <div class="profile-name-new">${escapeHtml(data.first_name || 'Учень')}</div>
             <div class="profile-since-new">${escapeHtml(formatJoinDate(data.created_at))}</div>
           </div>
-          <div class="profile-mini-badge"><span>🔥</span><strong>${streak}</strong></div>
+          <div class="profile-mini-badge" aria-label="Серія ${streak} ${dayWord(streak)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.5 3.5c.7 3-1.2 4.5-2.2 6.1-1 1.5-.7 3 .8 4.1-.2-2.1 1.1-3.2 2.3-4.4 1.8 1.6 3.1 3.6 3.1 6.1A5.5 5.5 0 0 1 12 21a5.5 5.5 0 0 1-5.5-5.6c0-3.3 2.2-5.1 4.3-7.3.4 1.4.4 2.4.1 3.4 1.8-1.7 3.4-4 2.6-8Z"/></svg><strong>${streak}</strong></div>
         </section>
 
         <section class="profile-metric-strip">
@@ -385,6 +393,12 @@ const tg = window.Telegram?.WebApp;
             <strong>${streak}</strong>
             <small>${dayWord(streak)} · рекорд — ${bestStreak} ${dayWord(bestStreak)}</small>
           </article>
+        </section>
+
+        <section class="profile-rhythm-card">
+          <div class="profile-rhythm-icon" aria-hidden="true">7д</div>
+          <div class="profile-rhythm-copy"><strong>Ритм підготовки</strong><span>${escapeHtml(rhythmText)}</span></div>
+          <div class="profile-rhythm-value"><strong>${recentTotal}</strong><span>${taskWord(recentTotal)}</span></div>
         </section>
 
         <section class="profile-focus-card">
@@ -410,7 +424,7 @@ const tg = window.Telegram?.WebApp;
         </section>
 
         <section class="profile-quick-actions">
-          <button type="button" data-profile-action="tests"><span>✦</span><div><strong>Тренуватись</strong><small>Продовжити практику</small></div><i>›</i></button>
+          <button type="button" data-profile-action="tests"><span>→</span><div><strong>Тренуватись</strong><small>Продовжити практику</small></div><i>›</i></button>
           <button type="button" data-profile-action="nmt"><span>22</span><div><strong>Пробний НМТ</strong><small>Перевірити себе</small></div><i>›</i></button>
         </section>
 
@@ -631,8 +645,8 @@ const tg = window.Telegram?.WebApp;
     cardArea.innerHTML = `
       <div class="card card-enter">
         <div class="card-top">
-          <div class="card-label">${topicSelect.options[topicSelect.selectedIndex]?.text || ''}</div>
-          <button class="report-btn" id="reportBtn" type="button" aria-label="Повідомити про проблему">⚑</button>
+          <div class="card-label">${escapeHtml(stripLeadingEmoji(topicSelect.options[topicSelect.selectedIndex]?.text || ''))}</div>
+          <button class="report-btn" id="reportBtn" type="button" aria-label="Повідомити про проблему"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 20V5.5M6 6h9.2l-1.5 3 1.5 3H6"/></svg></button>
         </div>
         <div class="question-text">${escapeHtml(q.question)}</div>
         <div class="options">
