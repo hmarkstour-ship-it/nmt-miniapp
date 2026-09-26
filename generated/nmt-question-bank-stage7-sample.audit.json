@@ -1,0 +1,203 @@
+{
+  "valid": true,
+  "validationErrors": [],
+  "itemCount": 120,
+  "uniqueContentCount": 120,
+  "uniqueSkeletonCount": 42,
+  "maxSkeletonReuse": 10,
+  "directBlueprintCount": 31,
+  "representedDirectBlueprintCount": 31,
+  "missingDirectBlueprints": [],
+  "mockSlotsCovered": 22,
+  "difficultyMismatchCount": 0,
+  "byType": {
+    "choice": 71,
+    "matching": 12,
+    "short": 37
+  },
+  "byTopic": {
+    "calculus": 9,
+    "equations": 15,
+    "functions": 4,
+    "inequalities": 6,
+    "logarithms": 3,
+    "numbers": 3,
+    "percents": 5,
+    "planimetry": 28,
+    "powers_roots": 6,
+    "probability_stats": 12,
+    "progressions": 4,
+    "stereometry": 14,
+    "systems": 3,
+    "trigonometry": 1,
+    "word_problems": 7
+  },
+  "byBlueprint": {
+    "algebra_simplify": 3,
+    "applied_ratio_percent": 5,
+    "calculus_basic": 2,
+    "circle_inscribed_angle": 3,
+    "circle_rectangle_geometry": 4,
+    "data_chart_reading": 2,
+    "function_graph_transform": 1,
+    "geometry_statements": 3,
+    "linear_inequality_pick": 1,
+    "log_exp_equation_interval": 3,
+    "matching_expressions": 3,
+    "matching_functions": 3,
+    "matching_planimetry": 6,
+    "planimetry_angle_parallel": 1,
+    "powers_roots_transform": 3,
+    "probability_counting_basic": 6,
+    "progression_ap": 4,
+    "quadratic_equation": 1,
+    "quadratic_inequality_interval": 5,
+    "short_applied": 5,
+    "short_calculus": 7,
+    "short_parameter_roots": 14,
+    "short_stereometry_linked_solids": 11,
+    "similar_triangles_ratio": 3,
+    "solid_geometry_concept": 1,
+    "systems_linear": 3,
+    "triangle_cosine_nmt": 8,
+    "trig_exact_values": 1,
+    "vectors_3d": 2,
+    "word_motion": 1,
+    "word_work_rate": 5
+  },
+  "byDifficulty": {
+    "легкий": 41,
+    "середній": 55,
+    "складний": 24
+  },
+  "byDifficultyBand": {
+    "easy": 40,
+    "hard": 21,
+    "medium": 48,
+    "medium_hard": 11
+  },
+  "visualCount": 38,
+  "trainingPlainCount": 50,
+  "trainingVisualCount": 21,
+  "averageDifficultyScore": 41.8,
+  "averageDiversityScore": 82.5,
+  "correctPositionCounts": {
+    "0": 18,
+    "1": 11,
+    "2": 14,
+    "3": 15,
+    "4": 13
+  },
+  "slotCoverage": {
+    "1": {
+      "type": "choice",
+      "compatibleItems": 2,
+      "blueprintCount": 1
+    },
+    "2": {
+      "type": "choice",
+      "compatibleItems": 11,
+      "blueprintCount": 3
+    },
+    "3": {
+      "type": "choice",
+      "compatibleItems": 4,
+      "blueprintCount": 2
+    },
+    "4": {
+      "type": "choice",
+      "compatibleItems": 6,
+      "blueprintCount": 2
+    },
+    "5": {
+      "type": "choice",
+      "compatibleItems": 1,
+      "blueprintCount": 1
+    },
+    "6": {
+      "type": "choice",
+      "compatibleItems": 1,
+      "blueprintCount": 1
+    },
+    "7": {
+      "type": "choice",
+      "compatibleItems": 12,
+      "blueprintCount": 3
+    },
+    "8": {
+      "type": "choice",
+      "compatibleItems": 2,
+      "blueprintCount": 1
+    },
+    "9": {
+      "type": "choice",
+      "compatibleItems": 10,
+      "blueprintCount": 3
+    },
+    "10": {
+      "type": "choice",
+      "compatibleItems": 6,
+      "blueprintCount": 2
+    },
+    "11": {
+      "type": "choice",
+      "compatibleItems": 9,
+      "blueprintCount": 3
+    },
+    "12": {
+      "type": "choice",
+      "compatibleItems": 2,
+      "blueprintCount": 1
+    },
+    "13": {
+      "type": "choice",
+      "compatibleItems": 25,
+      "blueprintCount": 6
+    },
+    "14": {
+      "type": "choice",
+      "compatibleItems": 4,
+      "blueprintCount": 2
+    },
+    "15": {
+      "type": "choice",
+      "compatibleItems": 20,
+      "blueprintCount": 5
+    },
+    "16": {
+      "type": "matching",
+      "compatibleItems": 3,
+      "blueprintCount": 1
+    },
+    "17": {
+      "type": "matching",
+      "compatibleItems": 3,
+      "blueprintCount": 1
+    },
+    "18": {
+      "type": "matching",
+      "compatibleItems": 6,
+      "blueprintCount": 1
+    },
+    "19": {
+      "type": "short",
+      "compatibleItems": 7,
+      "blueprintCount": 1
+    },
+    "20": {
+      "type": "short",
+      "compatibleItems": 5,
+      "blueprintCount": 1
+    },
+    "21": {
+      "type": "short",
+      "compatibleItems": 11,
+      "blueprintCount": 1
+    },
+    "22": {
+      "type": "short",
+      "compatibleItems": 14,
+      "blueprintCount": 1
+    }
+  }
+}

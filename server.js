@@ -1,11 +1,32 @@
 import express from 'express';
 import cors from 'cors';
 import crypto from 'crypto';
+import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 import 'dotenv/config';
 import { NMT_META, getTopic, getPublicTopics, QUESTION_BLUEPRINTS, EXAM_SLOTS } from './nmt-knowledge.js';
 import { GENERATOR_VERSION, generateDeterministicQuestion, validateDeterministicQuestion, questionSkeleton } from './deterministic-math.js';
-import { NMT_EXAM_META, generateNmtExam, sanitizeExamQuestions, gradeNmtExam } from './nmt-exam-engine.js';
+import { NMT_EXAM_META, generateNmtExam, sanitizeExamQuestions, gradeNmtExam, scoreToScale } from './nmt-exam-engine.js';
+import { loadRuntimeBank, OfflineQuestionBankRuntime, RUNTIME_VERSION } from './nmt-engine/runtime/index.js';
+import {
+  MOCK_ENGINE_VERSION,
+  createMockAttemptSnapshot,
+  verifyQuestionSnapshot,
+  normalizeMockAnswer,
+  normalizeMockAnswers,
+  applyAnswerRevision,
+  remainingSeconds as mockRemainingSeconds,
+  isAttemptExpired,
+  auditGradeResult,
+  gradeResultHash,
+  validateMockAttemptContract,
+} from './nmt-engine/mock/index.js';
+import {
+  ANALYTICS_VERSION,
+  createTrainingTelemetry,
+  createMockTelemetryEvents,
+  buildUserTopicAnalytics,
+} from './nmt-engine/analytics/index.js';
 
 const { Pool } = pg;
 
@@ -24,6 +45,23 @@ const BOT_TOKEN = process.env.BOT_TOKEN;
 const DATABASE_URL = process.env.DATABASE_URL;
 const MODEL = 'gemini-3.5-flash-lite';
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
+const PROJECT_ROOT = fileURLToPath(new URL('.', import.meta.url));
+const RUNTIME_FALLBACK_ENABLED = /^(1|true|yes)$/i.test(String(process.env.NMT_RUNTIME_FALLBACK || 'false'));
+const TRAINING_VISUAL_MODE = ['plain', 'visual', 'any'].includes(process.env.NMT_TRAINING_VISUAL_MODE)
+  ? process.env.NMT_TRAINING_VISUAL_MODE
+  : 'plain';
+const STAGE10_AUTO_QUARANTINE = /^(1|true|yes)$/i.test(String(process.env.NMT_STAGE10_AUTO_QUARANTINE || 'false'));
+
+let offlineBankRuntime = null;
+let offlineBankLoadError = null;
+try {
+  const loaded = loadRuntimeBank({ root: PROJECT_ROOT, bankPath: process.env.NMT_OFFLINE_BANK_PATH || null });
+  offlineBankRuntime = new OfflineQuestionBankRuntime(loaded.bank, { bankPath: loaded.path });
+  console.log(`✅ NMT Engine Stage 8: offline bank loaded (${loaded.itemCount} items)`);
+} catch (err) {
+  offlineBankLoadError = err;
+  console.error(`❌ NMT Engine Stage 8: ${err.message}`);
+}
 
 if (!GEMINI_API_KEY) {
   console.warn(
@@ -101,6 +139,19 @@ async function initDb() {
       ADD COLUMN IF NOT EXISTS blueprint_id TEXT,
       ADD COLUMN IF NOT EXISTS generator_version INT NOT NULL DEFAULT 0,
       ADD COLUMN IF NOT EXISTS has_diagram BOOLEAN NOT NULL DEFAULT false;
+  `);
+
+  await pool.query(`
+    ALTER TABLE question_bank
+      ADD COLUMN IF NOT EXISTS offline_bank_id TEXT,
+      ADD COLUMN IF NOT EXISTS content_hash TEXT,
+      ADD COLUMN IF NOT EXISTS factory_version INT;
+  `);
+
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_question_bank_offline_id
+    ON question_bank (offline_bank_id)
+    WHERE offline_bank_id IS NOT NULL;
   `);
 
   await pool.query(`
@@ -194,6 +245,20 @@ async function initDb() {
     ON user_answers (telegram_id, answered_at DESC);
   `);
 
+
+  await pool.query(`
+    ALTER TABLE user_answers
+      ADD COLUMN IF NOT EXISTS client_answer_id TEXT,
+      ADD COLUMN IF NOT EXISTS selected_index INT,
+      ADD COLUMN IF NOT EXISTS response_ms INT;
+  `);
+
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_user_answers_client_answer
+    ON user_answers (telegram_id, client_answer_id)
+    WHERE client_answer_id IS NOT NULL;
+  `);
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS question_reports (
       id BIGSERIAL PRIMARY KEY,
@@ -223,14 +288,124 @@ async function initDb() {
   `);
 
   await pool.query(`
+    ALTER TABLE nmt_exam_attempts
+      ADD COLUMN IF NOT EXISTS mock_engine_version INT NOT NULL DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS runtime_version INT,
+      ADD COLUMN IF NOT EXISTS bank_schema_version TEXT,
+      ADD COLUMN IF NOT EXISTS factory_version INT,
+      ADD COLUMN IF NOT EXISTS question_snapshot_hash TEXT,
+      ADD COLUMN IF NOT EXISTS result_hash TEXT,
+      ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS last_saved_at TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS answer_revisions JSONB NOT NULL DEFAULT '{}'::jsonb,
+      ADD COLUMN IF NOT EXISTS revision INT NOT NULL DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS assembly_meta JSONB,
+      ADD COLUMN IF NOT EXISTS client_session_id TEXT;
+  `);
+
+  await pool.query(`
+    UPDATE nmt_exam_attempts
+    SET expires_at = started_at + (${NMT_EXAM_META.durationMinutes} * interval '1 minute')
+    WHERE expires_at IS NULL;
+  `);
+
+  await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_nmt_exam_attempts_user_status
     ON nmt_exam_attempts (telegram_id, status, started_at DESC);
+  `);
+
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_nmt_exam_attempts_client_session
+    ON nmt_exam_attempts (telegram_id, client_session_id)
+    WHERE client_session_id IS NOT NULL;
   `);
 
   await pool.query(`
     CREATE UNIQUE INDEX IF NOT EXISTS idx_question_reports_one_per_user
     ON question_reports (telegram_id, question_bank_id)
     WHERE question_bank_id IS NOT NULL;
+  `);
+
+
+  // Stage 10 — calibration + analytics telemetry.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS nmt_item_events (
+      id BIGSERIAL PRIMARY KEY,
+      event_key TEXT NOT NULL UNIQUE,
+      analytics_version INT NOT NULL DEFAULT 10,
+      telegram_id BIGINT REFERENCES users(telegram_id) ON DELETE SET NULL,
+      mode TEXT NOT NULL,
+      item_id TEXT,
+      question_bank_id INT REFERENCES question_bank(id) ON DELETE SET NULL,
+      attempt_id BIGINT REFERENCES nmt_exam_attempts(id) ON DELETE SET NULL,
+      question_index INT,
+      topic TEXT NOT NULL DEFAULT 'mixed',
+      blueprint_id TEXT,
+      question_type TEXT,
+      is_correct BOOLEAN,
+      score_awarded NUMERIC,
+      max_score NUMERIC,
+      score_fraction NUMERIC,
+      selected_index INT,
+      response_ms INT,
+      ability_proxy NUMERIC,
+      model_difficulty_score NUMERIC,
+      engine_version INT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_nmt_item_events_item
+    ON nmt_item_events (item_id, created_at DESC);
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_nmt_item_events_user_topic
+    ON nmt_item_events (telegram_id, topic, created_at DESC);
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS nmt_item_calibration (
+      item_id TEXT PRIMARY KEY,
+      topic TEXT,
+      blueprint_id TEXT,
+      question_type TEXT,
+      sample_count INT NOT NULL DEFAULT 0,
+      training_count INT NOT NULL DEFAULT 0,
+      mock_count INT NOT NULL DEFAULT 0,
+      raw_p NUMERIC,
+      smoothed_p NUMERIC,
+      model_difficulty_score NUMERIC,
+      empirical_difficulty_score NUMERIC,
+      blended_difficulty_score NUMERIC,
+      confidence NUMERIC,
+      discrimination NUMERIC,
+      discrimination_n INT NOT NULL DEFAULT 0,
+      median_response_ms INT,
+      p90_response_ms INT,
+      selected_index_hist JSONB NOT NULL DEFAULT '{}'::jsonb,
+      quality_flags JSONB NOT NULL DEFAULT '[]'::jsonb,
+      status TEXT NOT NULL DEFAULT 'collecting',
+      analytics_version INT NOT NULL DEFAULT 10,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_nmt_item_calibration_status
+    ON nmt_item_calibration (status, sample_count DESC);
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS nmt_calibration_runs (
+      id BIGSERIAL PRIMARY KEY,
+      analytics_version INT NOT NULL,
+      event_count INT NOT NULL,
+      item_count INT NOT NULL,
+      status_counts JSONB NOT NULL DEFAULT '{}'::jsonb,
+      completed_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
   `);
 
   console.log('✅ Таблиці бази даних готові.');
@@ -252,6 +427,17 @@ async function getOrCreateUser(telegramUser) {
 async function getRecentQuestions(telegramId, topic, limit = 12) {
   if (!pool || !telegramId) return [];
 
+  if (topic === 'mixed') {
+    const { rows } = await pool.query(
+      `SELECT question_text FROM question_history
+       WHERE telegram_id = $1
+       ORDER BY asked_at DESC
+       LIMIT $2`,
+      [telegramId, limit]
+    );
+    return rows.map((r) => r.question_text);
+  }
+
   const { rows } = await pool.query(
     `SELECT question_text FROM question_history
      WHERE telegram_id = $1 AND topic = $2
@@ -270,12 +456,97 @@ async function saveQuestionToHistory(telegramId, topic, questionText) {
   );
 }
 
-async function recordAnswer(telegramId, isCorrect, topic = 'mixed', questionBankId = null) {
+
+async function insertStage10Event(client, event) {
+  if (!client || !event?.event_key || !event?.item_id) return false;
+  const result = await client.query(
+    `INSERT INTO nmt_item_events (
+       event_key, analytics_version, telegram_id, mode, item_id, question_bank_id,
+       attempt_id, question_index, topic, blueprint_id, question_type, is_correct,
+       score_awarded, max_score, score_fraction, selected_index, response_ms,
+       ability_proxy, model_difficulty_score, engine_version
+     ) VALUES (
+       $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20
+     ) ON CONFLICT (event_key) DO NOTHING`,
+    [
+      event.event_key, ANALYTICS_VERSION, event.telegram_id, event.mode, event.item_id,
+      event.question_bank_id, event.attempt_id, event.question_index, event.topic || 'mixed',
+      event.blueprint_id, event.question_type, event.is_correct, event.score_awarded,
+      event.max_score, event.score_fraction, event.selected_index, event.response_ms,
+      event.ability_proxy, event.model_difficulty_score, event.engine_version,
+    ]
+  );
+  return result.rowCount > 0;
+}
+
+async function insertStage10Events(client, events = []) {
+  let inserted = 0;
+  for (const event of events) inserted += await insertStage10Event(client, event) ? 1 : 0;
+  return inserted;
+}
+
+async function loadStage10Calibrations() {
+  if (!pool || !offlineBankRuntime) return { applied: 0, quarantined: 0 };
+  const { rows } = await pool.query(`
+    SELECT item_id, sample_count, raw_p, smoothed_p, model_difficulty_score,
+           empirical_difficulty_score, blended_difficulty_score, confidence,
+           discrimination, discrimination_n, quality_flags, status, updated_at
+    FROM nmt_item_calibration
+  `);
+  const applied = offlineBankRuntime.applyCalibrationRecords(rows, { autoQuarantine: STAGE10_AUTO_QUARANTINE });
+  if (applied.applied) {
+    console.log(`✅ NMT Engine Stage 10: loaded ${applied.applied} item calibrations${applied.quarantined ? `; quarantined ${applied.quarantined}` : ''}`);
+  }
+  return applied;
+}
+
+async function getStage10UserAnalytics(telegramId) {
+  if (!pool || !telegramId) return [];
+  const { rows } = await pool.query(`
+    SELECT topic, score_fraction, created_at
+    FROM nmt_item_events
+    WHERE telegram_id = $1 AND score_fraction IS NOT NULL
+    ORDER BY created_at DESC
+    LIMIT 1000
+  `, [telegramId]);
+  return buildUserTopicAnalytics(rows);
+}
+
+async function recordAnswer(telegramId, isCorrect, topic = 'mixed', questionBankId = null, telemetry = {}) {
   if (!pool || !telegramId) return null;
 
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+
+    const clientAnswerId = typeof telemetry.clientAnswerId === 'string'
+      ? telemetry.clientAnswerId.trim().slice(0, 128)
+      : null;
+
+    if (clientAnswerId) {
+      const duplicate = await client.query(
+        `SELECT id FROM user_answers WHERE telegram_id = $1 AND client_answer_id = $2 LIMIT 1`,
+        [telegramId, clientAnswerId]
+      );
+      if (duplicate.rows.length) {
+        const existing = await client.query(
+          `SELECT correct_count, wrong_count FROM users WHERE telegram_id = $1`,
+          [telegramId]
+        );
+        await client.query('COMMIT');
+        return { ...(existing.rows[0] || {}), duplicate: true };
+      }
+    }
+
+    let bankMeta = null;
+    if (questionBankId) {
+      const bankResult = await client.query(
+        `SELECT id, offline_bank_id, blueprint_id, question_json
+         FROM question_bank WHERE id = $1 LIMIT 1`,
+        [questionBankId]
+      );
+      bankMeta = bankResult.rows[0] || null;
+    }
 
     const column = isCorrect ? 'correct_count' : 'wrong_count';
     const { rows } = await client.query(
@@ -286,13 +557,41 @@ async function recordAnswer(telegramId, isCorrect, topic = 'mixed', questionBank
     );
 
     await client.query(
-      `INSERT INTO user_answers (telegram_id, topic, is_correct, question_bank_id)
-       VALUES ($1, $2, $3, $4)`,
-      [telegramId, topic || 'mixed', !!isCorrect, questionBankId || null]
+      `INSERT INTO user_answers (
+         telegram_id, topic, is_correct, question_bank_id,
+         client_answer_id, selected_index, response_ms
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+      [
+        telegramId, topic || 'mixed', !!isCorrect, questionBankId || null,
+        clientAnswerId,
+        Number.isInteger(Number(telemetry.selectedIndex)) ? Number(telemetry.selectedIndex) : null,
+        Number.isFinite(Number(telemetry.responseMs)) ? Math.max(0, Math.min(1800000, Math.round(Number(telemetry.responseMs)))) : null,
+      ]
     );
 
+    if (bankMeta?.offline_bank_id) {
+      const q = bankMeta.question_json || {};
+      const event = createTrainingTelemetry({
+        eventKey: clientAnswerId
+          ? `training:${telegramId}:${clientAnswerId}`
+          : `training:${telegramId}:${crypto.randomUUID()}`,
+        telegramId,
+        itemId: bankMeta.offline_bank_id,
+        questionBankId: bankMeta.id,
+        topic: q.topic || topic || 'mixed',
+        blueprintId: bankMeta.blueprint_id || q.blueprint_id || null,
+        questionType: q.type || 'choice',
+        isCorrect: !!isCorrect,
+        selectedIndex: telemetry.selectedIndex,
+        responseMs: telemetry.responseMs,
+        modelDifficultyScore: q.bank_meta?.difficulty_score ?? null,
+        engineVersion: q.engine_version ?? null,
+      });
+      await insertStage10Event(client, event);
+    }
+
     await client.query('COMMIT');
-    return rows[0] || null;
+    return { ...(rows[0] || {}), duplicate: false };
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;
@@ -360,6 +659,80 @@ async function saveQuestionToBank(topic, difficulty, question) {
   );
 
   return rows[0]?.id ?? null;
+}
+
+const offlineBankDbIds = new Map();
+
+async function ensureOfflineQuestionBankId(question) {
+  if (!pool || !question?.id || !question?.question) return null;
+  if (offlineBankDbIds.has(question.id)) return offlineBankDbIds.get(question.id);
+
+  const { rows } = await pool.query(
+    `INSERT INTO question_bank
+       (topic, difficulty, question_text, question_json, verified, verification_version, blueprint_id, generator_version, has_diagram, offline_bank_id, content_hash, factory_version)
+     VALUES ($1, $2, $3, $4::jsonb, true, $5, $6, $7, $8, $9, $10, $11)
+     ON CONFLICT (topic, question_text)
+     DO UPDATE SET
+       question_json = EXCLUDED.question_json,
+       verified = true,
+       verification_version = EXCLUDED.verification_version,
+       blueprint_id = EXCLUDED.blueprint_id,
+       generator_version = EXCLUDED.generator_version,
+       has_diagram = EXCLUDED.has_diagram,
+       offline_bank_id = EXCLUDED.offline_bank_id,
+       content_hash = EXCLUDED.content_hash,
+       factory_version = EXCLUDED.factory_version
+     RETURNING id, is_active`,
+    [
+      question.topic || 'mixed',
+      question.difficulty || 'середній',
+      question.question,
+      JSON.stringify(question),
+      BANK_VERIFICATION_VERSION,
+      question.blueprint_id || null,
+      Number(question.engine_version) || BANK_VERIFICATION_VERSION,
+      !!question.diagram_svg,
+      question.id,
+      question.bank_meta?.content_hash || null,
+      Number(question.bank_meta?.factory_version) || null,
+    ]
+  );
+
+  const id = rows[0]?.id ?? null;
+  if (id) offlineBankDbIds.set(question.id, id);
+  if (rows[0]?.is_active === false) offlineBankRuntime?.disable(question.id);
+  return id;
+}
+
+async function getRecentNmtBankItemIds(telegramId, limitAttempts = 3) {
+  if (!pool || !telegramId) return [];
+  const { rows } = await pool.query(
+    `SELECT questions
+     FROM nmt_exam_attempts
+     WHERE telegram_id = $1
+     ORDER BY started_at DESC
+     LIMIT $2`,
+    [telegramId, Math.max(1, Number(limitAttempts) || 3)]
+  );
+
+  const ids = [];
+  for (const row of rows) {
+    const questions = Array.isArray(row.questions) ? row.questions : [];
+    for (const question of questions) {
+      if (typeof question?.id === 'string' && question.id.startsWith('nmt3-')) ids.push(question.id);
+    }
+  }
+  return [...new Set(ids)];
+}
+
+async function syncOfflineBankDisabledState() {
+  if (!pool || !offlineBankRuntime) return;
+  const { rows } = await pool.query(
+    `SELECT offline_bank_id
+     FROM question_bank
+     WHERE offline_bank_id IS NOT NULL AND is_active = false`
+  );
+  offlineBankRuntime.disableMany(rows.map((row) => row.offline_bank_id).filter(Boolean));
 }
 
 async function countStrictBankQuestions(topic, difficulty) {
@@ -501,11 +874,32 @@ function calculateStreaks(dayKeys = []) {
 }
 
 
-// ---- Пробний НМТ --------------------------------------------------------------
+// ---- Пробний НМТ / Stage 9 Mock Engine ----------------------------------------
 
-function nmtRemainingSeconds(startedAt) {
-  const elapsed = Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000);
-  return Math.max(0, NMT_EXAM_META.durationMinutes * 60 - elapsed);
+const NMT_DURATION_SECONDS = NMT_EXAM_META.durationMinutes * 60;
+
+function normalizeClientSessionId(value) {
+  if (value === null || value === undefined) return null;
+  const text = String(value).trim();
+  return /^[A-Za-z0-9._:-]{8,128}$/.test(text) ? text : null;
+}
+
+function nmtRemainingSeconds(attempt) {
+  if (!attempt?.started_at) return 0;
+  return mockRemainingSeconds({
+    startedAt: attempt.started_at,
+    expiresAt: attempt.expires_at || null,
+    durationSeconds: NMT_DURATION_SECONDS,
+  });
+}
+
+function nmtAttemptExpired(attempt) {
+  if (!attempt?.started_at) return true;
+  return isAttemptExpired({
+    startedAt: attempt.started_at,
+    expiresAt: attempt.expires_at || null,
+    durationSeconds: NMT_DURATION_SECONDS,
+  });
 }
 
 async function getActiveNmtAttempt(telegramId) {
@@ -529,6 +923,18 @@ async function getNmtAttemptById(telegramId, attemptId) {
   return rows[0] || null;
 }
 
+async function getNmtAttemptByClientSession(telegramId, clientSessionId) {
+  if (!pool || !telegramId || !clientSessionId) return null;
+  const { rows } = await pool.query(
+    `SELECT * FROM nmt_exam_attempts
+     WHERE telegram_id = $1 AND client_session_id = $2
+     ORDER BY started_at DESC
+     LIMIT 1`,
+    [telegramId, clientSessionId]
+  );
+  return rows[0] || null;
+}
+
 function nmtAttemptPayload(attempt) {
   if (!attempt) return null;
   return {
@@ -536,28 +942,127 @@ function nmtAttemptPayload(attempt) {
     status: attempt.status,
     questions: sanitizeExamQuestions(attempt.questions || []),
     answers: attempt.answers || {},
+    answer_revisions: attempt.answer_revisions || {},
     started_at: attempt.started_at,
-    duration_seconds: NMT_EXAM_META.durationMinutes * 60,
-    remaining_seconds: nmtRemainingSeconds(attempt.started_at),
+    expires_at: attempt.expires_at || null,
+    server_time: new Date().toISOString(),
+    duration_seconds: NMT_DURATION_SECONDS,
+    remaining_seconds: nmtRemainingSeconds(attempt),
+    revision: Number(attempt.revision) || 0,
+    mock_engine_version: Number(attempt.mock_engine_version) || 0,
+    runtime_version: attempt.runtime_version == null ? null : Number(attempt.runtime_version),
     meta: NMT_EXAM_META,
   };
 }
 
-async function finishNmtAttempt(attempt) {
-  if (!attempt) return null;
-  if (attempt.status === 'finished' && attempt.result_json) return attempt.result_json;
-
-  const result = gradeNmtExam(attempt.questions || [], attempt.answers || {});
-  if (pool) {
-    await pool.query(
-      `UPDATE nmt_exam_attempts
-       SET status = 'finished', finished_at = now(), raw_score = $2, scaled_score = $3,
-           weak_topics = $4::jsonb, result_json = $5::jsonb
-       WHERE id = $1`,
-      [attempt.id, result.raw_score, result.scaled_score, JSON.stringify(result.weak_topics), JSON.stringify(result)]
+async function finalizeNmtAttempt({ telegramId, attemptId, incomingAnswers = null }) {
+  if (!pool) throw new Error('Database unavailable');
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows } = await client.query(
+      `SELECT * FROM nmt_exam_attempts
+       WHERE id = $1 AND telegram_id = $2
+       FOR UPDATE`,
+      [attemptId, telegramId]
     );
+    const attempt = rows[0] || null;
+    if (!attempt) {
+      await client.query('ROLLBACK');
+      return null;
+    }
+
+    if (attempt.status === 'finished' && attempt.result_json) {
+      await client.query('COMMIT');
+      return { attempt, result: attempt.result_json, idempotent: true };
+    }
+    if (attempt.status !== 'in_progress') {
+      await client.query('ROLLBACK');
+      const error = new Error('Attempt is not active');
+      error.code = 'NMT_ATTEMPT_NOT_ACTIVE';
+      throw error;
+    }
+
+    const contract = validateMockAttemptContract({
+      questions: attempt.questions || [],
+      snapshotHash: attempt.question_snapshot_hash,
+      mockEngineVersion: attempt.mock_engine_version,
+    });
+    if (!contract.ok) {
+      await client.query(
+        `UPDATE nmt_exam_attempts
+         SET status = 'invalid', finished_at = now(), revision = revision + 1
+         WHERE id = $1`,
+        [attempt.id]
+      );
+      await client.query('COMMIT');
+      const error = new Error(`NMT attempt integrity check failed: ${contract.errors.join(', ')}`);
+      error.code = 'NMT_INTEGRITY_ERROR';
+      throw error;
+    }
+
+    const answers = incomingAnswers && typeof incomingAnswers === 'object' && !Array.isArray(incomingAnswers)
+      ? normalizeMockAnswers(attempt.questions || [], incomingAnswers)
+      : normalizeMockAnswers(attempt.questions || [], attempt.answers || {});
+
+    const result = gradeNmtExam(attempt.questions || [], answers);
+    const audit = auditGradeResult(attempt.questions || [], answers, result, { scoreToScale });
+    if (!audit.ok) {
+      await client.query('ROLLBACK');
+      const error = new Error(`NMT grading audit failed: ${audit.errors.join(', ')}`);
+      error.code = 'NMT_GRADING_AUDIT_ERROR';
+      throw error;
+    }
+
+    const resultHash = gradeResultHash({
+      snapshotHash: attempt.question_snapshot_hash,
+      answers,
+      result,
+    });
+
+    const { rows: updatedRows } = await client.query(
+      `UPDATE nmt_exam_attempts
+       SET status = 'finished', finished_at = now(), answers = $3::jsonb,
+           raw_score = $4, scaled_score = $5, weak_topics = $6::jsonb,
+           result_json = $7::jsonb, result_hash = $8, revision = revision + 1,
+           last_saved_at = now()
+       WHERE id = $1 AND telegram_id = $2
+       RETURNING *`,
+      [
+        attempt.id,
+        telegramId,
+        JSON.stringify(answers),
+        result.raw_score,
+        result.scaled_score,
+        JSON.stringify(result.weak_topics),
+        JSON.stringify(result),
+        resultHash,
+      ]
+    );
+
+    const mockTelemetryEvents = createMockTelemetryEvents({
+      attemptId: Number(attempt.id),
+      telegramId,
+      questions: attempt.questions || [],
+      answers,
+      result,
+    });
+    await insertStage10Events(client, mockTelemetryEvents);
+
+    await client.query('COMMIT');
+    return {
+      attempt: updatedRows[0] || attempt,
+      result,
+      audit,
+      result_hash: resultHash,
+      idempotent: false,
+    };
+  } catch (err) {
+    try { await client.query('ROLLBACK'); } catch {}
+    throw err;
+  } finally {
+    client.release();
   }
-  return result;
 }
 
 // ---- Промпти ----------------------------------------------------------------
@@ -1177,6 +1682,14 @@ app.get('/api/knowledge/meta', (req, res) => {
     year: NMT_META.year,
     blueprints: QUESTION_BLUEPRINTS.length,
     exam_slots: EXAM_SLOTS,
+    runtime: offlineBankRuntime
+      ? { ready: true, fallback_enabled: RUNTIME_FALLBACK_ENABLED, ...offlineBankRuntime.getStats() }
+      : { ready: false, fallback_enabled: RUNTIME_FALLBACK_ENABLED, error: offlineBankLoadError?.message || 'offline_bank_unavailable' },
+    analytics: {
+      version: ANALYTICS_VERSION,
+      auto_quarantine: STAGE10_AUTO_QUARANTINE,
+      calibration_loaded: offlineBankRuntime?.calibrations?.size ?? 0,
+    },
   });
 });
 
@@ -1207,7 +1720,7 @@ app.post('/api/progress', async (req, res) => {
 
 // Записує відповідь користувача
 app.post('/api/answer', async (req, res) => {
-  const { initData, isCorrect, topic = 'mixed', questionBankId = null } = req.body;
+  const { initData, isCorrect, topic = 'mixed', questionBankId = null, selectedIndex = null, responseMs = null, clientAnswerId = null } = req.body;
 
   try {
     const telegramUser = verifyTelegramInitData(initData);
@@ -1222,7 +1735,8 @@ app.post('/api/answer', async (req, res) => {
       telegramUser.id,
       !!isCorrect,
       topic,
-      Number.isInteger(Number(questionBankId)) ? Number(questionBankId) : null
+      Number.isInteger(Number(questionBankId)) ? Number(questionBankId) : null,
+      { selectedIndex, responseMs, clientAnswerId }
     );
 
     res.json({
@@ -1241,24 +1755,26 @@ app.post('/api/answer', async (req, res) => {
 
 
 
-// ---- Пробний НМТ: 15 вибір + 3 відповідність + 4 коротка відповідь ----------
-
+// ---- Пробний НМТ: Stage 9 production attempt lifecycle -------------------------
 
 function isCurrentNmtAttempt(attempt) {
   const questions = Array.isArray(attempt?.questions) ? attempt.questions : [];
-  return questions.length === NMT_EXAM_META.questions &&
-    Number(questions[0]?.engine_version) === Number(NMT_EXAM_META.generatorVersion);
+  if (questions.length !== NMT_EXAM_META.questions) return false;
+  if (Number(attempt?.mock_engine_version) !== MOCK_ENGINE_VERSION) return false;
+  if (Number(attempt?.runtime_version) !== RUNTIME_VERSION) return false;
+  if (Number(questions[0]?.engine_version) !== Number(NMT_EXAM_META.generatorVersion)) return false;
+  return verifyQuestionSnapshot(questions, attempt?.question_snapshot_hash).ok;
 }
 
 async function discardLegacyNmtAttempt(attempt) {
   if (!attempt || !pool || isCurrentNmtAttempt(attempt)) return attempt;
+  const nextStatus = Number(attempt?.mock_engine_version) === MOCK_ENGINE_VERSION ? 'invalid' : 'abandoned';
   await pool.query(
-    `UPDATE nmt_exam_attempts SET status = 'abandoned', finished_at = now() WHERE id = $1`,
-    [attempt.id]
+    `UPDATE nmt_exam_attempts SET status = $2, finished_at = COALESCE(finished_at, now()) WHERE id = $1`,
+    [attempt.id, nextStatus]
   );
   return null;
 }
-
 
 app.post('/api/nmt/resume', async (req, res) => {
   const { initData } = req.body;
@@ -1266,9 +1782,19 @@ app.post('/api/nmt/resume', async (req, res) => {
     const telegramUser = verifyTelegramInitData(initData);
     if (!telegramUser?.id) return res.status(401).json({ error: 'Потрібно відкрити застосунок через Telegram.' });
     await getOrCreateUser(telegramUser);
+
     let attempt = await getActiveNmtAttempt(telegramUser.id);
     attempt = await discardLegacyNmtAttempt(attempt);
-    res.json({ attempt: nmtAttemptPayload(attempt) });
+
+    if (attempt && nmtAttemptExpired(attempt)) {
+      const finalized = await finalizeNmtAttempt({
+        telegramId: telegramUser.id,
+        attemptId: Number(attempt.id),
+      });
+      return res.json({ attempt: null, expired_result: finalized?.result || null });
+    }
+
+    res.json({ attempt: nmtAttemptPayload(attempt), mock_engine_version: MOCK_ENGINE_VERSION });
   } catch (err) {
     console.error('NMT RESUME ERROR:', err);
     res.status(500).json({ error: 'Не вдалося перевірити активний пробний НМТ.' });
@@ -1276,35 +1802,156 @@ app.post('/api/nmt/resume', async (req, res) => {
 });
 
 app.post('/api/nmt/start', async (req, res) => {
-  const { initData, forceNew = false } = req.body;
+  const { initData, forceNew = false, clientSessionId = null } = req.body;
   try {
     const telegramUser = verifyTelegramInitData(initData);
     if (!telegramUser?.id) return res.status(401).json({ error: 'Потрібно відкрити застосунок через Telegram.' });
     await getOrCreateUser(telegramUser);
 
+    if (!pool) return res.status(503).json({ error: 'База даних тимчасово недоступна.' });
+
+    const normalizedSessionId = normalizeClientSessionId(clientSessionId) || crypto.randomUUID();
+
+    // Idempotency: a retry with the same client session must return the same attempt.
+    const replay = await getNmtAttemptByClientSession(telegramUser.id, normalizedSessionId);
+    if (replay) {
+      if (replay.status === 'finished' && replay.result_json) {
+        return res.json({ attempt: null, result: replay.result_json, resumed: true, idempotent: true });
+      }
+      if (replay.status === 'in_progress' && isCurrentNmtAttempt(replay)) {
+        return res.json({
+          attempt: nmtAttemptPayload(replay),
+          resumed: true,
+          idempotent: true,
+          client_session_id: normalizedSessionId,
+        });
+      }
+    }
+
     let current = await getActiveNmtAttempt(telegramUser.id);
     current = await discardLegacyNmtAttempt(current);
+
+    // A concurrent retry may have created this exact session after the replay lookup above.
+    if (current?.client_session_id === normalizedSessionId && isCurrentNmtAttempt(current)) {
+      return res.json({
+        attempt: nmtAttemptPayload(current),
+        resumed: true,
+        idempotent: true,
+        client_session_id: normalizedSessionId,
+      });
+    }
+
+    if (current && nmtAttemptExpired(current)) {
+      await finalizeNmtAttempt({ telegramId: telegramUser.id, attemptId: Number(current.id) });
+      current = null;
+    }
+
     if (current && !forceNew) {
-      return res.json({ attempt: nmtAttemptPayload(current), resumed: true });
+      return res.json({
+        attempt: nmtAttemptPayload(current),
+        resumed: true,
+        client_session_id: current.client_session_id || null,
+      });
     }
 
-    if (current && forceNew && pool) {
-      await pool.query(`UPDATE nmt_exam_attempts SET status = 'abandoned', finished_at = now() WHERE id = $1`, [current.id]);
+    if (current && forceNew) {
+      await pool.query(
+        `UPDATE nmt_exam_attempts
+         SET status = 'abandoned', finished_at = now(), revision = revision + 1
+         WHERE id = $1 AND status = 'in_progress'`,
+        [current.id]
+      );
     }
 
-    const questions = generateNmtExam();
-    if (!pool) {
-      return res.status(503).json({ error: 'База даних тимчасово недоступна.' });
+    let questions = null;
+    let assemblyQuality = null;
+    const assemblySeed = `${telegramUser.id}:${normalizedSessionId}:stage9`;
+
+    if (offlineBankRuntime) {
+      const recentIds = await getRecentNmtBankItemIds(telegramUser.id, 3);
+      const assembled = offlineBankRuntime.assembleMock(EXAM_SLOTS, {
+        recentIds,
+        seed: assemblySeed,
+      });
+      questions = assembled.questions;
+      assemblyQuality = assembled.quality;
+    } else if (RUNTIME_FALLBACK_ENABLED) {
+      questions = generateNmtExam().map((question) => ({
+        ...question,
+        runtime_source: 'engine-fallback',
+        runtime_meta: { version: RUNTIME_VERSION, mode: 'mock', bank_item_id: null },
+      }));
+      assemblyQuality = { fallback: true };
+    } else {
+      return res.status(503).json({
+        error: 'Офлайн-банк НМТ тимчасово недоступний. Спробуй ще раз пізніше.',
+      });
     }
+
+    const snapshot = createMockAttemptSnapshot({
+      questions,
+      bank: offlineBankRuntime?.bank || null,
+      assemblyQuality,
+      assemblySeed,
+      runtimeVersion: RUNTIME_VERSION,
+    });
+
+    const contract = validateMockAttemptContract({
+      questions,
+      snapshotHash: snapshot.question_snapshot_hash,
+      mockEngineVersion: MOCK_ENGINE_VERSION,
+    });
+    if (!contract.ok) {
+      throw new Error(`Stage 9 mock contract failed: ${contract.errors.join(', ')}`);
+    }
+
+    const assemblyMeta = {
+      source: offlineBankRuntime ? 'offline_bank' : 'engine_fallback',
+      quality: assemblyQuality,
+      item_ids: snapshot.item_ids,
+      unique_item_count: snapshot.unique_item_count,
+      unique_content_hash_count: snapshot.unique_content_hash_count,
+      assembly_seed_hash: snapshot.assembly_seed_hash,
+      integrity_version: snapshot.integrity_version,
+    };
 
     const { rows } = await pool.query(
-      `INSERT INTO nmt_exam_attempts (telegram_id, questions, answers)
-       VALUES ($1, $2::jsonb, '{}'::jsonb)
+      `INSERT INTO nmt_exam_attempts (
+         telegram_id, questions, answers, answer_revisions,
+         mock_engine_version, runtime_version, bank_schema_version, factory_version,
+         question_snapshot_hash, expires_at, assembly_meta, client_session_id
+       )
+       VALUES (
+         $1, $2::jsonb, '{}'::jsonb, '{}'::jsonb,
+         $3, $4, $5, $6, $7,
+         now() + ($8 * interval '1 second'), $9::jsonb, $10
+       )
+       ON CONFLICT DO NOTHING
        RETURNING *`,
-      [telegramUser.id, JSON.stringify(questions)]
+      [
+        telegramUser.id,
+        JSON.stringify(questions),
+        MOCK_ENGINE_VERSION,
+        RUNTIME_VERSION,
+        snapshot.bank_schema_version == null ? null : String(snapshot.bank_schema_version),
+        snapshot.factory_version == null ? null : Number(snapshot.factory_version),
+        snapshot.question_snapshot_hash,
+        NMT_DURATION_SECONDS,
+        JSON.stringify(assemblyMeta),
+        normalizedSessionId,
+      ]
     );
 
-    res.json({ attempt: nmtAttemptPayload(rows[0]), resumed: false });
+    let created = rows[0] || null;
+    if (!created) created = await getNmtAttemptByClientSession(telegramUser.id, normalizedSessionId);
+    if (!created) throw new Error('Failed to persist Stage 9 mock attempt');
+
+    res.json({
+      attempt: nmtAttemptPayload(created),
+      resumed: false,
+      idempotent: false,
+      client_session_id: normalizedSessionId,
+    });
   } catch (err) {
     console.error('NMT START ERROR:', err);
     res.status(500).json({ error: 'Не вдалося створити пробний НМТ.' });
@@ -1312,27 +1959,112 @@ app.post('/api/nmt/start', async (req, res) => {
 });
 
 app.post('/api/nmt/save-answer', async (req, res) => {
-  const { initData, attemptId, index, answer } = req.body;
+  const { initData, attemptId, index, answer, revision = null } = req.body;
+  let client = null;
   try {
     const telegramUser = verifyTelegramInitData(initData);
     if (!telegramUser?.id) return res.status(401).json({ error: 'Потрібно відкрити застосунок через Telegram.' });
-    const attempt = await getNmtAttemptById(telegramUser.id, Number(attemptId));
-    if (!attempt || attempt.status !== 'in_progress') return res.status(404).json({ error: 'Активний тест не знайдено.' });
+    if (!pool) return res.status(503).json({ saved: false, error: 'База даних тимчасово недоступна.' });
+
+    client = await pool.connect();
+    await client.query('BEGIN');
+    const { rows } = await client.query(
+      `SELECT * FROM nmt_exam_attempts
+       WHERE id = $1 AND telegram_id = $2
+       FOR UPDATE`,
+      [Number(attemptId), telegramUser.id]
+    );
+    const attempt = rows[0] || null;
+    if (!attempt || attempt.status !== 'in_progress') {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ saved: false, error: 'Активний тест не знайдено.' });
+    }
+
+    if (!isCurrentNmtAttempt(attempt)) {
+      await client.query(
+        `UPDATE nmt_exam_attempts SET status = 'invalid', finished_at = now() WHERE id = $1`,
+        [attempt.id]
+      );
+      await client.query('COMMIT');
+      return res.status(409).json({ saved: false, error: 'Цей варіант тесту більше не є валідним.' });
+    }
+
+    if (nmtAttemptExpired(attempt)) {
+      await client.query('ROLLBACK');
+      client.release();
+      client = null;
+      const finalized = await finalizeNmtAttempt({ telegramId: telegramUser.id, attemptId: Number(attempt.id) });
+      return res.status(409).json({
+        saved: false,
+        expired: true,
+        error: 'Час тесту вийшов.',
+        result: finalized?.result || null,
+      });
+    }
 
     const i = Number(index);
-    if (!Number.isInteger(i) || i < 0 || i >= 22) return res.status(400).json({ error: 'Некоректний номер завдання.' });
+    if (!Number.isInteger(i) || i < 0 || i >= NMT_EXAM_META.questions) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ saved: false, error: 'Некоректний номер завдання.' });
+    }
 
-    await pool.query(
+    const previousRevision = Number(attempt.answer_revisions?.[String(i)]) || 0;
+    const requestedRevision = Number.isInteger(Number(revision)) && Number(revision) > 0
+      ? Number(revision)
+      : previousRevision + 1;
+
+    const applied = applyAnswerRevision({
+      questions: attempt.questions || [],
+      answers: attempt.answers || {},
+      revisions: attempt.answer_revisions || {},
+      index: i,
+      answer,
+      revision: requestedRevision,
+    });
+
+    if (applied.stale) {
+      await client.query('COMMIT');
+      return res.json({
+        saved: true,
+        stale: true,
+        answer_revision: previousRevision,
+        attempt_revision: Number(attempt.revision) || 0,
+      });
+    }
+    if (!applied.accepted) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ saved: false, error: 'Некоректна версія відповіді.' });
+    }
+
+    const { rows: updatedRows } = await client.query(
       `UPDATE nmt_exam_attempts
-       SET answers = COALESCE(answers, '{}'::jsonb) || jsonb_build_object($2::text, $3::jsonb)
-       WHERE id = $1`,
-      [attempt.id, String(i), JSON.stringify(answer ?? null)]
+       SET answers = $3::jsonb, answer_revisions = $4::jsonb,
+           last_saved_at = now(), revision = revision + 1
+       WHERE id = $1 AND telegram_id = $2
+       RETURNING revision`,
+      [
+        attempt.id,
+        telegramUser.id,
+        JSON.stringify(applied.answers),
+        JSON.stringify(applied.revisions),
+      ]
     );
 
-    res.json({ saved: true });
+    await client.query('COMMIT');
+    res.json({
+      saved: true,
+      stale: false,
+      answer_revision: requestedRevision,
+      attempt_revision: Number(updatedRows[0]?.revision) || ((Number(attempt.revision) || 0) + 1),
+    });
   } catch (err) {
+    if (client) {
+      try { await client.query('ROLLBACK'); } catch {}
+    }
     console.error('NMT SAVE ANSWER ERROR:', err);
     res.status(500).json({ saved: false, error: 'Не вдалося зберегти відповідь.' });
+  } finally {
+    if (client) client.release();
   }
 });
 
@@ -1341,26 +2073,29 @@ app.post('/api/nmt/finish', async (req, res) => {
   try {
     const telegramUser = verifyTelegramInitData(initData);
     if (!telegramUser?.id) return res.status(401).json({ error: 'Потрібно відкрити застосунок через Telegram.' });
-    let attempt = await getNmtAttemptById(telegramUser.id, Number(attemptId));
-    if (!attempt) return res.status(404).json({ error: 'Пробний НМТ не знайдено.' });
 
-    if (attempt.status === 'finished' && attempt.result_json) {
-      return res.json({ result: attempt.result_json });
-    }
+    const current = await getNmtAttemptById(telegramUser.id, Number(attemptId));
+    if (!current) return res.status(404).json({ error: 'Пробний НМТ не знайдено.' });
 
-    if (answers && typeof answers === 'object' && !Array.isArray(answers)) {
-      const { rows } = await pool.query(
-        `UPDATE nmt_exam_attempts SET answers = $2::jsonb WHERE id = $1 RETURNING *`,
-        [attempt.id, JSON.stringify(answers)]
-      );
-      attempt = rows[0];
-    }
+    const acceptIncomingAnswers = current.status === 'in_progress' && !nmtAttemptExpired(current);
+    const finalized = await finalizeNmtAttempt({
+      telegramId: telegramUser.id,
+      attemptId: Number(attemptId),
+      incomingAnswers: acceptIncomingAnswers && answers && typeof answers === 'object' && !Array.isArray(answers)
+        ? answers
+        : null,
+    });
 
-    const result = await finishNmtAttempt(attempt);
-    res.json({ result });
+    if (!finalized) return res.status(404).json({ error: 'Пробний НМТ не знайдено.' });
+    res.json({
+      result: finalized.result,
+      idempotent: !!finalized.idempotent,
+      mock_engine_version: MOCK_ENGINE_VERSION,
+    });
   } catch (err) {
     console.error('NMT FINISH ERROR:', err);
-    res.status(500).json({ error: 'Не вдалося завершити пробний НМТ.' });
+    const status = ['NMT_INTEGRITY_ERROR', 'NMT_GRADING_AUDIT_ERROR', 'NMT_ATTEMPT_NOT_ACTIVE'].includes(err.code) ? 409 : 500;
+    res.status(status).json({ error: 'Не вдалося завершити пробний НМТ.' });
   }
 });
 
@@ -1402,6 +2137,7 @@ app.post('/api/profile', async (req, res) => {
       : null;
     const recent7Total = Number(profile.recent7?.total) || 0;
     const recent7Correct = Number(profile.recent7?.correct) || 0;
+    const stage10Topics = await getStage10UserAnalytics(telegramUser.id);
 
     res.json({
       first_name: profile.user.first_name || telegramUser.first_name || 'Учень',
@@ -1425,6 +2161,12 @@ app.post('/api/profile', async (req, res) => {
         last_scaled_score: profile.examStats?.last_scaled_score == null ? null : Number(profile.examStats.last_scaled_score),
         last_raw_score: profile.examStats?.last_raw_score == null ? null : Number(profile.examStats.last_raw_score),
         last_finished_at: profile.examStats?.last_finished_at || null,
+      },
+      learning_analytics: {
+        version: ANALYTICS_VERSION,
+        topics: stage10Topics,
+        weakest_topic: stage10Topics[0] || null,
+        strongest_topic: stage10Topics.length ? stage10Topics[stage10Topics.length - 1] : null,
       },
     });
   } catch (err) {
@@ -1467,12 +2209,13 @@ app.post('/api/report-question', async (req, res) => {
         `UPDATE question_bank
          SET report_count = report_count + 1
          WHERE id = $1
-         RETURNING report_count`,
+         RETURNING report_count, offline_bank_id`,
         [validBankId]
       );
 
       if ((rows[0]?.report_count || 0) >= 3) {
         await pool.query(`UPDATE question_bank SET is_active = false WHERE id = $1`, [validBankId]);
+        if (rows[0]?.offline_bank_id) offlineBankRuntime?.disable(rows[0].offline_bank_id);
       }
     }
 
@@ -1493,26 +2236,43 @@ app.post('/api/explain-more', async (req, res) => {
     if (!question?.question || !Array.isArray(question.options)) return res.status(400).json({ error: 'Немає даних завдання.' });
 
     if (mode === 'similar') {
-      const recent = await getRecentQuestions(telegramUser.id, topic, 12);
+      const recent = await getRecentQuestions(telegramUser.id, topic, 24);
       const avoid = [question.question, ...recent].filter(Boolean);
-      const similar = await generateStrictQuestion(topic, difficulty, avoid, 4);
+      let similar = null;
+      let source = 'offline-bank';
 
-      if (!similar) {
-        return res.status(502).json({ error: 'Не вдалося створити схоже завдання. Спробуй ще раз.' });
+      if (offlineBankRuntime) {
+        similar = offlineBankRuntime.pickSimilar(question, {
+          difficulty,
+          avoidTexts: avoid,
+          visualMode: TRAINING_VISUAL_MODE,
+          seed: `${telegramUser.id}:similar:${Date.now()}`,
+        });
       }
 
-      const bankId = await saveQuestionToBank(topic, difficulty, similar);
-      await saveQuestionToHistory(telegramUser.id, topic, similar.question);
+      if (!similar && RUNTIME_FALLBACK_ENABLED) {
+        source = 'engine-fallback';
+        similar = await generateStrictQuestion(topic, difficulty, avoid, 4);
+      }
+
+      if (!similar) {
+        return res.status(503).json({ error: 'У перевіреному банку зараз немає іншого схожого завдання.' });
+      }
+
+      const bankId = source === 'offline-bank'
+        ? await ensureOfflineQuestionBankId(similar)
+        : await saveQuestionToBank(topic, difficulty, similar);
+      await saveQuestionToHistory(telegramUser.id, similar.topic || topic, similar.question);
 
       return res.json({
         mode: 'similar',
         question: {
           ...similar,
-          topic,
-          difficulty,
+          topic: similar.topic || topic,
+          difficulty: similar.difficulty || difficulty,
           verified: true,
           bank_id: bankId,
-          source: 'engine',
+          source,
         },
       });
     }
@@ -1553,59 +2313,75 @@ app.post('/api/questions-batch', async (req, res) => {
 
     const questions = [];
 
-    for (let i = 0; i < batchSize; i++) {
-      let question = null;
-      let bankId = null;
-      let source = 'bank';
-
-      // Помилка БД не повинна валити весь буфер: у такому разі одразу генеруємо локально.
-      try {
-        const bankQuestion = await getQuestionFromBank(topic, difficulty, avoidList);
-        if (bankQuestion?.question && isValidQuestion(bankQuestion.question) && hasSafeQuestionMath(bankQuestion.question)) {
-          question = bankQuestion.question;
-          bankId = bankQuestion.id;
-        }
-      } catch (bankErr) {
-        console.warn('BANK PICK FALLBACK:', bankErr.message);
-      }
-
-      if (!question) {
-        source = 'engine';
-        question = await generateStrictQuestion(topic, difficulty, avoidList, 10);
-        if (question) {
-          try { bankId = await saveQuestionToBank(topic, difficulty, question); }
-          catch (saveErr) { console.warn('BANK SAVE FALLBACK:', saveErr.message); }
-        }
-      }
-
-      if (!question) break;
-
-      avoidList.push(question.question);
-      if (telegramId) {
-        await saveQuestionToHistory(telegramId, topic, question.question);
-      }
-
-      questions.push({
-        ...question,
+    if (offlineBankRuntime) {
+      const selected = offlineBankRuntime.pickTrainingBatch({
         topic,
         difficulty,
-        verified: true,
-        bank_id: bankId,
-        source,
+        count: batchSize,
+        visualMode: TRAINING_VISUAL_MODE,
+        avoidTexts: avoidList,
+        seed: `${telegramId || 'anon'}:${topic}:${Date.now()}`,
       });
+
+      for (const question of selected) {
+        if (!isValidQuestion(question) || !hasSafeQuestionMath(question)) continue;
+        let bankId = null;
+        try {
+          bankId = await ensureOfflineQuestionBankId(question);
+        } catch (dbErr) {
+          console.warn('OFFLINE BANK DB MAP:', dbErr.message);
+        }
+
+        if (telegramId) {
+          await saveQuestionToHistory(telegramId, question.topic || topic, question.question);
+        }
+
+        questions.push({
+          ...question,
+          verified: true,
+          bank_id: bankId,
+          source: 'offline-bank',
+          requested_difficulty: difficulty,
+        });
+      }
+    }
+
+    // Emergency compatibility path only. Stage 8 keeps this disabled by default.
+    if (questions.length < batchSize && RUNTIME_FALLBACK_ENABLED) {
+      const fallbackAvoid = [...avoidList, ...questions.map((q) => q.question)];
+      while (questions.length < batchSize) {
+        const question = await generateStrictQuestion(topic, difficulty, fallbackAvoid, 6);
+        if (!question) break;
+        fallbackAvoid.push(question.question);
+
+        let bankId = null;
+        try { bankId = await saveQuestionToBank(topic, difficulty, question); }
+        catch (saveErr) { console.warn('ENGINE FALLBACK SAVE:', saveErr.message); }
+
+        if (telegramId) await saveQuestionToHistory(telegramId, question.topic || topic, question.question);
+        questions.push({
+          ...question,
+          topic,
+          difficulty,
+          verified: true,
+          bank_id: bankId,
+          source: 'engine-fallback',
+        });
+      }
     }
 
     if (!questions.length) {
       return res.status(503).json({
-        error: 'Не вдалося підготувати буфер завдань. Спробуй ще раз.',
+        error: offlineBankRuntime
+          ? 'У перевіреному банку зараз немає завдань для цієї теми.'
+          : 'Офлайн-банк завдань тимчасово недоступний.',
       });
     }
 
     const freshUser = telegramUser ? await getOrCreateUser(telegramUser) : null;
-    scheduleBankRefill(topic, difficulty);
-
     res.json({
       questions,
+      bank_runtime: offlineBankRuntime ? 8 : null,
       progress: {
         correct: freshUser?.correct_count ?? 0,
         wrong: freshUser?.wrong_count ?? 0,
@@ -1618,7 +2394,7 @@ app.post('/api/questions-batch', async (req, res) => {
 });
 
 
-// Генерує нове питання
+// Віддає інше перевірене питання з offline bank
 app.post('/api/generate-question', async (req, res) => {
   const {
     topic = 'mixed',
@@ -1630,55 +2406,56 @@ app.post('/api/generate-question', async (req, res) => {
     const telegramUser = verifyTelegramInitData(initData);
     const user = await getOrCreateUser(telegramUser);
     const telegramId = user?.telegram_id ?? null;
-
     const avoidList = telegramId
-      ? await getRecentQuestions(telegramId, topic)
+      ? await getRecentQuestions(telegramId, topic, 60)
       : [];
 
     let question = null;
     let bankId = null;
-    let source = 'bank';
+    let source = 'offline-bank';
 
-    // Навіть кнопка «інше завдання» спочатку бере ІНШЕ перевірене питання з банку.
-    // Історія користувача не дозволяє віддати те саме питання вдруге.
-    const bankQuestion = await getQuestionFromBank(topic, difficulty, avoidList);
-    if (bankQuestion?.question && isValidQuestion(bankQuestion.question) && hasSafeQuestionMath(bankQuestion.question)) {
-      question = bankQuestion.question;
-      bankId = bankQuestion.id;
+    if (offlineBankRuntime) {
+      [question] = offlineBankRuntime.pickTrainingBatch({
+        topic,
+        difficulty,
+        count: 1,
+        visualMode: TRAINING_VISUAL_MODE,
+        avoidTexts: avoidList,
+        seed: `${telegramId || 'anon'}:${topic}:single:${Date.now()}`,
+      });
+      if (question && (!isValidQuestion(question) || !hasSafeQuestionMath(question))) question = null;
+      if (question) {
+        try { bankId = await ensureOfflineQuestionBankId(question); }
+        catch (dbErr) { console.warn('OFFLINE BANK DB MAP:', dbErr.message); }
+      }
     }
 
-    // Якщо запасу немає — створюємо нове питання детермінованим математичним рушієм.
-    if (!question) {
-      source = 'engine';
+    if (!question && RUNTIME_FALLBACK_ENABLED) {
+      source = 'engine-fallback';
       question = await generateStrictQuestion(topic, difficulty, avoidList, 4);
-
       if (question) {
-        bankId = await saveQuestionToBank(topic, difficulty, question);
+        try { bankId = await saveQuestionToBank(topic, difficulty, question); }
+        catch (saveErr) { console.warn('ENGINE FALLBACK SAVE:', saveErr.message); }
       }
     }
 
     if (!question) {
       return res.status(503).json({
-        error: 'Не вдалося безпечно підготувати завдання. Спробуй ще раз за кілька секунд.',
+        error: offlineBankRuntime
+          ? 'У перевіреному банку зараз немає іншого завдання для цієї теми.'
+          : 'Офлайн-банк завдань тимчасово недоступний.',
       });
     }
 
-    if (telegramId) {
-      await saveQuestionToHistory(telegramId, topic, question.question);
-    }
-
+    if (telegramId) await saveQuestionToHistory(telegramId, question.topic || topic, question.question);
     const freshUser = telegramUser ? await getOrCreateUser(telegramUser) : null;
-
-    // Поповнюємо запас у фоні, щоб наступні користувачі отримували питання майже миттєво.
-    scheduleBankRefill(topic, difficulty);
 
     res.json({
       ...question,
-      topic,
-      difficulty,
       verified: true,
       bank_id: bankId,
       source,
+      requested_difficulty: difficulty,
       progress: {
         correct: freshUser?.correct_count ?? 0,
         wrong: freshUser?.wrong_count ?? 0,
@@ -1686,12 +2463,12 @@ app.post('/api/generate-question', async (req, res) => {
     });
   } catch (err) {
     console.error('GENERATE ERROR:', err);
-
     res.status(500).json({
       error: 'Не вдалося підготувати завдання. Спробуй ще раз.',
     });
   }
 });
+
 
 
 app.use(
@@ -1721,6 +2498,8 @@ app.listen(PORT, async () => {
 
   try {
     await initDb();
+    await syncOfflineBankDisabledState();
+    await loadStage10Calibrations();
 
   } catch (err) {
     console.error(

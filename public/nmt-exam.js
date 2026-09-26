@@ -13,6 +13,8 @@
     activeAttempt: null,
     questions: [],
     answers: {},
+    answerRevisions: {},
+    clientSessionId: null,
     index: 0,
     remainingSeconds: 3600,
     timer: null,
@@ -39,7 +41,12 @@
         body: JSON.stringify({ initData: tg?.initData || null, ...body }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'Помилка сервера');
+      if (!res.ok) {
+        const error = new Error(data.error || 'Помилка сервера');
+        error.payload = data;
+        error.status = res.status;
+        throw error;
+      }
       return data;
     } finally {
       clearTimeout(timeout);
@@ -123,7 +130,7 @@
       </section>`;
 
     requestAnimationFrame(() => { if (nmtView) nmtView.scrollTop = 0; });
-    document.getElementById('nmtStartBtn')?.addEventListener('click', () => startExam(Boolean(active)));
+    document.getElementById('nmtStartBtn')?.addEventListener('click', () => startExam(Boolean(active), true));
     document.getElementById('nmtResumeBtn')?.addEventListener('click', () => activateAttempt(active));
   }
 
@@ -132,6 +139,12 @@
     state.checked = true;
     try {
       const data = await post('/api/nmt/resume', {});
+      if (data.expired_result) {
+        state.activeAttempt = null;
+        state.result = data.expired_result;
+        renderResult(data.expired_result);
+        return;
+      }
       state.activeAttempt = data.attempt || null;
       renderLanding(state.activeAttempt);
     } catch (err) {
@@ -140,14 +153,32 @@
     }
   }
 
-  async function startExam(forceNew = false) {
+  function createClientSessionId() {
+    if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+    return `nmt9-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+  }
+
+  async function startExam(forceNew = false, resetClientSession = false) {
+    if (resetClientSession || !state.clientSessionId) state.clientSessionId = createClientSessionId();
     content.innerHTML = `<div class="nmt-loading-card"><div class="spinner"></div><strong>Збираємо твій варіант НМТ…</strong><span>Готуємо 22 завдання за структурою НМТ</span></div>`;
     try {
-      const data = await post('/api/nmt/start', { forceNew }, 30000);
+      const data = await post('/api/nmt/start', {
+        forceNew,
+        clientSessionId: state.clientSessionId,
+      }, 30000);
+
+      if (data.client_session_id) state.clientSessionId = data.client_session_id;
+      if (data.result) {
+        state.activeAttempt = null;
+        state.result = data.result;
+        renderResult(data.result);
+        return;
+      }
       activateAttempt(data.attempt);
     } catch (err) {
-      renderLanding(state.activeAttempt);
-      showLocalToast(err.message || 'Не вдалося почати тест');
+      content.innerHTML = `<div class="nmt-error-card"><strong>Не вдалося почати тест</strong><p>${escapeHtml(err.message)}</p><button class="primary-btn" id="nmtRetryStart">Повторити</button><button class="secondary-btn" id="nmtBackStart">Назад</button></div>`;
+      document.getElementById('nmtRetryStart')?.addEventListener('click', () => startExam(forceNew, false));
+      document.getElementById('nmtBackStart')?.addEventListener('click', () => renderLanding(state.activeAttempt));
     }
   }
 
@@ -156,6 +187,7 @@
     state.activeAttempt = attempt;
     state.questions = attempt.questions || [];
     state.answers = attempt.answers || {};
+    state.answerRevisions = attempt.answer_revisions || {};
     state.remainingSeconds = Math.max(0, Number(attempt.remaining_seconds) || 0);
     const firstUnanswered = state.questions.findIndex((q, i) => !isAnswered(q, state.answers[String(i)]));
     state.index = firstUnanswered >= 0 ? firstUnanswered : 0;
@@ -405,9 +437,27 @@
 
   async function saveCurrentAnswer(answer, index = state.index) {
     if (!state.activeAttempt?.id) return;
+    const key = String(index);
+    const revision = (Number(state.answerRevisions[key]) || 0) + 1;
+    state.answerRevisions[key] = revision;
     try {
-      await post('/api/nmt/save-answer', { attemptId: state.activeAttempt.id, index, answer }, 12000);
+      const data = await post('/api/nmt/save-answer', {
+        attemptId: state.activeAttempt.id,
+        index,
+        answer,
+        revision,
+      }, 12000);
+      if (Number.isFinite(Number(data.answer_revision))) {
+        state.answerRevisions[key] = Math.max(Number(state.answerRevisions[key]) || 0, Number(data.answer_revision));
+      }
     } catch (err) {
+      if (err.payload?.expired && err.payload?.result) {
+        clearTimer();
+        state.activeAttempt = null;
+        state.result = err.payload.result;
+        renderResult(err.payload.result);
+        return;
+      }
       console.warn('NMT autosave:', err.message);
     }
   }
@@ -513,7 +563,7 @@
       item?.classList.toggle('open');
       renderMath(item);
     }));
-    document.getElementById('nmtNewAfterResult')?.addEventListener('click', () => startExam(true));
+    document.getElementById('nmtNewAfterResult')?.addEventListener('click', () => startExam(true, true));
     renderMath(content);
   }
 
@@ -565,6 +615,28 @@
     });
   }
 
+  async function syncAttemptClock() {
+    if (!state.activeAttempt?.id || document.visibilityState !== 'visible') return;
+    try {
+      const data = await post('/api/nmt/resume', {}, 12000);
+      if (data.expired_result) {
+        clearTimer();
+        state.activeAttempt = null;
+        state.result = data.expired_result;
+        renderResult(data.expired_result);
+        return;
+      }
+      if (data.attempt?.id === state.activeAttempt.id) {
+        state.remainingSeconds = Math.max(0, Number(data.attempt.remaining_seconds) || 0);
+        state.answers = data.attempt.answers || state.answers;
+        state.answerRevisions = data.attempt.answer_revisions || state.answerRevisions;
+        updateTimerDom();
+      }
+    } catch (err) {
+      console.warn('NMT clock sync:', err.message);
+    }
+  }
+
   function showLocalToast(message) {
     const toast = document.getElementById('toast');
     if (!toast) return;
@@ -587,6 +659,10 @@
       if (!event.target.closest('.nmt-short-input-shell') && !event.target.closest('.nmt-short-actions')) active.blur();
     }
   }, { passive: true });
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') syncAttemptClock();
+  });
 
   window.NMTExamController = {
     onViewOpen() {

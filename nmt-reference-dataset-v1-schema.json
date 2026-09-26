@@ -1,0 +1,28 @@
+{
+  "record_fields": {
+    "id": "stable dataset id",
+    "year": "exam/reference year",
+    "session": "variant/date label",
+    "question_no": "1..22",
+    "format": "single_choice|matching|short_answer",
+    "official_content_line": "2026-style content line",
+    "topic": "internal broad topic",
+    "subtopic": "human-readable subtopic",
+    "skill": "machine-oriented skill label",
+    "representation": "text|graph|chart|table|geometry_diagram|spatial_diagram|scheme",
+    "has_visual": "visual dependency flag",
+    "visual_review_required": "must inspect source image before blueprinting",
+    "solution_path_hint": "first-pass reasoning path",
+    "steps_estimate": "estimated logical steps",
+    "difficulty_band": "first-pass level",
+    "difficulty_basis": "psychometric_p_value or position_prior",
+    "psychometrics": "p_value,d_index,rit when extractable",
+    "answer_key": "source answer/key",
+    "source": "file, id, page, type, confidence",
+    "raw_text": "source-extracted question block",
+    "text_skeleton": "numbers/options normalized for duplicate detection",
+    "skeleton_hash": "stable hash",
+    "possible_duplicate_group": "same-skeleton record ids",
+    "review_flags": "manual audit flags"
+  }
+}

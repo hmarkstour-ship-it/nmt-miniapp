@@ -77,6 +77,7 @@ const tg = window.Telegram?.WebApp;
     currentQuestion: null,
     selectedIndex: null,
     answered: false,
+    questionShownAtMs: null,
     questionQueue: [],
     batchPromise: null,
     batchTopic: null,
@@ -615,6 +616,7 @@ const tg = window.Telegram?.WebApp;
     state.currentQuestion = q;
     state.selectedIndex = null;
     state.answered = false;
+    state.questionShownAtMs = Date.now();
 
     if (q.progress) {
       state.correct = Number(q.progress.correct) || 0;
@@ -753,7 +755,10 @@ const tg = window.Telegram?.WebApp;
           initData: tg?.initData || null,
           isCorrect,
           topic: q.topic || topicSelect.value,
-          questionBankId: q.bank_id || null
+          questionBankId: q.bank_id || null,
+          selectedIndex,
+          responseMs: state.questionShownAtMs ? Math.max(0, Date.now() - state.questionShownAtMs) : null,
+          clientAnswerId: globalThis.crypto?.randomUUID?.() || `ans-${Date.now()}-${Math.random().toString(36).slice(2)}`
         }),
       });
 
