@@ -4,7 +4,7 @@ import crypto from 'crypto';
 import pg from 'pg';
 import 'dotenv/config';
 import { NMT_META, getTopic, getPublicTopics, QUESTION_BLUEPRINTS, EXAM_SLOTS } from './nmt-knowledge.js';
-import { GENERATOR_VERSION, generateDeterministicQuestion, validateDeterministicQuestion } from './deterministic-math.js';
+import { GENERATOR_VERSION, generateDeterministicQuestion, validateDeterministicQuestion, questionSkeleton } from './deterministic-math.js';
 import { NMT_EXAM_META, generateNmtExam, sanitizeExamQuestions, gradeNmtExam } from './nmt-exam-engine.js';
 
 const { Pool } = pg;
@@ -304,6 +304,8 @@ async function recordAnswer(telegramId, isCorrect, topic = 'mixed', questionBank
 async function getQuestionFromBank(topic, difficulty, avoidList = []) {
   if (!pool) return null;
 
+  // Беремо декілька кандидатів і фільтруємо не лише дослівні дублікати,
+  // а й той самий шаблон з іншими числами.
   const { rows } = await pool.query(
     `SELECT id, question_json
      FROM question_bank
@@ -311,14 +313,20 @@ async function getQuestionFromBank(topic, difficulty, avoidList = []) {
        AND difficulty = $2
        AND is_active = true
        AND verified = true
-       AND verification_version >= $4
-       AND NOT ((question_json->>'question') = ANY($3::text[]))
+       AND verification_version >= $3
      ORDER BY use_count ASC, random()
-     LIMIT 1`,
-    [topic, difficulty, avoidList, BANK_VERIFICATION_VERSION]
+     LIMIT 24`,
+    [topic, difficulty, BANK_VERIFICATION_VERSION]
   );
 
-  const row = rows[0];
+  const recentSkeletons = new Set((avoidList || []).map(questionSkeleton));
+  const row = rows.find((candidate) => {
+    const q = candidate?.question_json;
+    if (!q?.question) return false;
+    if ((avoidList || []).includes(q.question)) return false;
+    return !recentSkeletons.has(q.question_skeleton || questionSkeleton(q.question));
+  }) || rows.find((candidate) => candidate?.question_json?.question && !(avoidList || []).includes(candidate.question_json.question));
+
   if (!row) return null;
 
   await pool.query(
@@ -1540,7 +1548,7 @@ app.post('/api/questions-batch', async (req, res) => {
     const user = await getOrCreateUser(telegramUser);
     const telegramId = user?.telegram_id ?? null;
     const avoidList = telegramId
-      ? await getRecentQuestions(telegramId, topic, 30)
+      ? await getRecentQuestions(telegramId, topic, 60)
       : [];
 
     const questions = [];
@@ -1550,16 +1558,24 @@ app.post('/api/questions-batch', async (req, res) => {
       let bankId = null;
       let source = 'bank';
 
-      const bankQuestion = await getQuestionFromBank(topic, difficulty, avoidList);
-      if (bankQuestion?.question && isValidQuestion(bankQuestion.question) && hasSafeQuestionMath(bankQuestion.question)) {
-        question = bankQuestion.question;
-        bankId = bankQuestion.id;
+      // Помилка БД не повинна валити весь буфер: у такому разі одразу генеруємо локально.
+      try {
+        const bankQuestion = await getQuestionFromBank(topic, difficulty, avoidList);
+        if (bankQuestion?.question && isValidQuestion(bankQuestion.question) && hasSafeQuestionMath(bankQuestion.question)) {
+          question = bankQuestion.question;
+          bankId = bankQuestion.id;
+        }
+      } catch (bankErr) {
+        console.warn('BANK PICK FALLBACK:', bankErr.message);
       }
 
       if (!question) {
         source = 'engine';
-        question = await generateStrictQuestion(topic, difficulty, avoidList, 4);
-        if (question) bankId = await saveQuestionToBank(topic, difficulty, question);
+        question = await generateStrictQuestion(topic, difficulty, avoidList, 10);
+        if (question) {
+          try { bankId = await saveQuestionToBank(topic, difficulty, question); }
+          catch (saveErr) { console.warn('BANK SAVE FALLBACK:', saveErr.message); }
+        }
       }
 
       if (!question) break;
