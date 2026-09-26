@@ -7,39 +7,45 @@
 <meta http-equiv="Pragma" content="no-cache" />
 <meta http-equiv="Expires" content="0" />
 <title>НМТ Математика</title>
-<meta name="app-build" content="gold-refinement-v2.0.0">
+<meta name="app-build" content="full-rebrand-v3.0.0">
+<meta name="theme-color" content="#f2eee6">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
 
-<link rel="stylesheet" href="./styles.css?v=gold2">
+<link rel="stylesheet" href="./styles.css?v=rebrand3">
 </head>
 <body>
 
 <div class="startup-screen" id="startupScreen" role="status" aria-live="polite">
+  <div class="startup-ambient startup-ambient-a" aria-hidden="true"></div>
+  <div class="startup-ambient startup-ambient-b" aria-hidden="true"></div>
   <div class="startup-inner">
-    <div class="startup-logo-shell" aria-hidden="true">
-      <div class="startup-robot">∑</div>
+    <div class="startup-brand" aria-hidden="true">
+      <div class="startup-orbit"><span></span></div>
+      <div class="startup-logo-shell">
+        <div class="startup-robot">∑</div>
+      </div>
     </div>
-    <div class="startup-badge">НМТ · МАТЕМАТИКА</div>
+    <div class="startup-wordmark">NMT MATH</div>
     <h2 class="startup-title">НМТ запускається…</h2>
     <p class="startup-subtitle">Готуємо твою підготовку</p>
-    <div class="startup-dots" aria-hidden="true">
-      <span class="startup-dot"></span>
-      <span class="startup-dot"></span>
-      <span class="startup-dot"></span>
-    </div>
+    <div class="startup-progress" aria-hidden="true"><span></span></div>
   </div>
-  <div class="startup-note">Це може зайняти кілька секунд</div>
+  <div class="startup-note"><span class="startup-note-dot"></span>Підключаємо навчальний простір</div>
 </div>
 
 <main class="app-viewport" id="appViewport">
 <div class="wrap view-page active is-center" id="testView" aria-hidden="false">
-  <header class="test-header">
-    <div class="test-header-copy">
-      <div class="page-eyebrow">ТРЕНУВАННЯ</div>
-      <h1>Математика</h1>
+  <header class="test-header brand-page-head">
+    <div class="brand-head-left">
+      <div class="brand-mini-mark" aria-hidden="true">∑</div>
+      <div class="test-header-copy">
+        <div class="page-eyebrow">Практика</div>
+        <h1>Тренування</h1>
+        <p class="page-subtitle">Розв’язуй у своєму темпі й одразу відстежуй прогрес.</p>
+      </div>
     </div>
     <div class="header-actions">
       <div class="streak" id="streak"><span>✓ 0</span><i></i><span>× 0</span></div>
@@ -51,7 +57,7 @@
   <button class="topic-picker" id="topicPicker" type="button">
     <div class="topic-picker-icon" id="topicPickerIcon">🎯</div>
     <div class="topic-picker-copy">
-      <div class="topic-picker-kicker">Тема підготовки</div>
+      <div class="topic-picker-kicker">Обрана тема</div>
       <div class="topic-picker-title" id="topicPickerTitle">Змішані завдання НМТ</div>
       <div class="topic-picker-subtitle" id="topicPickerSubtitle">Натисни, щоб обрати тему</div>
     </div>
@@ -71,7 +77,7 @@
   <div class="nmt-shell">
     <div class="nmt-page-head">
       <div>
-        <div class="nmt-kicker">ПРОБНИЙ ТЕСТ · 2026</div>
+        <div class="nmt-kicker">Екзаменаційний режим</div>
         <h2>Пробний НМТ</h2>
         <p>22 завдання за структурою НМТ. Результат і розбір — після завершення.</p>
       </div>
@@ -91,7 +97,7 @@
   <div class="cheat-shell">
     <div class="cheat-head">
       <div>
-        <div class="cheat-kicker">ФОРМУЛИ НМТ</div>
+        <div class="cheat-kicker">Довідник</div>
         <h2>Шпаргалка</h2>
         <p>Формули з офіційних довідкових матеріалів УЦОЯО.</p>
       </div>
@@ -224,9 +230,9 @@
   <div class="profile-page-shell">
     <div class="profile-page-head">
       <div>
-        <div class="profile-page-kicker">ТВІЙ ПРОГРЕС</div>
+        <div class="profile-page-kicker">Особистий кабінет</div>
         <h2>Профіль</h2>
-        <p>Активність, сильні теми та результати</p>
+        <p>Твій темп, сильні сторони й наступний крок.</p>
       </div>
       <div class="profile-page-mark" aria-hidden="true">НМТ</div>
     </div>
@@ -307,8 +313,8 @@
 </nav>
 <div class="toast" id="toast"></div>
 
-<script src="./nmt-exam.js?v=redesign1" defer></script>
-<script src="./app.js?v=redesign1" defer></script>
+<script src="./nmt-exam.js?v=rebrand3" defer></script>
+<script src="./app.js?v=rebrand3" defer></script>
 
 </body>
 </html>

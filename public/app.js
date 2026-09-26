@@ -8,7 +8,7 @@ const tg = window.Telegram?.WebApp;
   const FETCH_TIMEOUT_MS = 30000;
   const QUESTION_TIMEOUT_MS = 55000;
   const BACKEND_WAKE_MAX_MS = 75000;
-  const BUILD_VERSION = 'redesign-v1.0.0';
+  const BUILD_VERSION = 'full-rebrand-v3.0.0';
   console.log('[NMT build]', BUILD_VERSION);
 
   async function fetchWithTimeout(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS) {
@@ -358,50 +358,65 @@ const tg = window.Telegram?.WebApp;
         : `<strong>Поки без явних слабких тем</strong><small>Продовжуй тренування — рекомендація уточнюватиметься</small>`;
 
       profileContent.innerHTML = `
-        <section class="profile-hero-v2 glass-card">
+        <section class="profile-identity-card">
           <div class="profile-avatar-new">${avatarMarkup}</div>
           <div class="profile-identity">
+            <div class="profile-identity-overline">NMT MATH</div>
             <div class="profile-name-new">${escapeHtml(data.first_name || 'Учень')}</div>
             <div class="profile-since-new">${escapeHtml(formatJoinDate(data.created_at))}</div>
           </div>
+          <div class="profile-mini-badge"><span>🔥</span><strong>${streak}</strong></div>
         </section>
 
-        <section class="profile-overview-v2">
-          <div class="profile-overview-card glass-card">
-            <span class="profile-overview-label">Точність</span>
-            <div class="accuracy-ring" style="--accuracy:${accuracy}"><strong>${accuracy}%</strong></div>
+        <section class="profile-metric-strip">
+          <article class="profile-metric-card profile-metric-primary">
+            <span class="profile-metric-label">Точність</span>
+            <strong>${accuracy}%</strong>
+            <div class="profile-metric-track"><span style="width:${accuracy}%"></span></div>
             <small>за всі тренування</small>
-          </div>
-          <div class="profile-overview-card glass-card">
-            <span class="profile-overview-label">Серія днів</span>
-            <div class="profile-streak-big">${streak}<small>${dayWord(streak)}</small></div>
-            <small>Найкраща серія — ${bestStreak} ${dayWord(bestStreak)}</small>
-          </div>
+          </article>
+          <article class="profile-metric-card">
+            <span class="profile-metric-label">7 днів</span>
+            <strong>${recentTotal}</strong>
+            <small>${taskWord(recentTotal)} · ${recentTotal ? `${recentAccuracy}% правильних` : 'ще без відповідей'}</small>
+          </article>
+          <article class="profile-metric-card">
+            <span class="profile-metric-label">Серія</span>
+            <strong>${streak}</strong>
+            <small>${dayWord(streak)} · рекорд — ${bestStreak} ${dayWord(bestStreak)}</small>
+          </article>
         </section>
 
-        <section class="profile-insights-v2 glass-card">
-          <div class="profile-section-title"><span>Огляд підготовки</span><small>коротко про головне</small></div>
-          <div class="profile-insight-row">
-            <span class="profile-insight-icon">7д</span>
-            <div><span class="profile-insight-label">Активність за 7 днів</span><strong>${recentTotal} ${taskWord(recentTotal)}</strong><small>${recentTotal ? `${recentAccuracy}% правильних відповідей` : 'Поки немає відповідей за цей період'}</small></div>
+        <section class="profile-focus-card">
+          <div class="profile-focus-copy">
+            <span class="profile-focus-kicker">Фокус зараз</span>
+            <h3>Наступний крок у підготовці</h3>
+            <div class="profile-focus-topic">${weakestMarkup}</div>
           </div>
-          <div class="profile-insight-row">
-            <span class="profile-insight-icon">↗</span>
-            <div><span class="profile-insight-label">Сильна тема</span>${strongestMarkup}</div>
-          </div>
-          <div class="profile-insight-row">
-            <span class="profile-insight-icon">↺</span>
-            <div><span class="profile-insight-label">Варто повторити</span>${weakestMarkup}</div>
-          </div>
-          <div class="profile-insight-row">
-            <span class="profile-insight-icon">НМТ</span>
-            <div><span class="profile-insight-label">Останній пробний НМТ</span>${lastNmt}</div>
-          </div>
+          <button class="profile-focus-button" type="button" data-profile-action="tests" aria-label="Перейти до тренувань">↗</button>
         </section>
 
-        <details class="profile-disclosure glass-card">
+        <section class="profile-snapshot-grid">
+          <article class="profile-snapshot-card">
+            <div class="profile-snapshot-icon">↗</div>
+            <span>Сильна тема</span>
+            <div>${strongestMarkup}</div>
+          </article>
+          <article class="profile-snapshot-card profile-snapshot-dark">
+            <div class="profile-snapshot-icon">22</div>
+            <span>Пробний НМТ</span>
+            <div>${lastNmt}</div>
+          </article>
+        </section>
+
+        <section class="profile-quick-actions">
+          <button type="button" data-profile-action="tests"><span>✦</span><div><strong>Тренуватись</strong><small>Продовжити практику</small></div><i>›</i></button>
+          <button type="button" data-profile-action="nmt"><span>22</span><div><strong>Пробний НМТ</strong><small>Перевірити себе</small></div><i>›</i></button>
+        </section>
+
+        <details class="profile-disclosure profile-disclosure-v3">
           <summary>
-            <div><strong>Детальна статистика</strong><span>Усі відповіді за весь час</span></div>
+            <div><strong>Статистика</strong><span>${Number(data.total) || 0} ${taskWord(Number(data.total) || 0)} за весь час</span></div>
             <span class="profile-disclosure-arrow">⌄</span>
           </summary>
           <div class="profile-disclosure-body">
@@ -413,15 +428,19 @@ const tg = window.Telegram?.WebApp;
           </div>
         </details>
 
-        <details class="profile-disclosure glass-card">
+        <details class="profile-disclosure profile-disclosure-v3">
           <summary>
-            <div><strong>Результати за темами</strong><span>${Array.isArray(data.topic_stats) ? data.topic_stats.length : 0} тем</span></div>
+            <div><strong>Теми</strong><span>${Array.isArray(data.topic_stats) ? data.topic_stats.length : 0} у статистиці</span></div>
             <span class="profile-disclosure-arrow">⌄</span>
           </summary>
           <div class="profile-disclosure-body">
             <div class="topic-stat-list-new">${topicRows}</div>
           </div>
         </details>`;
+
+      profileContent.querySelectorAll('[data-profile-action]').forEach((button) => {
+        button.addEventListener('click', () => switchView(button.dataset.profileAction));
+      });
 
       profileLoaded = true;
       profileDirty = false;
