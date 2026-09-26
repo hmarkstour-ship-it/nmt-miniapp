@@ -3,7 +3,7 @@ import cors from 'cors';
 import crypto from 'crypto';
 import pg from 'pg';
 import 'dotenv/config';
-import { NMT_META, getTopic, getPublicTopics } from './nmt-knowledge.js';
+import { NMT_META, getTopic, getPublicTopics, QUESTION_BLUEPRINTS, EXAM_SLOTS } from './nmt-knowledge.js';
 import { GENERATOR_VERSION, generateDeterministicQuestion, validateDeterministicQuestion } from './deterministic-math.js';
 import { NMT_EXAM_META, generateNmtExam, sanitizeExamQuestions, gradeNmtExam } from './nmt-exam-engine.js';
 
@@ -95,6 +95,72 @@ async function initDb() {
     ALTER TABLE question_bank
     ADD COLUMN IF NOT EXISTS verification_version INT NOT NULL DEFAULT 0;
   `);
+
+  await pool.query(`
+    ALTER TABLE question_bank
+      ADD COLUMN IF NOT EXISTS blueprint_id TEXT,
+      ADD COLUMN IF NOT EXISTS generator_version INT NOT NULL DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS has_diagram BOOLEAN NOT NULL DEFAULT false;
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS question_blueprints (
+      id TEXT PRIMARY KEY,
+      topic TEXT NOT NULL,
+      subtopic TEXT,
+      skill TEXT,
+      formats JSONB NOT NULL DEFAULT '[]'::jsonb,
+      mock_slots JSONB NOT NULL DEFAULT '[]'::jsonb,
+      diagram_type TEXT,
+      source_confidence INT NOT NULL DEFAULT 2,
+      metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS exam_blueprints (
+      year INT NOT NULL,
+      slot INT NOT NULL,
+      question_type TEXT NOT NULL,
+      max_score INT NOT NULL,
+      blueprint_ids JSONB NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      PRIMARY KEY (year, slot)
+    );
+  `);
+
+  for (const bp of QUESTION_BLUEPRINTS) {
+    await pool.query(
+      `INSERT INTO question_blueprints
+        (id, topic, subtopic, skill, formats, mock_slots, diagram_type, source_confidence, metadata, updated_at)
+       VALUES ($1,$2,$3,$4,$5::jsonb,$6::jsonb,$7,$8,$9::jsonb,now())
+       ON CONFLICT (id) DO UPDATE SET
+         topic=EXCLUDED.topic,
+         subtopic=EXCLUDED.subtopic,
+         skill=EXCLUDED.skill,
+         formats=EXCLUDED.formats,
+         mock_slots=EXCLUDED.mock_slots,
+         diagram_type=EXCLUDED.diagram_type,
+         source_confidence=EXCLUDED.source_confidence,
+         metadata=EXCLUDED.metadata,
+         updated_at=now()`,
+      [bp.id, bp.topic, bp.subtopic || null, bp.skill || null, JSON.stringify(bp.formats || []), JSON.stringify(bp.mock_slots || []), bp.diagram_type || null, bp.source_confidence || 2, JSON.stringify(bp)]
+    );
+  }
+
+  for (const slot of EXAM_SLOTS) {
+    await pool.query(
+      `INSERT INTO exam_blueprints (year, slot, question_type, max_score, blueprint_ids, updated_at)
+       VALUES ($1,$2,$3,$4,$5::jsonb,now())
+       ON CONFLICT (year, slot) DO UPDATE SET
+         question_type=EXCLUDED.question_type,
+         max_score=EXCLUDED.max_score,
+         blueprint_ids=EXCLUDED.blueprint_ids,
+         updated_at=now()`,
+      [NMT_META.year, slot.slot, slot.type, slot.max_score, JSON.stringify(slot.blueprint_ids)]
+    );
+  }
 
   await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_question_bank_pick
@@ -269,12 +335,20 @@ async function saveQuestionToBank(topic, difficulty, question) {
   if (!pool || !question?.question) return null;
 
   const { rows } = await pool.query(
-    `INSERT INTO question_bank (topic, difficulty, question_text, question_json, verified, verification_version)
-     VALUES ($1, $2, $3, $4::jsonb, true, $5)
+    `INSERT INTO question_bank
+       (topic, difficulty, question_text, question_json, verified, verification_version, blueprint_id, generator_version, has_diagram)
+     VALUES ($1, $2, $3, $4::jsonb, true, $5, $6, $7, $8)
      ON CONFLICT (topic, question_text)
-     DO UPDATE SET question_json = EXCLUDED.question_json, verified = true, verification_version = EXCLUDED.verification_version, is_active = true
+     DO UPDATE SET
+       question_json = EXCLUDED.question_json,
+       verified = true,
+       verification_version = EXCLUDED.verification_version,
+       blueprint_id = EXCLUDED.blueprint_id,
+       generator_version = EXCLUDED.generator_version,
+       has_diagram = EXCLUDED.has_diagram,
+       is_active = true
      RETURNING id`,
-    [topic, difficulty, question.question, JSON.stringify(question), BANK_VERIFICATION_VERSION]
+    [topic, difficulty, question.question, JSON.stringify(question), BANK_VERIFICATION_VERSION, question.blueprint_id || null, Number(question.engine_version) || BANK_VERIFICATION_VERSION, !!question.diagram_svg]
   );
 
   return rows[0]?.id ?? null;
@@ -1086,6 +1160,16 @@ function verifyTelegramInitData(initData) {
 
 app.get('/api/topics', (req, res) => {
   res.json(getPublicTopics());
+});
+
+
+app.get('/api/knowledge/meta', (req, res) => {
+  res.json({
+    version: GENERATOR_VERSION,
+    year: NMT_META.year,
+    blueprints: QUESTION_BLUEPRINTS.length,
+    exam_slots: EXAM_SLOTS,
+  });
 });
 
 // Повертає збережений прогрес користувача

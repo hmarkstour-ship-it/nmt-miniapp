@@ -8,7 +8,7 @@ const tg = window.Telegram?.WebApp;
   const FETCH_TIMEOUT_MS = 30000;
   const QUESTION_TIMEOUT_MS = 55000;
   const BACKEND_WAKE_MAX_MS = 75000;
-  const BUILD_VERSION = 'full-rebrand-v4.0.0';
+  const BUILD_VERSION = 'knowledge-base-v1.0.0';
   console.log('[NMT build]', BUILD_VERSION);
 
   async function fetchWithTimeout(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS) {
@@ -600,6 +600,16 @@ const tg = window.Telegram?.WebApp;
     }
   }
 
+  function safeDiagramSvg(svg) {
+    if (typeof svg !== 'string') return '';
+    const value = svg.trim();
+    if (!value.startsWith('<svg') || !value.endsWith('</svg>')) return '';
+    return value
+      .replace(/<script[\s\S]*?<\/script>/gi, '')
+      .replace(/\son\w+\s*=\s*(["']).*?\1/gi, '')
+      .replace(/javascript:/gi, '');
+  }
+
   function renderQuestion(q) {
     hideStartupScreen();
     state.currentQuestion = q;
@@ -623,6 +633,7 @@ const tg = window.Telegram?.WebApp;
           <button class="report-btn" id="reportBtn" type="button" aria-label="Повідомити про проблему"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 20V5.5M6 6h9.2l-1.5 3 1.5 3H6"/></svg></button>
         </div>
         <div class="question-text">${escapeHtml(q.question)}</div>
+        ${q.diagram_svg ? `<div class="training-diagram">${safeDiagramSvg(q.diagram_svg)}</div>` : ''}
         <div class="options">
           ${q.options.map((opt, i) => `
             <button class="option" data-index="${i}" type="button">

@@ -1,3 +1,4 @@
+import { QUESTION_ENGINE_VERSION, generateExamQuestions, validateExamQuestions } from './question-engine.js';
 const SCORE_2026 = Object.freeze({
   5: 100, 6: 108, 7: 115, 8: 123, 9: 131, 10: 134, 11: 137,
   12: 140, 13: 143, 14: 145, 15: 147, 16: 148, 17: 149, 18: 150,
@@ -712,59 +713,13 @@ function shortIntegral() {
 }
 
 export function generateNmtExam() {
-  const questions = [
-    choiceNumbers(),
-    choicePercent(),
-    choicePowersRoots(),
-    choiceLog(),
-    choiceEquation(),
-    choiceSystem(),
-    choiceInequality(),
-    choiceFunction(),
-    choiceProgression(),
-    choiceTrig(),
-    choiceProbability(),
-    choicePlanimetry(),
-    choiceCircle(),
-    choiceStereometry(),
-    choiceWordProblem(),
-    matchingAlgebra(),
-    matchingGeometryUnique(),
-    matchingFunctions(),
-    shortQuadratic(),
-    shortPercentReverse(),
-    shortGeometry(),
-    shortIntegral(),
-  ].map((q, index) => ({ ...q, number: index + 1, id: `nmt-${index + 1}`, engine_version: 3 }));
-
+  const questions = generateExamQuestions();
   validateNmtExam(questions);
   return questions;
 }
 
 export function validateNmtExam(questions) {
-  if (!Array.isArray(questions) || questions.length !== 22) throw new Error('NMT exam must contain 22 questions');
-  const types = questions.map(q => q.type);
-  if (types.filter(x => x === 'choice').length !== 15) throw new Error('NMT exam must contain 15 choice questions');
-  if (types.filter(x => x === 'matching').length !== 3) throw new Error('NMT exam must contain 3 matching questions');
-  if (types.filter(x => x === 'short').length !== 4) throw new Error('NMT exam must contain 4 short-answer questions');
-
-  let max = 0;
-  for (const q of questions) {
-    max += q.max_score;
-    if (!q.question || !q.topic) throw new Error(`Invalid question ${q.number}`);
-    if (q.type === 'choice') {
-      if (!Array.isArray(q.options) || q.options.length !== 5 || !Number.isInteger(q.correct_index) || q.correct_index < 0 || q.correct_index > 4) throw new Error(`Invalid choice question ${q.number}`);
-      if (new Set(q.options).size !== 5) throw new Error(`Duplicate choice options ${q.number}`);
-    }
-    if (q.type === 'matching') {
-      if (!Array.isArray(q.left) || q.left.length !== 3 || !Array.isArray(q.match_options) || q.match_options.length !== 5) throw new Error(`Invalid matching question ${q.number}`);
-      const values = Object.values(q.correct_pairs || {});
-      if (values.length !== 3 || new Set(values).size !== 3) throw new Error(`Invalid matching pairs ${q.number}`);
-    }
-    if (q.type === 'short' && !Number.isFinite(q.correct_value)) throw new Error(`Invalid short answer ${q.number}`);
-  }
-  if (max !== 32) throw new Error(`NMT max score must be 32, got ${max}`);
-  return true;
+  return validateExamQuestions(questions);
 }
 
 export function sanitizeExamQuestions(questions) {
@@ -907,5 +862,5 @@ export const NMT_EXAM_META = Object.freeze({
   maxRawScore: 32,
   durationMinutes: 60,
   minimumRawForScale: 5,
-  generatorVersion: 3,
+  generatorVersion: QUESTION_ENGINE_VERSION,
 });

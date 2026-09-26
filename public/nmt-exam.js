@@ -100,12 +100,9 @@
     content.innerHTML = `
       ${resume}
       <section class="nmt-hero-card">
-        <div class="nmt-hero-topline">
-          <div class="nmt-hero-badge">НМТ 2026</div>
-          <div class="nmt-hero-emblem" aria-hidden="true"><span>22</span><small>завд.</small></div>
-        </div>
-        <h3>Повний пробний варіант</h3>
-        <p>60 хвилин у режимі, максимально наближеному до тесту: без підказок і перевірки до завершення.</p>
+        <div class="nmt-hero-badge">ФОРМАТ НМТ-2026</div>
+        <h3>Пробний тест з математики</h3>
+        <p>22 завдання за структурою НМТ: вибір однієї відповіді, встановлення відповідності та коротка числова відповідь.</p>
         <div class="nmt-facts-grid">
           <div><strong>22</strong><span>завдання</span></div>
           <div><strong>60</strong><span>хвилин</span></div>
@@ -113,17 +110,16 @@
           <div><strong>200</strong><span>максимум</span></div>
         </div>
         <div class="nmt-hero-note">
-          <span>i</span>
-          <p>Після завершення побачиш результат, короткий висновок і розбір кожного завдання.</p>
+          <span>◉</span>
+          <p>Під час тесту правильні відповіді не показуються. Після завершення отримаєш результат і зможеш розібрати помилки.</p>
         </div>
-        <button class="nmt-start-btn" id="nmtStartBtn" type="button"><span>${active ? 'Новий варіант' : 'Почати тест'}</span><i>↗</i></button>
+        <button class="nmt-start-btn" id="nmtStartBtn" type="button">${active ? 'Почати новий тест' : 'Почати пробний НМТ'}</button>
       </section>
 
       <section class="nmt-format-card">
-        <div class="nmt-format-head"><span>Структура</span><small>22 завдання</small></div>
-        <div class="nmt-format-row"><span class="nmt-format-number">01</span><div><strong>Одна правильна відповідь</strong><p>Завдання 1–15 · по 1 балу</p></div><i>15</i></div>
-        <div class="nmt-format-row"><span class="nmt-format-number">02</span><div><strong>Встановлення відповідності</strong><p>Завдання 16–18 · до 3 балів</p></div><i>3</i></div>
-        <div class="nmt-format-row"><span class="nmt-format-number">03</span><div><strong>Коротка відповідь</strong><p>Завдання 19–22 · числова відповідь</p></div><i>4</i></div>
+        <div class="nmt-format-row"><span class="nmt-format-number">1–15</span><div><strong>Одна правильна відповідь</strong><p>5 варіантів · 1 бал за завдання</p></div></div>
+        <div class="nmt-format-row"><span class="nmt-format-number">16–18</span><div><strong>Встановлення відповідності</strong><p>3 пари · до 3 балів за завдання</p></div></div>
+        <div class="nmt-format-row"><span class="nmt-format-number">19–22</span><div><strong>Коротка відповідь</strong><p>Число · кома й крапка сприймаються однаково</p></div></div>
       </section>`;
 
     requestAnimationFrame(() => { if (nmtView) nmtView.scrollTop = 0; });
@@ -204,7 +200,7 @@
     content.innerHTML = `
       <div class="nmt-exam-topbar">
         <div>
-          <span class="nmt-exam-label">НМТ · математика</span>
+          <span class="nmt-exam-label">ПРОБНИЙ НМТ</span>
           <strong>Завдання ${state.index + 1} з ${state.questions.length}</strong>
         </div>
         <div class="nmt-timer" id="nmtTimer">${formatTime(state.remainingSeconds)}</div>
@@ -229,10 +225,10 @@
       </article>
 
       <div class="nmt-navigation-row">
-        <button class="nmt-nav-btn" id="nmtPrev" type="button" ${state.index === 0 ? 'disabled' : ''}>Назад</button>
+        <button class="nmt-nav-btn" id="nmtPrev" type="button" ${state.index === 0 ? 'disabled' : ''}>← Назад</button>
         ${state.index === state.questions.length - 1
           ? '<button class="nmt-finish-btn" id="nmtFinish" type="button">Завершити тест</button>'
-          : '<button class="nmt-nav-btn primary" id="nmtNext" type="button">Далі</button>'}
+          : '<button class="nmt-nav-btn primary" id="nmtNext" type="button">Далі →</button>'}
       </div>`;
 
     bindExamInteractions(q);
@@ -278,7 +274,7 @@
 
     const value = answer ?? '';
     return `<div class="nmt-short-wrap">
-      <label for="nmtShortInput">Твоя відповідь</label>
+      <label for="nmtShortInput">Ваша відповідь</label>
       <div class="nmt-short-input-shell"><input id="nmtShortInput" class="nmt-short-input" type="text" inputmode="decimal" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" value="${escapeHtml(String(value))}" placeholder="${escapeHtml(q.answer_hint || 'Введи число')}"><span>123</span></div>
       <div class="nmt-short-actions" aria-hidden="true">
         <span>Кома або крапка — однаково</span>
@@ -493,9 +489,9 @@
     const conclusion = buildResultConclusion(result);
     content.innerHTML = `
       <section class="nmt-result-hero">
-        <div class="nmt-result-kicker">Твій результат</div>
+        <div class="nmt-result-kicker">ТВІЙ РЕЗУЛЬТАТ</div>
         <div class="nmt-result-score"><strong>${escapeHtml(scoreText)}</strong><span>/ 200</span></div>
-        <div class="nmt-result-raw">Тестові бали: ${result.raw_score} із 32</div>
+        <div class="nmt-result-raw">${result.raw_score} із 32 тестових балів</div>
         <div class="nmt-result-status ${result.passed_threshold ? 'ok' : 'low'}">${result.passed_threshold ? 'Поріг подолано' : 'Для шкали 100–200 потрібно щонайменше 5 тестових балів'}</div>
       </section>
 

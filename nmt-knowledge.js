@@ -1,326 +1,96 @@
-// База знань для тренувального режиму НМТ з математики.
-// Основа: чинна програма ЗНО з математики, на якій базується НМТ-2026,
-// та офіційна характеристика НМТ-2026 (22 завдання; 15 MCQ з 5 варіантами,
-// 3 на відповідність, 4 з короткою відповіддю).
-//
-// У поточному режимі Mini App генерує тільки формат з вибором ОДНІЄЇ
-// правильної відповіді з П'ЯТИ варіантів. Це один з офіційних форматів НМТ.
-
-export const NMT_META = {
+export const NMT_META = Object.freeze({
   year: 2026,
-  totalTasks: 22,
-  estimatedMathMinutes: 60,
+  totalQuestions: 22,
+  choiceQuestions: 15,
+  matchingQuestions: 3,
+  shortQuestions: 4,
+  maxRawScore: 32,
+  durationMinutes: 60,
   officialSections: [
     'Числа і вирази',
-    'Рівняння, нерівності і їх системи',
-    'Функції',
-    'Елементи комбінаторики, початки теорії ймовірностей та елементи математичної статистики',
+    'Рівняння і нерівності',
+    'Функції, прогресії та початки аналізу',
+    'Комбінаторика, ймовірність і статистика',
     'Планіметрія',
     'Стереометрія',
   ],
-  currentPracticeFormat: 'single_choice_5',
-};
+});
 
-export const TOPICS = {
-  mixed: {
-    label: '🎯 Змішані завдання НМТ',
-    scope: 'усі теми чинної програми НМТ з математики',
-    skills: [
-      'числа, дроби, відсотки, пропорції та вирази',
-      'степені, корені та логарифми',
-      'рівняння, нерівності та системи',
-      'функції, графіки, прогресії, похідна та інтеграл',
-      'тригонометрія',
-      'комбінаторика, ймовірність і статистика',
-      'планіметрія та стереометрія',
-      'практичні текстові задачі',
-    ],
-    patterns: [
-      'обчислення або спрощення виразу',
-      'розв’язування рівняння чи нерівності',
-      'аналіз графіка або властивостей функції',
-      'практична задача на відсотки, пропорції, рух чи роботу',
-      'задача з геометрії на довжину, кут, площу або об’єм',
-      'задача на ймовірність, статистику або комбінаторику',
-    ],
-  },
+export const TOPICS = Object.freeze([
+  { key: 'mixed', label: '🎯 Змішані завдання НМТ' },
+  { key: 'numbers', label: 'Числа та дроби' },
+  { key: 'percents', label: 'Відсотки та пропорції' },
+  { key: 'powers_roots', label: 'Степені та корені' },
+  { key: 'logarithms', label: 'Логарифми' },
+  { key: 'equations', label: 'Рівняння' },
+  { key: 'inequalities', label: 'Нерівності' },
+  { key: 'systems', label: 'Системи рівнянь і нерівностей' },
+  { key: 'functions', label: 'Функції та графіки' },
+  { key: 'progressions', label: 'Прогресії' },
+  { key: 'trigonometry', label: 'Тригонометрія' },
+  { key: 'calculus', label: 'Похідна та інтеграл' },
+  { key: 'probability_stats', label: 'Ймовірність, комбінаторика та статистика' },
+  { key: 'planimetry', label: 'Планіметрія' },
+  { key: 'stereometry', label: 'Стереометрія' },
+  { key: 'word_problems', label: 'Текстові задачі' },
+]);
 
-  numbers: {
-    label: 'Числа та дроби',
-    scope: 'числа і вирази',
-    skills: [
-      'дії з цілими, раціональними та дійсними числами',
-      'звичайні та десяткові дроби',
-      'порівняння чисел і модуль числа',
-      'числові вирази та порядок дій',
-      'наближені обчислення у шкільних межах',
-    ],
-    patterns: [
-      'обчислити значення числового виразу',
-      'порівняти числа або дроби',
-      'знайти значення виразу з модулем',
-    ],
-  },
+const TOPIC_MAP = new Map(TOPICS.map((topic) => [topic.key, topic]));
+export function getTopic(key) { return TOPIC_MAP.get(key) || TOPIC_MAP.get('mixed'); }
+export function getPublicTopics() { return TOPICS.map((topic) => ({ ...topic })); }
 
-  percents: {
-    label: 'Відсотки та пропорції',
-    scope: 'числа і вирази; практичні задачі',
-    skills: [
-      'відсоток від числа',
-      'число за його відсотком',
-      'відсоткова зміна',
-      'відношення та пропорції',
-      'масштаб і пропорційні залежності',
-    ],
-    patterns: [
-      'знижка або націнка',
-      'зміна величини на кілька відсотків',
-      'пропорція у практичному сюжеті',
-    ],
-  },
+// Blueprint registry is intentionally descriptive. Generator implementations live in question-engine.js.
+// `source_confidence`: 3 = official/psychometric source; 2 = reconstructed multi-session source.
+export const QUESTION_BLUEPRINTS = Object.freeze([
+  { id:'data_chart_reading', topic:'probability_stats', subtopic:'Діаграми', skill:'Зчитування та інтерпретація даних', formats:['choice'], mock_slots:[1], diagram_type:'bar_chart', source_confidence:3 },
+  { id:'applied_ratio_percent', topic:'percents', subtopic:'Відсотки і пропорції', skill:'Прикладна арифметика', formats:['choice','short'], mock_slots:[2,20], diagram_type:null, source_confidence:3 },
+  { id:'planimetry_angle_parallel', topic:'planimetry', subtopic:'Кути і чотирикутники', skill:'Кути при паралельних прямих / трапеції', formats:['choice'], mock_slots:[3], diagram_type:'trapezoid_angle', source_confidence:3 },
+  { id:'linear_inequality_pick', topic:'inequalities', subtopic:'Лінійні нерівності', skill:'Розв’язання та перевірка належності', formats:['choice'], mock_slots:[4], diagram_type:null, source_confidence:3 },
+  { id:'solid_geometry_concept', topic:'stereometry', subtopic:'Просторові фігури', skill:'Властивості тіл і площин', formats:['choice'], mock_slots:[5], diagram_type:'solid', source_confidence:3 },
+  { id:'function_graph_transform', topic:'functions', subtopic:'Графіки', skill:'Перетворення та властивості графіків', formats:['choice'], mock_slots:[6], diagram_type:'function_graph', source_confidence:3 },
+  { id:'probability_counting_basic', topic:'probability_stats', subtopic:'Ймовірність', skill:'Класична ймовірність', formats:['choice'], mock_slots:[7], diagram_type:null, source_confidence:3 },
+  { id:'vectors_3d', topic:'stereometry', subtopic:'Координати у просторі', skill:'Вектори та координати', formats:['choice'], mock_slots:[8], diagram_type:null, source_confidence:3 },
+  { id:'algebra_simplify', topic:'numbers', subtopic:'Вирази', skill:'Тотожні перетворення', formats:['choice'], mock_slots:[9], diagram_type:null, source_confidence:3 },
+  { id:'geometry_statements', topic:'planimetry', subtopic:'Властивості фігур', skill:'Аналіз математичних тверджень', formats:['choice'], mock_slots:[10], diagram_type:null, source_confidence:3 },
+  { id:'log_exp_equation_interval', topic:'logarithms', subtopic:'Рівняння', skill:'Логарифмічні / показникові рівняння', formats:['choice'], mock_slots:[11], diagram_type:null, source_confidence:3 },
+  { id:'calculus_basic', topic:'calculus', subtopic:'Похідна і первісна', skill:'Обчислення похідної / первісної', formats:['choice','short'], mock_slots:[12,19], diagram_type:null, source_confidence:3 },
+  { id:'circle_rectangle_geometry', topic:'planimetry', subtopic:'Коло і прямокутник', skill:'Багатокрокова планіметрія', formats:['choice'], mock_slots:[13], diagram_type:'circle_rectangle', source_confidence:3 },
+  { id:'trig_exact_values', topic:'trigonometry', subtopic:'Тригонометричні вирази', skill:'Точні значення sin/cos', formats:['choice'], mock_slots:[14], diagram_type:null, source_confidence:3 },
+  { id:'advanced_single_choice', topic:'mixed', subtopic:'Комбіновані задачі', skill:'Багатокрокове розв’язання', formats:['choice'], mock_slots:[15], diagram_type:'optional', source_confidence:3 },
+  { id:'matching_functions', topic:'functions', subtopic:'Функції і прямі', skill:'Властивості графіків', formats:['matching'], mock_slots:[16], diagram_type:null, source_confidence:3 },
+  { id:'matching_expressions', topic:'powers_roots', subtopic:'Вирази', skill:'Обчислення та класифікація значень', formats:['matching'], mock_slots:[17], diagram_type:null, source_confidence:3 },
+  { id:'matching_planimetry', topic:'planimetry', subtopic:'Планіметрія', skill:'Зв’язки довжин і площ', formats:['matching'], mock_slots:[18], diagram_type:'planimetry_matching', source_confidence:3 },
+  { id:'short_calculus', topic:'calculus', subtopic:'Екстремуми / інтеграли', skill:'Багатокроковий аналіз функції', formats:['short'], mock_slots:[19], diagram_type:null, source_confidence:3 },
+  { id:'short_applied', topic:'word_problems', subtopic:'Прикладна математика', skill:'Відсотки / ймовірність / моделювання', formats:['short'], mock_slots:[20], diagram_type:null, source_confidence:3 },
+  { id:'short_stereometry_linked_solids', topic:'stereometry', subtopic:'Комбіновані тіла', skill:'Зв’язок параметрів двох просторових тіл', formats:['short'], mock_slots:[21], diagram_type:'linked_solids', source_confidence:2 },
+  { id:'short_parameter_roots', topic:'equations', subtopic:'Параметри', skill:'Кількість коренів залежно від параметра', formats:['short'], mock_slots:[22], diagram_type:null, source_confidence:2 },
+  { id:'quadratic_equation', topic:'equations', subtopic:'Квадратні рівняння', skill:'Корені квадратного рівняння', formats:['choice','short'], mock_slots:[11,15,22], diagram_type:null, source_confidence:3 },
+  { id:'systems_linear', topic:'systems', subtopic:'Системи', skill:'Лінійна система та похідна величина', formats:['choice'], mock_slots:[13,15], diagram_type:null, source_confidence:3 },
+  { id:'progression_ap', topic:'progressions', subtopic:'Арифметична прогресія', skill:'n-й член та сума', formats:['choice'], mock_slots:[9,13], diagram_type:null, source_confidence:3 },
+  { id:'powers_roots_transform', topic:'powers_roots', subtopic:'Степені та корені', skill:'Перетворення степеневих виразів', formats:['choice'], mock_slots:[9,14], diagram_type:null, source_confidence:3 },
+]);
 
-  powers_roots: {
-    label: 'Степені та корені',
-    scope: 'числа і вирази',
-    skills: [
-      'властивості степенів з цілим і раціональним показником',
-      'арифметичний квадратний корінь',
-      'перетворення виразів зі степенями та коренями',
-      'раціоналізація та спрощення в межах шкільної програми',
-    ],
-    patterns: [
-      'спростити степеневий вираз',
-      'обчислити вираз з коренями',
-      'порівняти степеневі величини',
-    ],
-  },
-
-  logarithms: {
-    label: 'Логарифми',
-    scope: 'числа і вирази; логарифмічні рівняння та функції у межах програми НМТ',
-    skills: [
-      'означення логарифма',
-      'основна логарифмічна тотожність',
-      'властивості логарифмів',
-      'обчислення простих логарифмічних виразів',
-      'найпростіші логарифмічні рівняння',
-      'область допустимих значень для простих логарифмічних виразів',
-      'базові властивості логарифмічної функції',
-    ],
-    patterns: [
-      'обчислити логарифм або вираз з логарифмами',
-      'застосувати властивості логарифмів',
-      'розв’язати найпростіше логарифмічне рівняння',
-      'визначити допустимі значення змінної',
-    ],
-  },
-
-  equations: {
-    label: 'Рівняння',
-    scope: 'рівняння та їх системи',
-    skills: [
-      'лінійні та квадратні рівняння',
-      'раціональні рівняння',
-      'ірраціональні рівняння шкільного рівня',
-      'показникові та логарифмічні рівняння',
-      'найпростіші тригонометричні рівняння',
-      'заміна змінної та розкладання на множники',
-    ],
-    patterns: [
-      'знайти корінь або суму коренів',
-      'визначити кількість коренів',
-      'звести рівняння до стандартного шкільного виду',
-    ],
-  },
-
-  inequalities: {
-    label: 'Нерівності',
-    scope: 'нерівності та їх системи',
-    skills: [
-      'лінійні нерівності',
-      'квадратні нерівності',
-      'раціональні нерівності',
-      'показникові та логарифмічні нерівності шкільного рівня',
-      'метод інтервалів',
-    ],
-    patterns: [
-      'знайти проміжок розв’язків',
-      'визначити цілий розв’язок',
-      'розв’язати нерівність методом інтервалів',
-    ],
-  },
-
-  systems: {
-    label: 'Системи рівнянь і нерівностей',
-    scope: 'рівняння, нерівності і їх системи',
-    skills: [
-      'системи двох лінійних рівнянь',
-      'системи з квадратним рівнянням у простих випадках',
-      'системи нерівностей',
-      'підстановка та додавання',
-      'інтерпретація розв’язку системи',
-    ],
-    patterns: [
-      'знайти пару чисел, що задовольняє систему',
-      'знайти суму або добуток компонентів розв’язку',
-      'визначити перетин множин розв’язків',
-    ],
-  },
-
-  functions: {
-    label: 'Функції та графіки',
-    scope: 'функції',
-    skills: [
-      'область визначення та область значень',
-      'нулі та проміжки знакопостійності',
-      'зростання, спадання, парність і періодичність у базових випадках',
-      'лінійна, квадратична, степенева, показникова та логарифмічна функції',
-      'читання та перетворення графіків',
-    ],
-    patterns: [
-      'визначити значення функції',
-      'прочитати інформацію з графіка',
-      'визначити область визначення',
-      'зіставити формулу з графіком або властивістю',
-    ],
-  },
-
-  progressions: {
-    label: 'Прогресії',
-    scope: 'числові послідовності та функції',
-    skills: [
-      'арифметична прогресія',
-      'геометрична прогресія',
-      'n-й член прогресії',
-      'сума перших n членів',
-      'практичні задачі на прогресії',
-    ],
-    patterns: [
-      'знайти член прогресії',
-      'знайти різницю або знаменник',
-      'обчислити суму перших членів',
-    ],
-  },
-
-  trigonometry: {
-    label: 'Тригонометрія',
-    scope: 'числа і вирази; функції; геометрія',
-    skills: [
-      'sin, cos, tg основних кутів',
-      'основна тригонометрична тотожність',
-      'прості перетворення тригонометричних виразів',
-      'найпростіші тригонометричні рівняння',
-      'теорема синусів і теорема косинусів',
-    ],
-    patterns: [
-      'обчислити значення тригонометричного виразу',
-      'застосувати тотожність',
-      'знайти сторону або кут трикутника',
-    ],
-  },
-
-  calculus: {
-    label: 'Похідна та інтеграл',
-    scope: 'функції; похідна та первісна у межах програми НМТ',
-    skills: [
-      'табличні похідні та правила диференціювання',
-      'геометричний зміст похідної',
-      'проміжки зростання і спадання за похідною',
-      'екстремуми у стандартних задачах',
-      'первісна та визначений інтеграл у базових випадках',
-      'площа криволінійної трапеції у стандартних задачах',
-    ],
-    patterns: [
-      'знайти похідну або її значення в точці',
-      'визначити монотонність',
-      'обчислити простий визначений інтеграл',
-    ],
-  },
-
-  probability_stats: {
-    label: 'Ймовірність, комбінаторика та статистика',
-    scope: 'елементи комбінаторики, теорії ймовірностей та математичної статистики',
-    skills: [
-      'правило суми та правило добутку',
-      'прості комбінаторні підрахунки',
-      'класична ймовірність випадкової події',
-      'середнє арифметичне, медіана та мода',
-      'аналіз таблиць, діаграм і графіків даних',
-    ],
-    patterns: [
-      'підрахувати кількість варіантів',
-      'знайти ймовірність простої події',
-      'прочитати дані з діаграми',
-      'знайти середнє або медіану набору даних',
-    ],
-  },
-
-  planimetry: {
-    label: 'Планіметрія',
-    scope: 'планіметрія',
-    skills: [
-      'кути, паралельні та перпендикулярні прямі',
-      'трикутники та їх елементи',
-      'ознаки рівності та подібності трикутників',
-      'теорема Піфагора',
-      'чотирикутники та їх властивості',
-      'коло і круг, хорди, дотичні, вписані та центральні кути',
-      'периметри та площі фігур',
-      'координати і вектори на площині',
-    ],
-    patterns: [
-      'знайти довжину, кут, периметр або площу',
-      'застосувати подібність або теорему Піфагора',
-      'задача з колом або вписаною фігурою',
-    ],
-  },
-
-  stereometry: {
-    label: 'Стереометрія',
-    scope: 'стереометрія',
-    skills: [
-      'взаємне розміщення прямих і площин у просторі',
-      'призма та паралелепіпед',
-      'піраміда',
-      'циліндр',
-      'конус',
-      'куля і сфера',
-      'площі поверхонь та об’єми',
-      'прості просторові відстані та кути',
-    ],
-    patterns: [
-      'обчислити об’єм',
-      'обчислити площу поверхні',
-      'знайти лінійний елемент просторової фігури',
-    ],
-  },
-
-  word_problems: {
-    label: 'Текстові задачі',
-    scope: 'математичне моделювання та практичні задачі в межах програми НМТ',
-    skills: [
-      'рух',
-      'спільна робота та продуктивність',
-      'суміші та концентрації',
-      'відсотки та фінансові розрахунки шкільного рівня',
-      'пропорції та практичні вимірювання',
-    ],
-    patterns: [
-      'скласти рівняння за умовою',
-      'задача на швидкість, час і відстань',
-      'задача на продуктивність',
-      'задача на відсотки або концентрацію',
-    ],
-  },
-};
-
-export function getTopic(topicKey) {
-  return TOPICS[topicKey] || TOPICS.mixed;
-}
-
-export function getPublicTopics() {
-  return Object.entries(TOPICS).map(([key, topic]) => ({
-    key,
-    label: topic.label,
-  }));
-}
+export const EXAM_SLOTS = Object.freeze([
+  { slot:1, type:'choice', max_score:1, blueprint_ids:['data_chart_reading'] },
+  { slot:2, type:'choice', max_score:1, blueprint_ids:['applied_ratio_percent'] },
+  { slot:3, type:'choice', max_score:1, blueprint_ids:['planimetry_angle_parallel'] },
+  { slot:4, type:'choice', max_score:1, blueprint_ids:['linear_inequality_pick'] },
+  { slot:5, type:'choice', max_score:1, blueprint_ids:['solid_geometry_concept'] },
+  { slot:6, type:'choice', max_score:1, blueprint_ids:['function_graph_transform'] },
+  { slot:7, type:'choice', max_score:1, blueprint_ids:['probability_counting_basic'] },
+  { slot:8, type:'choice', max_score:1, blueprint_ids:['vectors_3d'] },
+  { slot:9, type:'choice', max_score:1, blueprint_ids:['algebra_simplify','powers_roots_transform'] },
+  { slot:10, type:'choice', max_score:1, blueprint_ids:['geometry_statements'] },
+  { slot:11, type:'choice', max_score:1, blueprint_ids:['log_exp_equation_interval','quadratic_equation'] },
+  { slot:12, type:'choice', max_score:1, blueprint_ids:['calculus_basic'] },
+  { slot:13, type:'choice', max_score:1, blueprint_ids:['circle_rectangle_geometry','systems_linear'] },
+  { slot:14, type:'choice', max_score:1, blueprint_ids:['trig_exact_values','powers_roots_transform'] },
+  { slot:15, type:'choice', max_score:1, blueprint_ids:['advanced_single_choice','quadratic_equation','systems_linear'] },
+  { slot:16, type:'matching', max_score:3, blueprint_ids:['matching_functions'] },
+  { slot:17, type:'matching', max_score:3, blueprint_ids:['matching_expressions'] },
+  { slot:18, type:'matching', max_score:3, blueprint_ids:['matching_planimetry'] },
+  { slot:19, type:'short', max_score:2, blueprint_ids:['short_calculus'] },
+  { slot:20, type:'short', max_score:2, blueprint_ids:['short_applied'] },
+  { slot:21, type:'short', max_score:2, blueprint_ids:['short_stereometry_linked_solids'] },
+  { slot:22, type:'short', max_score:2, blueprint_ids:['short_parameter_roots'] },
+]);
