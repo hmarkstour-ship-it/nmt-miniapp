@@ -323,10 +323,6 @@ const tg = window.Telegram?.WebApp;
       const recentAccuracy = Math.max(0, Math.min(100, Number(recent.accuracy) || 0));
       const nmt = data.nmt || {};
       const strongest = data.strongest_topic || null;
-      const weakestRaw = data.weakest_topic || null;
-      const weakest = weakestRaw && strongest && weakestRaw.topic === strongest.topic
-        ? null
-        : weakestRaw;
 
       const topicRows = Array.isArray(data.topic_stats) && data.topic_stats.length
         ? data.topic_stats.map((row) => {
@@ -353,18 +349,6 @@ const tg = window.Telegram?.WebApp;
         ? `<strong>${escapeHtml(stripLeadingEmoji(strongest.label || strongest.topic))}</strong><small>Точність — ${Number(strongest.accuracy) || 0}%</small>`
         : `<strong>Ще визначаємо</strong><small>Потрібно трохи більше відповідей</small>`;
 
-      const weakestMarkup = weakest
-        ? `<strong>${escapeHtml(stripLeadingEmoji(weakest.label || weakest.topic))}</strong><small>Точність — ${Number(weakest.accuracy) || 0}%. Цю тему варто повторити</small>`
-        : `<strong>Поки без явних слабких тем</strong><small>Продовжуй тренування — рекомендація уточнюватиметься</small>`;
-
-      const rhythmText = recentTotal === 0
-        ? 'Цього тижня ще немає тренувань. Почни з короткої сесії на 5–10 завдань.'
-        : recentTotal < 10
-          ? 'Спокійний старт. Кілька коротких сесій допоможуть зробити підготовку регулярнішою.'
-          : recentTotal < 25
-            ? 'Хороший ритм: ти вже тренуєшся регулярно. Тримай темп і закривай слабкі теми.'
-            : 'Високий темп за останні 7 днів. Зараз важливіше якість розбору, а не просто кількість.';
-
       profileContent.innerHTML = `
         <section class="profile-identity-card">
           <div class="profile-avatar-new">${avatarMarkup}</div>
@@ -374,8 +358,10 @@ const tg = window.Telegram?.WebApp;
             <div class="profile-since-new">${escapeHtml(formatJoinDate(data.created_at))}</div>
           </div>
           <div class="profile-mini-badge" aria-label="Серія ${streak} ${dayWord(streak)}">
-            <span class="profile-mini-badge-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.5 3.5c.7 3-1.2 4.5-2.2 6.1-1 1.5-.7 3 .8 4.1-.2-2.1 1.1-3.2 2.3-4.4 1.8 1.6 3.1 3.6 3.1 6.1A5.5 5.5 0 0 1 12 21a5.5 5.5 0 0 1-5.5-5.6c0-3.3 2.2-5.1 4.3-7.3.4 1.4.4 2.4.1 3.4 1.8-1.7 3.4-4 2.6-8Z"/></svg></span>
-            <span class="profile-mini-badge-copy"><strong>${streak}</strong><small>${dayWord(streak)}</small></span>
+            <span class="profile-mini-badge-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12.2 2.2c.45 2.95-1.15 4.65-2.4 6.15-1.05 1.25-1.55 2.55-1.3 3.95.18 1.05.72 1.95 1.62 2.62-.15-2.05 1.18-3.4 2.55-4.65 2.12 1.83 3.58 4.08 3.58 6.72A6.25 6.25 0 0 1 10 23.2 6.25 6.25 0 0 1 3.75 17c0-3.75 2.25-6.15 4.72-8.78.12 1.5.52 2.62 1.22 3.5 1.35-1.85 3.25-4.95 2.51-9.52Z"/></svg>
+            </span>
+            <strong class="profile-mini-badge-value">${streak}</strong>
           </div>
         </section>
 
@@ -396,21 +382,6 @@ const tg = window.Telegram?.WebApp;
             <strong>${streak}</strong>
             <small>${dayWord(streak)} · рекорд — ${bestStreak} ${dayWord(bestStreak)}</small>
           </article>
-        </section>
-
-        <section class="profile-rhythm-card">
-          <div class="profile-rhythm-icon" aria-hidden="true">7д</div>
-          <div class="profile-rhythm-copy"><strong>Ритм підготовки</strong><span>${escapeHtml(rhythmText)}</span></div>
-          <div class="profile-rhythm-value"><strong>${recentTotal}</strong><span>${taskWord(recentTotal)}</span></div>
-        </section>
-
-        <section class="profile-focus-card">
-          <div class="profile-focus-copy">
-            <span class="profile-focus-kicker">Фокус зараз</span>
-            <h3>Наступний крок у підготовці</h3>
-            <div class="profile-focus-topic">${weakestMarkup}</div>
-          </div>
-          <button class="profile-focus-button" type="button" data-profile-action="tests" aria-label="Перейти до тренувань">↗</button>
         </section>
 
         <section class="profile-snapshot-grid">

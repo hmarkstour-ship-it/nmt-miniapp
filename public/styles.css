@@ -1397,3 +1397,227 @@ svg { max-width:100%; }
   .streak { min-width: 88px; height: 44px; padding-inline: 7px; }
   .streak span { min-width: 23px; font-size: 11.5px; }
 }
+
+/* ========================================================================== */
+/* V4.2 — final UI cleanup: compact profile, clean topic sheet, true glass nav */
+/* ========================================================================== */
+
+:root {
+  --motion-spring: cubic-bezier(.2,.8,.2,1);
+  --motion-soft: cubic-bezier(.22,1,.36,1);
+}
+
+/* Topic picker sheet: no fake footer block. The list itself scrolls to the end. */
+.topic-sheet {
+  max-height: min(82dvh, 760px);
+  padding: 10px 14px calc(14px + env(safe-area-inset-bottom, 0px));
+  overflow: hidden;
+  transform: translate3d(0, 22px, 0);
+  will-change: transform;
+}
+.topic-overlay.show .topic-sheet { transform: translate3d(0,0,0); }
+.topic-list {
+  padding: 3px 1px 6px;
+  scroll-padding-block: 10px;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.topic-list::after {
+  content: "";
+  display: block;
+  height: 2px;
+}
+
+/* Profile hero streak: compact iOS-like flame glyph, no cramped secondary copy. */
+.profile-identity-card {
+  grid-template-columns: 76px minmax(0,1fr) auto;
+  align-items: center;
+}
+.profile-mini-badge {
+  min-width: 68px;
+  height: 50px;
+  padding: 0 13px;
+  gap: 8px;
+  justify-content: center;
+  border-radius: 18px;
+  color: #efd18b;
+  background: linear-gradient(180deg, rgba(255,255,255,.105), rgba(255,255,255,.055));
+  border: 1px solid rgba(255,255,255,.13);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.085), 0 7px 18px rgba(0,0,0,.08);
+}
+.profile-mini-badge-icon {
+  width: 25px;
+  height: 25px;
+  flex: 0 0 25px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #f0cf83;
+}
+.profile-mini-badge-icon svg {
+  width: 24px;
+  height: 24px;
+  fill: currentColor;
+  stroke: none;
+  filter: drop-shadow(0 1px 5px rgba(214,179,106,.18));
+}
+.profile-mini-badge-value {
+  color: #f4d99f;
+  font-size: 20px;
+  line-height: 1;
+  font-weight: 760;
+  font-variant-numeric: tabular-nums;
+}
+
+/* With rhythm/focus removed, the profile reads as one clean dashboard. */
+.profile-page-content { gap: 14px; }
+.profile-metric-strip { margin-top: 0; }
+.profile-snapshot-grid { margin-top: 2px; }
+
+/* iOS-like Liquid Glass navigation. Static blur, motion only via transform/opacity. */
+.liquid-bottom-nav {
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  width: min(500px, calc(100vw - 20px));
+  filter: none;
+  transform: translate3d(-50%,0,0);
+  transition: opacity .20s ease, transform .32s var(--motion-soft);
+}
+.liquid-nav-track {
+  isolation: isolate;
+  padding: 5px;
+  gap: 4px;
+  border-radius: 25px;
+  border: 1px solid rgba(255,255,255,.56);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.23), rgba(238,241,244,.11)),
+    rgba(229,232,236,.12);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.72),
+    inset 0 -1px 0 rgba(255,255,255,.16),
+    0 14px 34px rgba(28,30,34,.13);
+  -webkit-backdrop-filter: blur(24px) saturate(170%);
+  backdrop-filter: blur(24px) saturate(170%);
+  transform: translateZ(0);
+}
+.liquid-nav-track::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 1px 10px auto;
+  height: 45%;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255,255,255,.34), rgba(255,255,255,0));
+  pointer-events: none;
+  opacity: .72;
+}
+.liquid-nav-track::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: auto 18px 2px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.34), transparent);
+  pointer-events: none;
+}
+.liquid-nav-indicator {
+  z-index: 1;
+  top: 5px;
+  bottom: 5px;
+  left: 5px;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,.19);
+  background:
+    linear-gradient(180deg, rgba(52,54,58,.76), rgba(27,29,32,.66)),
+    rgba(31,33,36,.62);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.16),
+    inset 0 -1px 0 rgba(0,0,0,.12),
+    0 7px 18px rgba(20,22,25,.16);
+  -webkit-backdrop-filter: blur(16px) saturate(145%);
+  backdrop-filter: blur(16px) saturate(145%);
+  transform: translate3d(0,0,0);
+  transition: transform .42s var(--motion-soft), width .28s var(--motion-soft);
+  will-change: transform;
+}
+.liquid-nav-item {
+  z-index: 2;
+  color: rgba(70,74,80,.68);
+  transition: color .20s ease, transform .14s var(--motion-spring), opacity .20s ease;
+}
+.liquid-nav-item.active { color: rgba(255,255,255,.97); }
+.liquid-nav-item:not(.active) { opacity: .88; }
+.liquid-nav-item:active { transform: scale(.965); }
+.liquid-nav-icon,
+.liquid-nav-icon svg { width: 20px; height: 20px; }
+
+/* Smoother and cheaper view/sheet motion. */
+.view-page {
+  transform: translate3d(4%,0,0);
+  transition: transform .30s var(--motion-soft), opacity .20s ease;
+  will-change: auto;
+}
+.view-page.is-left { transform: translate3d(-4%,0,0); }
+.view-page.is-right { transform: translate3d(4%,0,0); }
+.topic-overlay,
+.report-overlay,
+.nmt-finish-overlay { transition: opacity .18s ease, visibility .18s ease; }
+.topic-sheet,
+.report-panel,
+.nmt-finish-panel { transition: transform .28s var(--motion-soft); }
+
+/* Avoid keeping extra GPU layers alive on every control. */
+.topic-picker,
+.topic-item,
+.cheat-section-btn,
+.profile-quick-actions button,
+.report-btn,
+.primary-btn,
+.secondary-btn,
+.nmt-start-btn,
+.nmt-nav-btn,
+.nmt-finish-btn,
+.cheat-pdf-btn { will-change: auto; }
+
+@media (max-width: 430px) {
+  .topic-sheet {
+    max-height: min(84dvh, 720px);
+    padding: 9px 12px calc(12px + env(safe-area-inset-bottom,0px));
+  }
+  .profile-mini-badge {
+    min-width: 62px;
+    height: 46px;
+    padding-inline: 10px;
+    gap: 7px;
+  }
+  .profile-mini-badge-icon,
+  .profile-mini-badge-icon svg { width: 22px; height: 22px; }
+  .profile-mini-badge-value { font-size: 18px; }
+  .liquid-bottom-nav { width: calc(100vw - 18px); }
+}
+
+@media (max-width: 390px) {
+  .profile-mini-badge {
+    min-width: 58px;
+    height: 44px;
+    padding-inline: 9px;
+  }
+  .profile-mini-badge-icon,
+  .profile-mini-badge-icon svg { width: 21px; height: 21px; }
+  .profile-mini-badge-value { font-size: 17px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .view-page,
+  .topic-sheet,
+  .report-panel,
+  .nmt-finish-panel,
+  .liquid-bottom-nav,
+  .liquid-nav-indicator,
+  .liquid-nav-item,
+  .topic-item,
+  .cheat-section-btn,
+  .profile-quick-actions button {
+    animation: none !important;
+    transition-duration: .01ms !important;
+  }
+}
