@@ -373,7 +373,10 @@ const tg = window.Telegram?.WebApp;
             <div class="profile-name-new">${escapeHtml(data.first_name || 'Учень')}</div>
             <div class="profile-since-new">${escapeHtml(formatJoinDate(data.created_at))}</div>
           </div>
-          <div class="profile-mini-badge" aria-label="Серія ${streak} ${dayWord(streak)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.5 3.5c.7 3-1.2 4.5-2.2 6.1-1 1.5-.7 3 .8 4.1-.2-2.1 1.1-3.2 2.3-4.4 1.8 1.6 3.1 3.6 3.1 6.1A5.5 5.5 0 0 1 12 21a5.5 5.5 0 0 1-5.5-5.6c0-3.3 2.2-5.1 4.3-7.3.4 1.4.4 2.4.1 3.4 1.8-1.7 3.4-4 2.6-8Z"/></svg><strong>${streak}</strong></div>
+          <div class="profile-mini-badge" aria-label="Серія ${streak} ${dayWord(streak)}">
+            <span class="profile-mini-badge-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.5 3.5c.7 3-1.2 4.5-2.2 6.1-1 1.5-.7 3 .8 4.1-.2-2.1 1.1-3.2 2.3-4.4 1.8 1.6 3.1 3.6 3.1 6.1A5.5 5.5 0 0 1 12 21a5.5 5.5 0 0 1-5.5-5.6c0-3.3 2.2-5.1 4.3-7.3.4 1.4.4 2.4.1 3.4 1.8-1.7 3.4-4 2.6-8Z"/></svg></span>
+            <span class="profile-mini-badge-copy"><strong>${streak}</strong><small>${dayWord(streak)}</small></span>
+          </div>
         </section>
 
         <section class="profile-metric-strip">

@@ -969,3 +969,431 @@ svg { max-width:100%; }
 .view-page.is-center .nmt-result-hero {
   animation: sectionIn .34s cubic-bezier(.22,1,.36,1) both;
 }
+
+
+/* ========================================================================== */
+/* V4.1 — unified UI correction layer                                        */
+/* Fixes mobile header collisions, topic-sheet wrapping, icon scale and       */
+/* profile streak badge while preserving the existing Liquid Glass nav.       */
+/* ========================================================================== */
+
+:root {
+  --ui-icon-lg: 72px;
+  --ui-icon-md: 64px;
+  --ui-card-radius: 27px;
+  --ui-glass-bg: rgba(245, 246, 247, .58);
+  --ui-glass-line: rgba(255, 255, 255, .76);
+  --ui-glass-shadow: 0 12px 30px rgba(33, 34, 37, .08), inset 0 1px 0 rgba(255,255,255,.82);
+}
+
+/* Shared component geometry */
+.topic-picker,
+.card,
+.cheat-section,
+.profile-metric-card,
+.profile-rhythm-card,
+.profile-focus-card,
+.profile-snapshot-card,
+.profile-quick-actions button,
+.profile-disclosure,
+.nmt-hero-card,
+.nmt-question-card,
+.nmt-result-card {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.topic-picker-title,
+.topic-picker-subtitle,
+.topic-item-title,
+.topic-item-subtitle,
+.cheat-section-title,
+.cheat-section-meta,
+.profile-since-new,
+.profile-rhythm-copy span,
+.profile-focus-topic small,
+.profile-snapshot-card small {
+  overflow-wrap: anywhere;
+}
+
+/* Training hero: guarantee that the stats capsule never collides with title */
+.test-header.brand-page-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.test-header .brand-head-left {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+}
+
+.test-header-copy { min-width: 0; }
+.test-header h1 {
+  max-width: 100%;
+  margin-top: 4px;
+  font-size: clamp(30px, 7.7vw, 40px);
+  line-height: .98;
+  letter-spacing: -.042em;
+  white-space: nowrap;
+}
+
+/* Same frosted language as bottom nav, without changing bottom nav itself */
+.streak {
+  position: relative;
+  isolation: isolate;
+  min-width: 108px;
+  height: 52px;
+  padding: 0 14px;
+  gap: 11px;
+  border-radius: 19px;
+  background: var(--ui-glass-bg);
+  border: 1px solid var(--ui-glass-line);
+  box-shadow: var(--ui-glass-shadow);
+  -webkit-backdrop-filter: blur(15px) saturate(118%);
+  backdrop-filter: blur(15px) saturate(118%);
+  overflow: hidden;
+}
+.streak::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(135deg, rgba(255,255,255,.32), rgba(255,255,255,.04));
+  pointer-events: none;
+}
+.streak span {
+  min-width: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  line-height: 1;
+  font-weight: 740;
+}
+.streak i { height: 21px; background: rgba(51,53,57,.14); }
+
+/* Larger, consistent icon tiles */
+.topic-picker {
+  grid-template-columns: var(--ui-icon-lg) minmax(0,1fr) 44px;
+  min-height: 112px;
+  padding: 16px;
+  gap: 15px;
+}
+.topic-picker-icon {
+  width: var(--ui-icon-lg);
+  height: var(--ui-icon-lg);
+  border-radius: 23px;
+  font-size: 19px;
+}
+.topic-picker-chevron {
+  width: 44px;
+  height: 44px;
+  border-radius: 15px;
+}
+
+.cheat-section-btn {
+  grid-template-columns: var(--ui-icon-md) minmax(0,1fr) 42px;
+  min-height: 104px;
+  gap: 14px;
+  padding: 15px 16px;
+}
+.cheat-section-icon {
+  width: var(--ui-icon-md);
+  height: var(--ui-icon-md);
+  border-radius: 21px;
+  font-size: 17px;
+}
+.cheat-section-title { font-size: 18.5px; line-height: 1.18; }
+.cheat-section-meta { font-size: 12.8px; line-height: 1.4; }
+
+/* Topic sheet: long titles may use two lines without spilling into next card */
+.topic-sheet {
+  max-height: calc(100dvh - 88px);
+  padding: 10px 16px calc(112px + env(safe-area-inset-bottom,0px));
+}
+.topic-sheet-head {
+  flex: 0 0 auto;
+  padding: 3px 3px 15px;
+}
+.topic-sheet-title {
+  font-size: 26px;
+  line-height: 1.08;
+}
+.topic-list {
+  gap: 10px;
+  padding: 3px 1px 20px;
+  scroll-padding-block: 12px 122px;
+}
+.topic-item {
+  min-height: 108px;
+  padding: 14px;
+  grid-template-columns: 64px minmax(0,1fr) 32px;
+  gap: 14px;
+  border-radius: 24px;
+  overflow: hidden;
+}
+.topic-item-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 20px;
+  font-size: 17px;
+  line-height: 1;
+}
+.topic-item-copy {
+  min-width: 0;
+  align-self: center;
+  overflow: hidden;
+}
+.topic-item-title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: 17px;
+  line-height: 1.18;
+  font-weight: 730;
+}
+.topic-item-subtitle {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  margin-top: 6px;
+  font-size: 12.3px;
+  line-height: 1.34;
+}
+.topic-item-check {
+  width: 32px;
+  height: 32px;
+  border-radius: 11px;
+  align-self: center;
+}
+
+/* Profile hero: compact streak pill that no longer dominates or pushes text */
+.profile-identity-card {
+  grid-template-columns: 76px minmax(0,1fr) auto;
+  gap: 15px;
+  min-height: 112px;
+  padding: 17px;
+}
+.profile-mini-badge {
+  min-width: 76px;
+  height: 52px;
+  padding: 0 10px;
+  border-radius: 17px;
+  gap: 8px;
+  justify-content: flex-start;
+  background: rgba(255,255,255,.075);
+  border: 1px solid rgba(255,255,255,.11);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.055);
+}
+.profile-mini-badge-icon {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 28px;
+  border-radius: 10px;
+  color: #efd292;
+  background: rgba(214,179,106,.09);
+}
+.profile-mini-badge-icon svg {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.profile-mini-badge-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1;
+}
+.profile-mini-badge-copy strong {
+  font-size: 18px;
+  line-height: 1;
+  color: #f0d59a;
+}
+.profile-mini-badge-copy small {
+  margin-top: 4px;
+  color: rgba(255,255,255,.46);
+  font-size: 9px;
+  line-height: 1;
+  white-space: nowrap;
+}
+.profile-avatar-new {
+  width: 76px;
+  height: 76px;
+  border-radius: 23px;
+}
+.profile-name-new { font-size: 24px; line-height: 1.06; }
+.profile-since-new { max-width: 100%; line-height: 1.35; }
+
+/* More consistent icon sizing across profile cards */
+.profile-rhythm-icon { width: 52px; height: 52px; border-radius: 17px; }
+.profile-snapshot-icon { width: 48px; height: 48px; border-radius: 16px; }
+.profile-quick-actions button > span { width: 50px; height: 50px; border-radius: 17px; }
+
+/* Consistent touch affordance and subtle press motion */
+.topic-picker,
+.topic-item,
+.cheat-section-btn,
+.profile-focus-button,
+.profile-quick-actions button,
+.report-btn,
+.primary-btn,
+.secondary-btn,
+.nmt-start-btn,
+.nmt-nav-btn,
+.nmt-finish-btn,
+.cheat-pdf-btn {
+  will-change: transform;
+}
+.topic-item:active,
+.cheat-section-btn:active,
+.profile-quick-actions button:active {
+  transform: scale(.988);
+}
+
+/* Keep content clear of the fixed Liquid Glass navigation */
+.wrap,
+.cheat-shell,
+.profile-page-shell,
+.nmt-shell {
+  padding-bottom: calc(132px + env(safe-area-inset-bottom, 0px));
+}
+
+/* Mobile-specific tuning for real Telegram viewport widths */
+@media (max-width: 430px) {
+  .test-header.brand-page-head {
+    gap: 10px;
+  }
+  .test-header .brand-head-left {
+    grid-template-columns: 58px minmax(0,1fr);
+    gap: 11px;
+  }
+  .test-header .brand-mini-mark {
+    width: 58px;
+    height: 58px;
+    border-radius: 19px;
+    font-size: 33px;
+  }
+  .test-header h1 {
+    font-size: clamp(28px, 7.45vw, 32px);
+    letter-spacing: -.043em;
+  }
+  .test-header .page-eyebrow { font-size: 11.5px; }
+  .streak {
+    min-width: 104px;
+    height: 50px;
+    padding-inline: 11px;
+    gap: 9px;
+  }
+  .streak span { min-width: 28px; font-size: 12.5px; }
+
+  .topic-picker {
+    grid-template-columns: 66px minmax(0,1fr) 40px;
+    min-height: 104px;
+    padding: 14px;
+    gap: 12px;
+  }
+  .topic-picker-icon { width: 66px; height: 66px; border-radius: 21px; }
+  .topic-picker-title { font-size: 19px; }
+  .topic-picker-subtitle { font-size: 12.5px; }
+
+  .topic-sheet { padding-inline: 14px; }
+  .topic-item {
+    min-height: 102px;
+    padding: 12px;
+    grid-template-columns: 60px minmax(0,1fr) 30px;
+    gap: 12px;
+  }
+  .topic-item-icon { width: 60px; height: 60px; border-radius: 19px; font-size: 16px; }
+  .topic-item-title { font-size: 16.5px; }
+  .topic-item-subtitle { font-size: 12px; }
+
+  .profile-identity-card {
+    grid-template-columns: 68px minmax(0,1fr) auto;
+    gap: 12px;
+    padding: 15px;
+  }
+  .profile-avatar-new { width: 68px; height: 68px; border-radius: 21px; }
+  .profile-name-new { font-size: 22px; }
+  .profile-mini-badge { min-width: 70px; height: 48px; padding-inline: 8px; gap: 6px; }
+  .profile-mini-badge-icon { width: 25px; height: 25px; flex-basis: 25px; }
+  .profile-mini-badge-icon svg { width: 16px; height: 16px; }
+  .profile-mini-badge-copy strong { font-size: 17px; }
+
+  .cheat-section-btn {
+    grid-template-columns: 62px minmax(0,1fr) 40px;
+    min-height: 100px;
+    gap: 12px;
+    padding: 14px;
+  }
+  .cheat-section-icon { width: 62px; height: 62px; border-radius: 20px; }
+}
+
+@media (max-width: 390px) {
+  .test-header .brand-head-left {
+    grid-template-columns: 52px minmax(0,1fr);
+    gap: 9px;
+  }
+  .test-header .brand-mini-mark {
+    width: 52px;
+    height: 52px;
+    font-size: 30px;
+  }
+  .test-header h1 { font-size: 27px; }
+  .streak {
+    min-width: 94px;
+    height: 46px;
+    padding-inline: 9px;
+    gap: 7px;
+  }
+  .streak span { min-width: 25px; font-size: 12px; }
+  .streak i { height: 18px; }
+
+  .profile-identity-card {
+    grid-template-columns: 62px minmax(0,1fr) auto;
+    gap: 10px;
+    padding: 14px;
+  }
+  .profile-avatar-new { width: 62px; height: 62px; border-radius: 19px; }
+  .profile-name-new { font-size: 20px; }
+  .profile-since-new { font-size: 11.5px; }
+  .profile-mini-badge { min-width: 64px; height: 44px; border-radius: 15px; }
+  .profile-mini-badge-copy small { font-size: 8.5px; }
+
+  .topic-item {
+    grid-template-columns: 56px minmax(0,1fr) 28px;
+    min-height: 98px;
+    padding: 11px;
+    gap: 10px;
+  }
+  .topic-item-icon { width: 56px; height: 56px; border-radius: 18px; }
+  .topic-item-title { font-size: 15.8px; }
+  .topic-item-subtitle { font-size: 11.6px; }
+}
+
+@media (max-width: 350px) {
+  .test-header.brand-page-head {
+    grid-template-columns: minmax(0,1fr) 88px;
+  }
+  .test-header .brand-head-left {
+    grid-template-columns: 48px minmax(0,1fr);
+    gap: 8px;
+  }
+  .test-header .brand-mini-mark { width:48px; height:48px; font-size:27px; }
+  .test-header h1 { font-size: 24px; }
+  .streak { min-width: 88px; height: 44px; padding-inline: 7px; }
+  .streak span { min-width: 23px; font-size: 11.5px; }
+}
