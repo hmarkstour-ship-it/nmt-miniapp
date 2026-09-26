@@ -1019,6 +1019,18 @@ const tg = window.Telegram?.WebApp;
     topicOverlay.setAttribute('aria-hidden', 'false');
     document.body.style.overflow = 'hidden';
     syncTopicPicker();
+
+    // Keep the selected row fully visible instead of reopening the sheet
+    // at a half-scrolled position left over from the previous visit.
+    requestAnimationFrame(() => {
+      const active = topicList.querySelector('.topic-item.active');
+      if (!active) {
+        topicList.scrollTop = 0;
+        return;
+      }
+      const target = active.offsetTop - Math.max(8, (topicList.clientHeight - active.offsetHeight) / 2);
+      topicList.scrollTop = Math.max(0, target);
+    });
   }
 
   function closeTopicSheet() {

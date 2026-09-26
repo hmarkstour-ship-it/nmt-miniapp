@@ -5117,3 +5117,297 @@ button, input, select, textarea { font: inherit; }
 .nmt-review-number {
   font-family: inherit !important;
 }
+
+/* ========================================================================== */
+/* V3.1 — alignment, icon scale and motion polish                            */
+/* Keeps Liquid Glass bottom navigation untouched.                           */
+/* ========================================================================== */
+
+/* --- Startup: move the emblem and both orbits as one unit so they never drift. --- */
+.startup-brand {
+  width: 154px !important;
+  height: 154px !important;
+  margin-bottom: 26px !important;
+  animation: brandFloat 3.4s ease-in-out infinite !important;
+  transform-origin: center center;
+}
+.startup-logo-shell {
+  width: 108px !important;
+  height: 108px !important;
+  border-radius: 34px !important;
+  animation: brandLogoBreathe 3.4s ease-in-out infinite !important;
+  transform-origin: center center;
+  z-index: 2;
+}
+.startup-robot {
+  font-size: 51px !important;
+  line-height: 1 !important;
+  transform: translateY(-1px);
+}
+.startup-orbit {
+  inset: 2px !important;
+  z-index: 1;
+  transform-origin: 50% 50% !important;
+  will-change: transform;
+}
+.startup-orbit::before {
+  inset: 17px !important;
+}
+.startup-orbit span {
+  top: -4px !important;
+  width: 8px !important;
+  height: 8px !important;
+  margin-left: -4px !important;
+}
+@keyframes brandLogoBreathe {
+  0%, 100% { transform: scale(1); box-shadow: 0 24px 55px rgba(0,0,0,.30), 0 0 0 8px rgba(215,187,130,.035), inset 0 1px 0 rgba(255,255,255,.10); }
+  50% { transform: scale(1.018); box-shadow: 0 27px 62px rgba(0,0,0,.32), 0 0 0 11px rgba(215,187,130,.045), inset 0 1px 0 rgba(255,255,255,.11); }
+}
+
+/* --- Larger, better-centred emblem tiles throughout the app. --- */
+.brand-mini-mark {
+  width: 56px !important;
+  height: 56px !important;
+  flex-basis: 56px !important;
+  border-radius: 19px !important;
+  font-size: 29px !important;
+  line-height: 1 !important;
+}
+.topic-picker-icon {
+  width: 62px !important;
+  height: 62px !important;
+  flex-basis: 62px !important;
+  border-radius: 20px !important;
+  font-size: 18px !important;
+  line-height: 1 !important;
+  overflow: visible !important;
+}
+.topic-item-icon {
+  width: 46px !important;
+  height: 46px !important;
+  flex: 0 0 46px !important;
+  border-radius: 15px !important;
+  font-size: 14px !important;
+  line-height: 1 !important;
+  display: grid !important;
+  place-items: center !important;
+  overflow: visible !important;
+}
+.nmt-page-mark,
+.cheat-mark,
+.profile-page-mark {
+  width: 58px !important;
+  height: 58px !important;
+  flex: 0 0 58px !important;
+  border-radius: 19px !important;
+  font-size: 18px !important;
+  line-height: 1 !important;
+  display: grid !important;
+  place-items: center !important;
+}
+.nmt-hero-emblem {
+  width: 64px !important;
+  height: 64px !important;
+  flex-basis: 64px !important;
+  border-radius: 21px !important;
+}
+.nmt-hero-emblem span { font-size: 26px !important; }
+
+/* --- Topic sheet: stable scrolling, no half-cut cards or clipped text. --- */
+.topic-sheet {
+  display: flex !important;
+  flex-direction: column !important;
+  max-height: min(84vh, 760px) !important;
+  padding: 10px 14px calc(18px + env(safe-area-inset-bottom, 0px)) !important;
+}
+.topic-sheet-head {
+  flex: 0 0 auto;
+  padding: 1px 4px 13px !important;
+}
+.topic-sheet-title {
+  line-height: 1.12 !important;
+  padding-top: 1px;
+}
+.topic-list {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  padding: 4px 2px 18px !important;
+  scroll-padding-block: 10px 18px;
+}
+.topic-item {
+  min-height: 76px !important;
+  padding: 12px 13px !important;
+  gap: 13px !important;
+  overflow: visible !important;
+  contain: none !important;
+}
+.topic-item-copy,
+.topic-item-title,
+.topic-item-subtitle {
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: normal !important;
+  word-break: normal !important;
+  overflow-wrap: break-word !important;
+}
+.topic-item-title {
+  font-size: 15.5px !important;
+  line-height: 1.22 !important;
+  letter-spacing: -.018em !important;
+}
+.topic-item-subtitle {
+  margin-top: 4px !important;
+  font-size: 12.2px !important;
+  line-height: 1.36 !important;
+}
+.topic-item-check {
+  flex: 0 0 22px;
+  text-align: center;
+}
+
+/* --- Cheatsheet: larger visual anchors and safer typography. --- */
+.cheat-section {
+  contain: layout style !important;
+  overflow: visible !important;
+}
+.cheat-section-btn {
+  min-height: 84px !important;
+  padding: 12px 13px !important;
+  gap: 14px !important;
+  overflow: visible !important;
+}
+.cheat-section-icon {
+  width: 56px !important;
+  height: 56px !important;
+  flex: 0 0 56px !important;
+  border-radius: 18px !important;
+  display: grid !important;
+  place-items: center !important;
+  font-family: inherit !important;
+  font-size: 18px !important;
+  font-weight: 760 !important;
+  line-height: 1 !important;
+  letter-spacing: -.02em !important;
+  overflow: visible !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 8px 18px rgba(31,31,33,.10);
+}
+.cheat-section-copy {
+  min-width: 0 !important;
+  overflow: visible !important;
+}
+.cheat-section-title {
+  font-size: 16px !important;
+  line-height: 1.18 !important;
+  overflow: visible !important;
+  white-space: normal !important;
+  text-overflow: clip !important;
+}
+.cheat-section-meta {
+  margin-top: 5px !important;
+  font-size: 11.4px !important;
+  line-height: 1.36 !important;
+  overflow: visible !important;
+  white-space: normal !important;
+}
+.cheat-section-chevron {
+  width: 34px !important;
+  height: 34px !important;
+  flex: 0 0 34px !important;
+  border-radius: 11px !important;
+  font-size: 23px !important;
+}
+
+/* --- Profile: icon tiles a little more substantial, without touching nav. --- */
+.profile-mini-badge {
+  min-width: 54px !important;
+  height: 54px !important;
+  border-radius: 18px !important;
+}
+.profile-snapshot-icon {
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 14px !important;
+  font-size: 13px !important;
+  line-height: 1 !important;
+}
+.profile-quick-actions button {
+  grid-template-columns: 46px minmax(0,1fr) 28px !important;
+  min-height: 69px !important;
+}
+.profile-quick-actions button > span {
+  width: 46px !important;
+  height: 46px !important;
+  border-radius: 15px !important;
+  font-size: 15px !important;
+  line-height: 1 !important;
+}
+
+/* --- Prevent font ascenders/descenders from getting visually clipped. --- */
+.page-eyebrow,
+.topic-picker-kicker,
+.card-label,
+.nmt-kicker,
+.cheat-kicker,
+.profile-page-kicker,
+.nmt-exam-label,
+.nmt-result-kicker,
+.profile-metric-label,
+.profile-focus-kicker,
+.profile-identity-overline {
+  line-height: 1.25 !important;
+  overflow: visible !important;
+  padding-block: 1px;
+}
+.card-label { min-height: 32px !important; }
+
+/* Soft icon entrance; no layout-affecting translation. */
+.brand-mini-mark,
+.topic-picker-icon,
+.nmt-page-mark,
+.cheat-mark,
+.profile-page-mark,
+.cheat-section-icon,
+.profile-snapshot-icon {
+  animation: emblemReveal .34s cubic-bezier(.2,.8,.2,1) both;
+  transform-origin: center;
+}
+@keyframes emblemReveal {
+  from { opacity: .55; transform: scale(.94); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@media (max-width: 390px) {
+  .brand-mini-mark {
+    width: 50px !important;
+    height: 50px !important;
+    flex-basis: 50px !important;
+    border-radius: 17px !important;
+    font-size: 26px !important;
+  }
+  .topic-picker-icon {
+    width: 56px !important;
+    height: 56px !important;
+    flex-basis: 56px !important;
+  }
+  .cheat-section-icon {
+    width: 52px !important;
+    height: 52px !important;
+    flex-basis: 52px !important;
+  }
+  .cheat-section-btn { min-height: 80px !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .startup-brand,
+  .startup-logo-shell,
+  .brand-mini-mark,
+  .topic-picker-icon,
+  .nmt-page-mark,
+  .cheat-mark,
+  .profile-page-mark,
+  .cheat-section-icon,
+  .profile-snapshot-icon {
+    animation: none !important;
+  }
+}
