@@ -1,6 +1,7 @@
 import { QUESTION_BLUEPRINTS } from '../../nmt-knowledge.js';
 import { defineFamily, defineVariant } from '../dsl/index.js';
 import { FamilyRegistry } from '../core/family-registry.js';
+import { generateByBlueprint } from '../generation/question-generator.js';
 
 function defaultRepresentation(blueprint) {
   if (!blueprint.diagram_type) return 'text';
@@ -29,6 +30,7 @@ export function blueprintToFamily(blueprint) {
     topic: blueprint.topic,
     title: blueprint.subtopic ?? blueprint.id,
     variants: [variant],
+    generate: ({ requiredType = null } = {}) => generateByBlueprint(blueprint.id, { requiredType }),
     metadata: {
       skill: blueprint.skill ?? null,
       formats: blueprint.formats ?? [],

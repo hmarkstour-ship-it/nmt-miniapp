@@ -39,7 +39,7 @@ const TOPIC_MAP = new Map(TOPICS.map((topic) => [topic.key, topic]));
 export function getTopic(key) { return TOPIC_MAP.get(key) || TOPIC_MAP.get('mixed'); }
 export function getPublicTopics() { return TOPICS.map((topic) => ({ ...topic })); }
 
-// Blueprint registry is intentionally descriptive. Generator implementations live in question-engine.js.
+// Blueprint registry is descriptive. Generator implementations live in nmt-engine/generation/.
 // `source_confidence`: 3 = official/psychometric source; 2 = reconstructed multi-session source.
 export const QUESTION_BLUEPRINTS = Object.freeze([
   { id:'data_chart_reading', topic:'probability_stats', subtopic:'Діаграми', skill:'Зчитування та інтерпретація даних', formats:['choice'], mock_slots:[1], diagram_type:'bar_chart', source_confidence:3 },

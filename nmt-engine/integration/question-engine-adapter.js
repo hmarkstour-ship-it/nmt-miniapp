@@ -12,8 +12,8 @@ function splitVariant(question) {
 }
 
 function inferRepresentation(question, blueprint) {
-  if (!question.diagram_svg) return 'text';
-  const type = blueprint?.diagram_type ?? '';
+  if (!question.diagram_svg && !question.visual_spec) return 'text';
+  const type = question.visual_spec?.diagram_type ?? blueprint?.diagram_type ?? '';
   if (type.includes('chart')) return 'chart';
   if (type.includes('graph')) return 'graph';
   if (['solid', 'linked_solids'].includes(type)) return 'spatial_diagram';

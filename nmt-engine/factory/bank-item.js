@@ -18,7 +18,7 @@ export function toBankItem({
   duplicate,
 }) {
   const id = `nmt3-${duplicate.contentHash.slice(0, 16)}`;
-  const hasVisual = Boolean(raw.diagram_svg);
+  const hasVisual = Boolean(raw.visual_spec || raw.diagram_svg);
   const blueprint = BLUEPRINTS.get(raw.blueprint_id) ?? null;
 
   return {

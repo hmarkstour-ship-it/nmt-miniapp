@@ -16,7 +16,8 @@ This folder is an additive foundation placed on top of the current project.
 - `factory/` — seeded offline generation, profiling, coverage planning, bank validation/auditing
 - `runtime/` — Stage 8 offline-bank loading, training selection, Mock NMT assembly, runtime blocklist/use tracking
 - `selection/` — candidate filtering/ranking/selection
-- `integration/` — adapters to the current `question-engine.js`
+- `generation/` — real structured family generators used by the factory and compatibility facade
+- `integration/` — adapters between generated questions and the diversity/difficulty/runtime layers
 
 The project uses ESM (`"type": "module"` in `package.json`), so every file in this engine uses `import` / `export`.
 

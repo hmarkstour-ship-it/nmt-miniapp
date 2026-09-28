@@ -1,5 +1,5 @@
 import { QUESTION_BLUEPRINTS } from '../../nmt-knowledge.js';
-import { generateByBlueprint, validateQuestion } from '../../question-engine.js';
+import { generateByBlueprint, validateQuestion } from '../generation/question-generator.js';
 import { adaptQuestionEngineItem } from '../integration/question-engine-adapter.js';
 import { validateGeneratedItem } from '../validation/generation-validator.js';
 import { DifficultyController } from '../difficulty/difficulty-controller.js';

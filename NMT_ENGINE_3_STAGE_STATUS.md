@@ -32,13 +32,15 @@ Provides reproducible bulk generation, validation, duplicate control and one sha
 
 The live app uses `generated/nmt-question-bank-v1.json` instead of generating mathematics while the user waits.
 
-Current bank remains:
+Current bank after the Core Replacement rebuild:
 
-- 646 validated unique items;
-- 505 choice / 44 matching / 97 short;
-- 323 plain training items;
-- 182 visual training items;
-- all 22 Mock NMT slots covered.
+- 690 validated unique items;
+- 294 plain training items;
+- 170 visual training items;
+- all 22 Mock NMT slots covered;
+- 690/690 rows originate from the new structured core generator;
+- 226 rows contain typed visual specs rendered by Visual Engine v2;
+- 0 runtime visual rows use the legacy SVG wrapper.
 
 ## Stage 9 — Mock NMT Engine
 
@@ -82,3 +84,15 @@ All commands above pass in the Stage 10 build environment.
 The planned NMT Engine 3.0 stages 1–10 are now implemented in code.
 
 The remaining work is operational rather than a new correctness stage: deploy Stage 10 migrations, collect real usage data, run calibration periodically, review flagged items, and tune thresholds only from sufficiently large samples.
+
+
+## Core Replacement (post-Stage-10 correction)
+
+The previous Stage 1–10 architecture still routed the offline factory through the legacy monolithic `question-engine.js`, while the Stage 4 visual engine was not actually used by generated questions. This has now been corrected.
+
+- `nmt-engine/generation/` is the actual source of generated mathematics.
+- `question-engine.js` is only a compatibility facade.
+- Stage 7 factory and blueprint profiler import the new generator directly.
+- Visual questions emit a typed `visual_spec` and are rendered through Visual Engine v2.
+- The runtime bank was rebuilt from the corrected path.
+- Use `npm run nmt:core:audit` to verify the wiring.
