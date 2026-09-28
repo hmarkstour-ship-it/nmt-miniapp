@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadRuntimeBank, OfflineQuestionBankRuntime, RUNTIME_VERSION } from '../runtime/index.js';
 import { EXAM_SLOTS, getPublicTopics } from '../../nmt-knowledge.js';
-import { validateQuestion, validateExamQuestions } from '../../question-engine.js';
+import { validateQuestion, validateExamQuestions } from '../generation/question-generator.js';
 import { gradeNmtExam, sanitizeExamQuestions } from '../../nmt-exam-engine.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -12,7 +12,7 @@ const loaded = loadRuntimeBank({ root });
 const runtime = new OfflineQuestionBankRuntime(loaded.bank, { bankPath: loaded.path });
 const stats = runtime.getStats();
 
-assert.equal(RUNTIME_VERSION, 8);
+assert.equal(RUNTIME_VERSION, 11);
 assert.equal(stats.item_count, loaded.bank.items.length);
 assert.ok(stats.item_count >= 120, 'runtime bank should contain a substantial offline dataset');
 assert.ok(stats.training_plain_count > 0);
@@ -39,7 +39,7 @@ for (const topic of getPublicTopics()) {
     assert.equal(q.type, 'choice');
     assert.equal(q.diagram_svg, null, `${key} plain training should not contain a diagram`);
     assert.equal(q.runtime_source, 'offline_bank');
-    assert.equal(q.runtime_meta.version, 8);
+    assert.equal(q.runtime_meta.version, 11);
     assert.ok(validateQuestion(q), `${q.id} must remain compatible with the existing training UI`);
   }
 }

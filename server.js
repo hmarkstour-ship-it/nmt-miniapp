@@ -5,9 +5,10 @@ import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 import 'dotenv/config';
 import { NMT_META, getTopic, getPublicTopics, QUESTION_BLUEPRINTS, EXAM_SLOTS } from './nmt-knowledge.js';
-import { GENERATOR_VERSION, generateDeterministicQuestion, validateDeterministicQuestion, questionSkeleton } from './deterministic-math.js';
+import { QUESTION_ENGINE_VERSION as GENERATOR_VERSION, generateTrainingChoice, validateQuestion as validateDeterministicQuestion, questionSkeleton } from './nmt-engine/generation/question-generator.js';
 import { NMT_EXAM_META, generateNmtExam, sanitizeExamQuestions, gradeNmtExam, scoreToScale } from './nmt-exam-engine.js';
 import { loadRuntimeBank, OfflineQuestionBankRuntime, RUNTIME_VERSION } from './nmt-engine/runtime/index.js';
+import { VISUAL_ENGINE_VERSION } from './nmt-engine/visuals/visual-spec.js';
 import {
   MOCK_ENGINE_VERSION,
   createMockAttemptSnapshot,
@@ -57,7 +58,7 @@ let offlineBankLoadError = null;
 try {
   const loaded = loadRuntimeBank({ root: PROJECT_ROOT, bankPath: process.env.NMT_OFFLINE_BANK_PATH || null });
   offlineBankRuntime = new OfflineQuestionBankRuntime(loaded.bank, { bankPath: loaded.path });
-  console.log(`✅ NMT Engine Stage 8: offline bank loaded (${loaded.itemCount} items)`);
+  console.log(`✅ NMT Engine core v${GENERATOR_VERSION}, visual v${VISUAL_ENGINE_VERSION}, runtime v${RUNTIME_VERSION}: offline bank loaded (${loaded.itemCount} items)`);
 } catch (err) {
   offlineBankLoadError = err;
   console.error(`❌ NMT Engine Stage 8: ${err.message}`);
@@ -1599,7 +1600,7 @@ async function generateStrictQuestion(topic, difficulty, avoidList = [], attempt
   // і НЕ впливає на те, який варіант позначено правильним.
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
-      const candidate = generateDeterministicQuestion(topic, difficulty, avoidList);
+      const candidate = generateTrainingChoice(topic, difficulty, avoidList);
 
       if (!validateDeterministicQuestion(candidate)) {
         console.warn(`⚠️ Deterministic generation ${attempt}: внутрішня валідація не пройдена`);
@@ -1679,6 +1680,9 @@ app.get('/api/topics', (req, res) => {
 app.get('/api/knowledge/meta', (req, res) => {
   res.json({
     version: GENERATOR_VERSION,
+    core_engine_version: GENERATOR_VERSION,
+    visual_engine_version: VISUAL_ENGINE_VERSION,
+    runtime_version: RUNTIME_VERSION,
     year: NMT_META.year,
     blueprints: QUESTION_BLUEPRINTS.length,
     exam_slots: EXAM_SLOTS,

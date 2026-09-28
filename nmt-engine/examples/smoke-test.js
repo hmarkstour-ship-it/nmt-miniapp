@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { generateTrainingChoice, generateExamQuestions, validateQuestion, validateExamQuestions } from '../../question-engine.js';
+import { generateTrainingChoice, generateExamQuestions, validateQuestion, validateExamQuestions } from '../generation/question-generator.js';
 import { createBlueprintFamilyRegistry } from '../families/blueprint-families.js';
 import { adaptQuestionEngineItem } from '../integration/question-engine-adapter.js';
 import { createDiverseTrainingSession } from '../integration/diverse-training-generator.js';

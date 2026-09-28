@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { QUESTION_BLUEPRINTS } from '../../nmt-knowledge.js';
-import { generateByBlueprint } from '../../question-engine.js';
+import { generateByBlueprint } from '../generation/question-generator.js';
 import { adaptQuestionEngineItem } from '../integration/question-engine-adapter.js';
 import { DiversityEngine } from '../diversity/diversity-engine.js';
 import {

@@ -2,7 +2,7 @@ import { QUESTION_BLUEPRINTS } from '../../nmt-knowledge.js';
 import { createVisualSpec, renderVisual } from '../visuals/index.js';
 import { LETTERS, randInt, shuffle, ua, uniqueStrings } from './utils.js';
 
-export const CORE_ENGINE_VERSION = 7;
+export const CORE_ENGINE_VERSION = 11;
 const BLUEPRINTS = new Map(QUESTION_BLUEPRINTS.map((x) => [x.id, x]));
 const LABELS = Object.freeze({
   numbers:'Числа та дроби', percents:'Відсотки та пропорції', powers_roots:'Степені та корені', logarithms:'Логарифми',
@@ -88,7 +88,7 @@ export function makeShort(blueprintId, {
 
 export function validateQuestion(q) {
   if (!q || !q.question || !q.topic || !q.blueprint_id) return false;
-  if (q.visual_spec && (!q.diagram_svg || q.visual_spec.metadata?.renderer !== 'nmt-engine3-visual-engine-v2')) return false;
+  if (q.visual_spec && (!q.diagram_svg || q.visual_spec.metadata?.renderer !== 'nmt-engine4-visual-engine-v3')) return false;
   if (q.type === 'choice') return Array.isArray(q.options) && q.options.length === 5 && new Set(q.options).size === 5 && Number.isInteger(q.correct_index) && q.correct_index >= 0 && q.correct_index < 5 && typeof q.explanation === 'string' && q.explanation.length > 0;
   if (q.type === 'matching') return Array.isArray(q.left) && q.left.length === 3 && Array.isArray(q.match_options) && q.match_options.length === 5 && new Set(q.match_options.map(x => x.label)).size === 5 && Object.values(q.correct_pairs ?? {}).length === 3;
   if (q.type === 'short') return Number.isFinite(q.correct_value);

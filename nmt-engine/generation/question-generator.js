@@ -1,6 +1,7 @@
 import { EXAM_SLOTS, QUESTION_BLUEPRINTS } from '../../nmt-knowledge.js';
 import { CORE_ENGINE_VERSION, questionSkeleton, validateQuestion } from './builders.js';
 import { GENERATORS } from './blueprint-generators.js';
+import { EXPANDED_GENERATORS } from './expanded-generators.js';
 import { pick, shuffle, randInt } from './utils.js';
 
 export const QUESTION_ENGINE_VERSION = CORE_ENGINE_VERSION;
@@ -31,7 +32,13 @@ export function generateByBlueprint(id, { requiredType = null } = {}) {
   if (requiredType && bp && !(bp.formats ?? []).includes(requiredType)) {
     throw new Error(`Blueprint ${id} does not support ${requiredType}`);
   }
-  const question = fn(requiredType);
+  const alternates = EXPANDED_GENERATORS[id] ?? [];
+  const candidates = [fn, ...alternates];
+  // Prefer the expanded structural variants so a session changes the actual
+  // solution path, not only the numbers. The base generator remains one valid
+  // member of the family.
+  const selected = pick(candidates);
+  const question = selected(requiredType);
   if (question.blueprint_id !== id) throw new Error(`Generator ${id} emitted ${question.blueprint_id}`);
   if (requiredType && question.type !== requiredType) throw new Error(`Generator ${id} emitted ${question.type}, expected ${requiredType}`);
   if (!validateQuestion(question)) throw new Error(`Generator ${id} emitted invalid question`);

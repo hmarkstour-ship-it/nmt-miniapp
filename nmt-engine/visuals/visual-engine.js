@@ -1,26 +1,36 @@
 import { validateVisualSpec } from './visual-validator.js';
 import {
   renderBarChart,
+  renderLineChart,
   renderFunctionGraph,
   renderTrapezoid,
+  renderParallelogramDiagonal,
+  renderParallelLines,
   renderTriangleSides,
+  renderRightTriangle,
   renderCircleAngle,
+  renderCircleDiameter,
   renderSimilarTriangles,
   renderRectPrism,
+  renderCube,
   renderLinkedSolids,
   renderCircleRectangle,
-  renderLegacy,
 } from './renderers/svg-renderers.js';
 
 const RENDERERS = Object.freeze({
-  legacy_svg: renderLegacy,
   bar_chart: renderBarChart,
+  line_chart: renderLineChart,
   function_graph: renderFunctionGraph,
   trapezoid: renderTrapezoid,
+  parallelogram_diagonal: renderParallelogramDiagonal,
+  parallel_lines: renderParallelLines,
   triangle_sides: renderTriangleSides,
+  right_triangle: renderRightTriangle,
   circle_angle: renderCircleAngle,
+  circle_diameter: renderCircleDiameter,
   similar_triangles: renderSimilarTriangles,
   rect_prism: renderRectPrism,
+  cube: renderCube,
   linked_solids: renderLinkedSolids,
   circle_rectangle: renderCircleRectangle,
 });

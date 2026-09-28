@@ -1,4 +1,4 @@
-export const RUNTIME_VERSION = 8;
+export const RUNTIME_VERSION = 11;
 export const DEFAULT_RUNTIME_BANK_PATH = 'generated/nmt-question-bank-v1.json';
 export const DEFAULT_TRAINING_VISUAL_MODE = 'plain';
 

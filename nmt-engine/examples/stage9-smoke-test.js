@@ -24,8 +24,8 @@ const root = path.resolve(__dirname, '../..');
 const loaded = loadRuntimeBank({ root });
 const runtime = new OfflineQuestionBankRuntime(loaded.bank, { bankPath: loaded.path });
 
-assert.equal(MOCK_ENGINE_VERSION, 9);
-assert.equal(RUNTIME_VERSION, 8);
+assert.equal(MOCK_ENGINE_VERSION, 11);
+assert.equal(RUNTIME_VERSION, 11);
 
 const assemblySeed = 'stage9-smoke-attempt-session-0001';
 const assembled = runtime.assembleMock(EXAM_SLOTS, { seed: assemblySeed });
@@ -41,8 +41,8 @@ const snapshot = createMockAttemptSnapshot({
   runtimeVersion: RUNTIME_VERSION,
 });
 
-assert.equal(snapshot.mock_engine_version, 9);
-assert.equal(snapshot.runtime_version, 8);
+assert.equal(snapshot.mock_engine_version, 11);
+assert.equal(snapshot.runtime_version, 11);
 assert.equal(snapshot.item_count, 22);
 assert.equal(snapshot.unique_item_count, 22);
 assert.equal(snapshot.question_snapshot_hash, questionSnapshotHash(questions));

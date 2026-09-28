@@ -15,7 +15,7 @@
     "nmt:stage9:smoke": "node nmt-engine/examples/stage9-smoke-test.js",
     "nmt:stage10:smoke": "node nmt-engine/examples/stage10-smoke-test.js",
     "nmt:stage10:calibrate": "node scripts/rebuild-stage10-calibration.js",
-    "nmt:core:audit": "node scripts/audit-core-replacement.js"
+    "nmt:core:audit": "node scripts/audit-core-clean.js"
   },
   "engines": {
     "node": ">=18.0.0"

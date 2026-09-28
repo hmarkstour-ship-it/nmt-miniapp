@@ -1,7 +1,7 @@
 import { targetFitScore } from '../difficulty/difficulty-bands.js';
 import { createSeededRandom, deriveSeed } from '../factory/seeded-rng.js';
 import { auditExamDiversity } from '../integration/exam-diversity-audit.js';
-import { validateExamQuestions } from '../../question-engine.js';
+import { validateExamQuestions } from '../generation/question-generator.js';
 import { SLOT_DIFFICULTY_TARGETS } from './constants.js';
 import { effectiveDifficultyScore } from '../analytics/policy.js';
 

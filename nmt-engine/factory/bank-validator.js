@@ -1,4 +1,4 @@
-import { validateQuestion } from '../../question-engine.js';
+import { validateQuestion } from '../generation/question-generator.js';
 
 export function validateBankItem(item) {
   const errors = [];

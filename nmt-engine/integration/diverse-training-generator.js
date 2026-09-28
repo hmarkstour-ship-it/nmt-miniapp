@@ -1,4 +1,4 @@
-import { generateTrainingChoice, validateQuestion } from '../../question-engine.js';
+import { generateTrainingChoice, validateQuestion } from '../generation/question-generator.js';
 import { adaptQuestionEngineItem } from './question-engine-adapter.js';
 import { DiversityEngine } from '../diversity/diversity-engine.js';
 import { SessionHistory } from '../diversity/session-history.js';

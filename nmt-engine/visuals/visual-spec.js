@@ -1,4 +1,4 @@
-export const VISUAL_ENGINE_VERSION = 2;
+export const VISUAL_ENGINE_VERSION = 3;
 
 export function createVisualSpec({ type, diagram_type = null, data = {}, labels = {}, metadata = {} }) {
   if (!type) throw new Error('Visual spec requires type');
@@ -8,21 +8,15 @@ export function createVisualSpec({ type, diagram_type = null, data = {}, labels 
     data: data ?? {},
     labels: labels ?? {},
     metadata: {
-      renderer: 'nmt-engine3-visual-engine-v2',
+      renderer: 'nmt-engine4-visual-engine-v3',
       visual_engine_version: VISUAL_ENGINE_VERSION,
       ...metadata,
     },
   };
 }
 
-export function visualSpecFromQuestion(question, diagramType = null) {
-  if (question?.visual_spec) return question.visual_spec;
-  if (!question?.diagram_svg) return null;
-  return {
-    type: 'legacy_svg',
-    diagram_type: diagramType,
-    data: { markup: question.diagram_svg },
-    labels: {},
-    metadata: { source: 'legacy-diagram-svg' },
-  };
+export function visualSpecFromQuestion(question) {
+  // Legacy raw SVG is deliberately not adapted anymore. Every generated
+  // visual must originate as a typed visual_spec and pass through VisualEngine.
+  return question?.visual_spec ?? null;
 }

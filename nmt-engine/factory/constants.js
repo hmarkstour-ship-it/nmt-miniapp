@@ -1,5 +1,5 @@
-export const FACTORY_VERSION = 7;
-export const BANK_SCHEMA_VERSION = '1.0';
+export const FACTORY_VERSION = 11;
+export const BANK_SCHEMA_VERSION = '2.0';
 
 export const DEFAULT_DIFFICULTY_MIX = Object.freeze({
   'легкий': 0.34,

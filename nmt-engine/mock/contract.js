@@ -1,4 +1,4 @@
-import { validateExamQuestions } from '../../question-engine.js';
+import { validateExamQuestions } from '../generation/question-generator.js';
 import { MOCK_ENGINE_VERSION } from './constants.js';
 import { verifyQuestionSnapshot } from './snapshot.js';
 
