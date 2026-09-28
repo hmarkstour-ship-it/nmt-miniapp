@@ -1,152 +1,32 @@
-import { normalizeDifficultyTarget, targetFitScore } from '../difficulty/difficulty-bands.js';
-import { fingerprintSimilarity } from '../diversity/similarity.js';
 import { createSeededRandom, deriveSeed } from '../factory/seeded-rng.js';
-import { effectiveDifficultyScore } from '../analytics/policy.js';
+import { genomeDistance } from '../v4/genome.js';
 
-function clamp(n, min, max) {
-  return Math.max(min, Math.min(max, n));
+const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
+function quality(item){return Number(item?.bank_meta?.quality_score??0)}
+function novelty(item){return Number(item?.bank_meta?.novelty_score??0)}
+function sig(item){return item?.bank_meta?.genome_signature??null}
+function structuralSimilarity(a,b){const ga=a?.bank_meta?.genome,gb=b?.bank_meta?.genome;return ga&&gb?1-genomeDistance(ga,gb):0}
+function score(item,{avoidTexts,recentItems,selected,usage,random}){
+ let s=quality(item)*1.05+novelty(item)*.45;
+ if(avoidTexts.has(item.question))s-=180;
+ const sk=item.question_skeleton; if(sk&&recentItems.some(x=>x.question_skeleton===sk))s-=110;
+ const gs=sig(item); if(gs&&recentItems.some(x=>sig(x)===gs))s-=140;
+ const recentSim=Math.max(0,...recentItems.map(x=>structuralSimilarity(item,x)));
+ const batchSim=Math.max(0,...selected.map(x=>structuralSimilarity(item,x)));
+ s-=recentSim*52+batchSim*88;
+ s-=clamp(usage.get(item.id)??0,0,40)*2.2;
+ return s+random()*9;
 }
-
-function itemFingerprint(item) {
-  return item?.bank_meta?.fingerprint ?? null;
+export function selectTrainingBatch(index,{topic='mixed',count=4,visualMode='any',avoidTexts=[],usage=new Map(),seed=Date.now(),disabledIds=new Set()}={}){
+ const pool=index.trainingPool({topic,visualMode}).filter(x=>!disabledIds.has(x.id)); if(!pool.length)return[];
+ const avoid=new Set((avoidTexts??[]).filter(Boolean)); const recent=[]; for(const t of avoid){const x=index.byText.get(t);if(x)recent.push(x)}
+ const wanted=Math.max(1,Math.min(Number(count)||1,pool.length)),selected=[],ids=new Set();
+ const random=createSeededRandom(deriveSeed(seed,topic,visualMode,avoid.size));
+ while(selected.length<wanted){const ranked=pool.filter(x=>!ids.has(x.id)).map(item=>({item,score:score(item,{avoidTexts:avoid,recentItems:recent,selected,usage,random})})).sort((a,b)=>b.score-a.score);if(!ranked.length)break;const window=Math.min(8,ranked.length);const chosen=ranked[Math.floor(random()*window)].item;selected.push(chosen);ids.add(chosen.id)}
+ return selected;
 }
-
-function maxSimilarity(candidate, items = []) {
-  const fp = itemFingerprint(candidate);
-  if (!fp || !items.length) return 0;
-  let max = 0;
-  for (const item of items) {
-    const other = itemFingerprint(item);
-    if (!other) continue;
-    max = Math.max(max, fingerprintSimilarity(fp, other));
-  }
-  return max;
-}
-
-function publicDifficultyMatch(item, target) {
-  return String(item.difficulty) === String(target.label) ? 1 : 0;
-}
-
-function candidateScore(item, {
-  target,
-  avoidTexts,
-  avoidSkeletons,
-  recentItems,
-  selected,
-  usage,
-  random,
-}) {
-  const score = effectiveDifficultyScore(item);
-  const fit = Number.isFinite(score) ? targetFitScore(score, target) : 0;
-  const exactDifficulty = publicDifficultyMatch(item, target);
-  const exactSeen = avoidTexts.has(item.question);
-  const skeletonSeen = item.question_skeleton && avoidSkeletons.has(item.question_skeleton);
-  const recentSimilarity = maxSimilarity(item, recentItems);
-  const batchSimilarity = maxSimilarity(item, selected);
-  const useCount = usage.get(item.id) ?? 0;
-
-  let total = fit * 1.15;
-  total += exactDifficulty * 20;
-  total -= exactSeen ? 130 : 0;
-  total -= skeletonSeen ? 55 : 0;
-  total -= recentSimilarity * 22;
-  total -= batchSimilarity * 52;
-  total -= clamp(useCount, 0, 25) * 2.5;
-  total += random() * 7;
-  return total;
-}
-
-export function selectTrainingBatch(index, {
-  topic = 'mixed',
-  difficulty = 'середній',
-  count = 4,
-  visualMode = 'plain',
-  avoidTexts = [],
-  usage = new Map(),
-  seed = Date.now(),
-  disabledIds = new Set(),
-} = {}) {
-  const target = normalizeDifficultyTarget(difficulty);
-  const pool = index.trainingPool({ topic, visualMode }).filter((item) => !disabledIds.has(item.id));
-  if (!pool.length) return [];
-
-  const avoidTextSet = new Set((avoidTexts ?? []).filter(Boolean));
-  const recentItems = [];
-  const avoidSkeletons = new Set();
-  for (const text of avoidTextSet) {
-    const known = index.byText.get(text);
-    if (!known) continue;
-    recentItems.push(known);
-    if (known.question_skeleton) avoidSkeletons.add(known.question_skeleton);
-  }
-
-  const wanted = Math.max(1, Math.min(Number(count) || 1, pool.length));
-  const selected = [];
-  const selectedIds = new Set();
-  const random = createSeededRandom(deriveSeed(seed, topic, difficulty, visualMode, avoidTexts.length));
-
-  while (selected.length < wanted) {
-    const ranked = pool
-      .filter((item) => !selectedIds.has(item.id))
-      .map((item) => ({
-        item,
-        score: candidateScore(item, {
-          target,
-          avoidTexts: avoidTextSet,
-          avoidSkeletons,
-          recentItems,
-          selected,
-          usage,
-          random,
-        }),
-      }))
-      .sort((a, b) => b.score - a.score);
-
-    if (!ranked.length) break;
-
-    // Randomize only among the strongest few candidates so sessions do not always
-    // start from the exact same bank row while difficulty/diversity still dominate.
-    const windowSize = Math.min(5, ranked.length);
-    const pickIndex = Math.floor(random() * windowSize);
-    const chosen = ranked[pickIndex].item;
-    selected.push(chosen);
-    selectedIds.add(chosen.id);
-  }
-
-  return selected;
-}
-
-export function selectSimilarTraining(index, original, {
-  difficulty = 'середній',
-  avoidTexts = [],
-  usage = new Map(),
-  seed = Date.now(),
-  visualMode = 'plain',
-  disabledIds = new Set(),
-} = {}) {
-  if (!original) return null;
-  const topic = original.topic || 'mixed';
-  const pool = index.trainingPool({ topic, visualMode })
-    .filter((item) => !disabledIds.has(item.id))
-    .filter((item) => item.id !== original.id && item.question !== original.question);
-  if (!pool.length) return null;
-
-  const target = normalizeDifficultyTarget(difficulty);
-  const originalFp = itemFingerprint(original);
-  const avoid = new Set([original.question, ...(avoidTexts ?? [])].filter(Boolean));
-  const random = createSeededRandom(deriveSeed(seed, 'similar', original.id || original.question || topic));
-
-  const ranked = pool.map((item) => {
-    const sameFamily = item.blueprint_id && item.blueprint_id === original.blueprint_id ? 1 : 0;
-    const similarity = originalFp && itemFingerprint(item)
-      ? fingerprintSimilarity(originalFp, itemFingerprint(item))
-      : 0;
-    const fit = targetFitScore(effectiveDifficultyScore(item), target);
-    const seen = avoid.has(item.question) ? 1 : 0;
-    const useCount = usage.get(item.id) ?? 0;
-    const score = sameFamily * 80 + similarity * 45 + fit * 0.5 - seen * 120 - useCount * 2 + random() * 4;
-    return { item, score };
-  }).sort((a, b) => b.score - a.score);
-
-  return ranked[0]?.item ?? null;
+export function selectSimilarTraining(index,original,{avoidTexts=[],usage=new Map(),seed=Date.now(),visualMode='any',disabledIds=new Set()}={}){
+ if(!original)return null;const pool=index.trainingPool({topic:original.topic||'mixed',visualMode}).filter(x=>!disabledIds.has(x.id)&&x.id!==original.id&&x.question!==original.question);if(!pool.length)return null;
+ const avoid=new Set([original.question,...(avoidTexts??[])].filter(Boolean));const random=createSeededRandom(deriveSeed(seed,'similar',original.id||original.question));
+ const ranked=pool.map(item=>{const sameFamily=item.blueprint_id===original.blueprint_id?1:0;const sim=structuralSimilarity(item,original);const sameGenome=sig(item)&&sig(item)===sig(original)?1:0;const seen=avoid.has(item.question)?1:0;const use=usage.get(item.id)??0;return{item,score:sameFamily*52+sim*28+quality(item)*.55+novelty(item)*.22-sameGenome*100-seen*150-use*2+random()*5}}).sort((a,b)=>b.score-a.score);return ranked[0]?.item??null;
 }

@@ -222,6 +222,24 @@
     el.classList.toggle('danger', state.remainingSeconds <= 120);
   }
 
+  const ENGINE_DEBUG = new URLSearchParams(window.location.search).get('debug') === '1';
+
+  function engineDebugMarkup(q) {
+    if (!ENGINE_DEBUG) return '';
+    const m = q?.runtime_meta || {};
+    const rows = [
+      ['ENGINE', m.engine || 'NMT Engine 4.0 AI Hybrid'],
+      ['ITEM', m.bank_item_id || q?.id || '—'],
+      ['BLUEPRINT', q?.blueprint_id || '—'],
+      ['VARIANT', q?.variant_key || '—'],
+      ['Q', m.quality_score ?? q?.bank_meta?.quality_score ?? '—'],
+      ['N', m.novelty_score ?? q?.bank_meta?.novelty_score ?? '—'],
+      ['C', m.complexity_score ?? q?.bank_meta?.complexity_score ?? '—'],
+      ['VISUAL', m.visual_renderer ?? q?.bank_meta?.visual?.renderer ?? 'none'],
+    ];
+    return `<div class="engine-debug">${rows.map(([k,v]) => `<span><b>${escapeHtml(k)}:</b> ${escapeHtml(String(v))}</span>`).join('')}</div>`;
+  }
+
   function renderExam() {
     nmtView?.classList.add('exam-running');
     const q = state.questions[state.index];
@@ -252,6 +270,7 @@
       <article class="nmt-question-card" data-type="${q.type}">
         <div class="nmt-question-meta"><span>${escapeHtml(q.topic_label || '')}</span><span>${typeLabel(q.type)}</span></div>
         <div class="nmt-question-text">${escapeHtml(q.question)}</div>
+        ${engineDebugMarkup(q)}
         ${q.diagram_svg ? `<div class="nmt-diagram">${q.diagram_svg}</div>` : ''}
         <div id="nmtAnswerArea">${answerMarkup(q, state.answers[String(state.index)])}</div>
       </article>

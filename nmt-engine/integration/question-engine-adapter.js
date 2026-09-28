@@ -3,35 +3,16 @@ import { buildFingerprint } from '../core/fingerprints.js';
 import { visualSpecFromQuestion } from '../visuals/visual-spec.js';
 
 const BLUEPRINTS = new Map(QUESTION_BLUEPRINTS.map((blueprint) => [blueprint.id, blueprint]));
-
-function splitVariant(question) {
-  const key = question.variant_key ?? '';
-  const separator = key.indexOf(':');
-  if (separator >= 0) return key.slice(separator + 1) || 'base';
-  return key || 'base';
-}
-
-function inferRepresentation(question, blueprint) {
-  if (!question.diagram_svg && !question.visual_spec) return 'text';
-  const type = question.visual_spec?.diagram_type ?? blueprint?.diagram_type ?? '';
-  if (type.includes('chart')) return 'chart';
-  if (type.includes('graph')) return 'graph';
-  if (['solid', 'linked_solids'].includes(type)) return 'spatial_diagram';
-  return 'geometry_diagram';
-}
-
-function inferDistractorPattern(question) {
-  if (question.type !== 'choice') return [];
-  return ['generated_distractors', `option_count_${question.options?.length ?? 0}`];
-}
+function splitVariant(question){const key=question.variant_key??'';const i=key.indexOf(':');return i>=0?(key.slice(i+1)||'base'):(key||'base');}
 
 export function adaptQuestionEngineItem(question) {
   if (!question || typeof question !== 'object') throw new Error('question must be an object');
   const blueprint = BLUEPRINTS.get(question.blueprint_id) ?? null;
+  const g = question.genome ?? question.core_meta?.genome ?? {};
   const normalized = {
     id: question.id ?? null,
     topic: question.topic ?? blueprint?.topic ?? 'unknown',
-    family: question.blueprint_id ?? 'unknown',
+    family: g.family ?? question.blueprint_id ?? 'unknown',
     variant: splitVariant(question),
     question: question.question ?? '',
     answer_type: question.type,
@@ -43,15 +24,16 @@ export function adaptQuestionEngineItem(question) {
     correct_value: question.correct_value ?? null,
     explanation: question.explanation ?? '',
     diagram_svg: question.diagram_svg ?? null,
-    solution_path: blueprint?.skill ?? question.subtopic ?? question.blueprint_id ?? null,
-    representation: inferRepresentation(question, blueprint),
-    context_type: question.topic ?? null,
-    diagram_type: blueprint?.diagram_type ?? null,
-    parameter_bucket: question.difficulty ?? null,
-    distractor_pattern: inferDistractorPattern(question),
+    solution_path: (g.solution_path ?? []).join('>') || blueprint?.skill || question.blueprint_id,
+    representation: g.representation ?? (question.visual_spec ? 'diagram' : 'text'),
+    context_type: g.context ?? question.topic ?? null,
+    diagram_type: question.visual_spec?.diagram_type ?? blueprint?.diagram_type ?? null,
+    parameter_bucket: g.parameter_pattern ?? null,
+    distractor_pattern: g.distractor_logic ?? [],
+    genome: g,
     source_question: question,
   };
-  normalized.visual = visualSpecFromQuestion(question, normalized.diagram_type);
+  normalized.visual = visualSpecFromQuestion(question);
   normalized.fingerprint = buildFingerprint(normalized);
   return normalized;
 }

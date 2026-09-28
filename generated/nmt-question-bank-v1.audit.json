@@ -1,204 +1,191 @@
 {
   "valid": true,
   "validationErrors": [],
-  "itemCount": 1206,
-  "uniqueContentCount": 1206,
-  "uniqueSkeletonCount": 82,
-  "maxSkeletonReuse": 24,
-  "directBlueprintCount": 32,
-  "representedDirectBlueprintCount": 32,
-  "missingDirectBlueprints": [],
+  "itemCount": 739,
+  "uniqueContentCount": 739,
+  "uniqueSkeletonCount": 95,
+  "uniqueGenomeCount": 67,
   "mockSlotsCovered": 22,
-  "difficultyMismatchCount": 0,
   "byType": {
-    "choice": 887,
-    "matching": 132,
-    "short": 187
+    "choice": 653,
+    "short": 83,
+    "matching": 3
   },
   "byTopic": {
-    "calculus": 61,
-    "equations": 105,
-    "functions": 76,
-    "inequalities": 24,
-    "logarithms": 48,
-    "mixed": 48,
-    "numbers": 25,
-    "percents": 44,
-    "planimetry": 271,
-    "powers_roots": 73,
-    "probability_stats": 93,
-    "progressions": 62,
-    "stereometry": 104,
-    "systems": 24,
-    "trigonometry": 25,
-    "word_problems": 123
+    "numbers": 19,
+    "inequalities": 54,
+    "stereometry": 74,
+    "planimetry": 180,
+    "powers_roots": 23,
+    "probability_stats": 55,
+    "mixed": 26,
+    "word_problems": 73,
+    "calculus": 51,
+    "functions": 38,
+    "trigonometry": 28,
+    "systems": 23,
+    "progressions": 20,
+    "logarithms": 21,
+    "percents": 22,
+    "equations": 32
   },
   "byBlueprint": {
-    "advanced_single_choice": 48,
-    "algebra_simplify": 25,
-    "applied_ratio_percent": 44,
-    "calculus_basic": 32,
-    "circle_inscribed_angle": 26,
-    "circle_rectangle_geometry": 48,
-    "data_chart_reading": 25,
-    "function_graph_transform": 35,
-    "geometry_statements": 46,
-    "linear_inequality_pick": 7,
-    "log_exp_equation_interval": 48,
-    "matching_expressions": 50,
-    "matching_functions": 41,
-    "matching_planimetry": 41,
-    "planimetry_angle_parallel": 26,
-    "powers_roots_transform": 23,
-    "probability_counting_basic": 68,
-    "progression_ap": 62,
-    "quadratic_equation": 53,
-    "quadratic_inequality_interval": 17,
-    "short_applied": 27,
-    "short_calculus": 29,
-    "short_parameter_roots": 52,
-    "short_stereometry_linked_solids": 29,
-    "similar_triangles_ratio": 29,
-    "solid_geometry_concept": 24,
-    "systems_linear": 24,
-    "triangle_cosine_nmt": 55,
-    "trig_exact_values": 25,
-    "vectors_3d": 51,
-    "word_motion": 41,
-    "word_work_rate": 55
+    "algebra_simplify": 19,
+    "linear_inequality_pick": 26,
+    "vectors_3d": 33,
+    "geometry_statements": 23,
+    "powers_roots_transform": 22,
+    "data_chart_reading": 33,
+    "probability_counting_basic": 22,
+    "advanced_single_choice": 26,
+    "word_work_rate": 34,
+    "solid_geometry_concept": 23,
+    "calculus_basic": 33,
+    "function_graph_transform": 37,
+    "circle_inscribed_angle": 35,
+    "trig_exact_values": 28,
+    "systems_linear": 23,
+    "planimetry_angle_parallel": 35,
+    "progression_ap": 20,
+    "similar_triangles_ratio": 33,
+    "log_exp_equation_interval": 21,
+    "short_calculus": 18,
+    "quadratic_inequality_interval": 28,
+    "short_applied": 18,
+    "circle_rectangle_geometry": 18,
+    "triangle_cosine_nmt": 35,
+    "word_motion": 21,
+    "short_stereometry_linked_solids": 18,
+    "applied_ratio_percent": 22,
+    "short_parameter_roots": 4,
+    "quadratic_equation": 28,
+    "matching_expressions": 1,
+    "matching_functions": 1,
+    "matching_planimetry": 1
   },
-  "byDifficulty": {
-    "легкий": 630,
-    "середній": 477,
-    "складний": 99
+  "byRenderer": {
+    "none": 474,
+    "canvas": 33,
+    "threejs": 41,
+    "svg": 173,
+    "tikz": 18
   },
-  "byDifficultyBand": {
-    "easy": 587,
-    "hard": 29,
-    "medium": 490,
-    "medium_hard": 100
-  },
-  "visualCount": 286,
-  "trainingPlainCount": 654,
-  "trainingVisualCount": 233,
-  "averageDifficultyScore": 32.8,
-  "averageDiversityScore": 75,
-  "correctPositionCounts": {
-    "0": 177,
-    "1": 171,
-    "2": 166,
-    "3": 197,
-    "4": 176
-  },
+  "visualCount": 265,
+  "trainingPlainCount": 406,
+  "trainingVisualCount": 247,
+  "averageComplexityScore": 87.9,
+  "averageQualityScore": 91.7,
+  "averageNoveltyScore": 71.9,
+  "averageNmtSimilarity": 93.8,
   "slotCoverage": {
     "1": {
       "type": "choice",
-      "compatibleItems": 25,
+      "compatibleItems": 33,
       "blueprintCount": 1
     },
     "2": {
       "type": "choice",
-      "compatibleItems": 122,
+      "compatibleItems": 75,
       "blueprintCount": 3
     },
     "3": {
       "type": "choice",
-      "compatibleItems": 52,
+      "compatibleItems": 70,
       "blueprintCount": 2
     },
     "4": {
       "type": "choice",
-      "compatibleItems": 24,
+      "compatibleItems": 54,
       "blueprintCount": 2
     },
     "5": {
       "type": "choice",
-      "compatibleItems": 24,
+      "compatibleItems": 23,
       "blueprintCount": 1
     },
     "6": {
       "type": "choice",
-      "compatibleItems": 35,
+      "compatibleItems": 37,
       "blueprintCount": 1
     },
     "7": {
       "type": "choice",
-      "compatibleItems": 164,
+      "compatibleItems": 77,
       "blueprintCount": 3
     },
     "8": {
       "type": "choice",
-      "compatibleItems": 51,
+      "compatibleItems": 33,
       "blueprintCount": 1
     },
     "9": {
       "type": "choice",
-      "compatibleItems": 110,
+      "compatibleItems": 61,
       "blueprintCount": 3
     },
     "10": {
       "type": "choice",
-      "compatibleItems": 72,
+      "compatibleItems": 58,
       "blueprintCount": 2
     },
     "11": {
       "type": "choice",
-      "compatibleItems": 94,
+      "compatibleItems": 68,
       "blueprintCount": 3
     },
     "12": {
       "type": "choice",
-      "compatibleItems": 24,
+      "compatibleItems": 19,
       "blueprintCount": 1
     },
     "13": {
       "type": "choice",
-      "compatibleItems": 244,
+      "compatibleItems": 164,
       "blueprintCount": 6
     },
     "14": {
       "type": "choice",
-      "compatibleItems": 48,
+      "compatibleItems": 50,
       "blueprintCount": 2
     },
     "15": {
       "type": "choice",
-      "compatibleItems": 240,
+      "compatibleItems": 170,
       "blueprintCount": 6
     },
     "16": {
       "type": "matching",
-      "compatibleItems": 41,
+      "compatibleItems": 1,
       "blueprintCount": 1
     },
     "17": {
       "type": "matching",
-      "compatibleItems": 50,
+      "compatibleItems": 1,
       "blueprintCount": 1
     },
     "18": {
       "type": "matching",
-      "compatibleItems": 41,
+      "compatibleItems": 1,
       "blueprintCount": 1
     },
     "19": {
       "type": "short",
-      "compatibleItems": 37,
+      "compatibleItems": 32,
       "blueprintCount": 2
     },
     "20": {
       "type": "short",
-      "compatibleItems": 45,
+      "compatibleItems": 20,
       "blueprintCount": 2
     },
     "21": {
       "type": "short",
-      "compatibleItems": 29,
+      "compatibleItems": 18,
       "blueprintCount": 1
     },
     "22": {
       "type": "short",
-      "compatibleItems": 76,
+      "compatibleItems": 13,
       "blueprintCount": 2
     }
   }

@@ -1,28 +1,27 @@
-# NMT Math Mini App — Clean Core v11
+# NMT Math Mini App — NMT Engine 4.0 AI Hybrid
 
-Telegram Mini App for NMT mathematics practice.
+Telegram Mini App for hard NMT-style mathematics practice.
 
-## Current runtime
+Active runtime: **NMT Engine 4.0 AI Hybrid**.
 
-- Core generator: v11
-- Visual Engine: v3
-- Offline runtime: v11
-- Mock lifecycle: v11
-- Reference dataset: 462 NMT reference records
-- Runtime bank: 1,206 verified items
+- one production standard: `NMT HARD`
+- 32 native blueprints
+- Question Genome + constraint-first generation
+- deterministic answers and validators
+- offline verified question bank
+- novelty / NMT similarity / quality gates
+- semantic hybrid visuals with SVG Telegram fallback
+- optional offline AI planner / critic / wording / visual review
+- anti-repeat runtime and 22-slot Mock NMT assembly
 
-The retired `question-engine.js` and `deterministic-math.js` paths are removed.
-The server imports `nmt-engine/generation/question-generator.js` directly.
-The bank loader refuses an old bank with a mismatched core or visual version.
+See `NMT_ENGINE_4.md` and `ENGINE4_AUDIT.md`.
 
-## Checks
+## Verify
 
 ```bash
 npm install
-npm run nmt:core:audit
-npm run nmt:stage8:smoke
-npm run nmt:stage9:smoke
+npm run nmt:v4:audit
 npm start
 ```
 
-`GET /api/knowledge/meta` exposes `core_engine_version`, `visual_engine_version`, and `runtime_version`, so a deployment can be verified without guessing.
+Add `?debug=1` to the Telegram Mini App URL to show Engine 4 metadata on questions.

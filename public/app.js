@@ -492,7 +492,7 @@ const tg = window.Telegram?.WebApp;
           initData: tg?.initData || null,
           mode,
           topic: q.topic || topicSelect.value,
-          difficulty: q.difficulty || 'середній',
+          difficulty: q.difficulty || 'NMT HARD',
           question: {
             question: q.question,
             options: q.options,
@@ -601,6 +601,25 @@ const tg = window.Telegram?.WebApp;
     }
   }
 
+  const ENGINE_DEBUG = new URLSearchParams(window.location.search).get('debug') === '1';
+
+  function engineDebugMarkup(q) {
+    if (!ENGINE_DEBUG) return '';
+    const m = q?.runtime_meta || {};
+    const rows = [
+      ['ENGINE', m.engine || 'NMT Engine 4.0 AI Hybrid'],
+      ['BANK ITEM', m.bank_item_id || q?.id || '—'],
+      ['BLUEPRINT', q?.blueprint_id || '—'],
+      ['VARIANT', q?.variant_key || '—'],
+      ['COMPLEXITY', m.complexity_score ?? q?.bank_meta?.complexity_score ?? '—'],
+      ['QUALITY', m.quality_score ?? q?.bank_meta?.quality_score ?? '—'],
+      ['NOVELTY', m.novelty_score ?? q?.bank_meta?.novelty_score ?? '—'],
+      ['NMT', m.nmt_similarity ?? q?.bank_meta?.nmt_similarity ?? '—'],
+      ['VISUAL', m.visual_renderer ?? q?.bank_meta?.visual?.renderer ?? 'none'],
+    ];
+    return `<div class="engine-debug">${rows.map(([k,v]) => `<span><b>${escapeHtml(k)}:</b> ${escapeHtml(String(v))}</span>`).join('')}</div>`;
+  }
+
   function safeDiagramSvg(svg) {
     if (typeof svg !== 'string') return '';
     const value = svg.trim();
@@ -635,6 +654,7 @@ const tg = window.Telegram?.WebApp;
           <button class="report-btn" id="reportBtn" type="button" aria-label="Повідомити про проблему"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 20V5.5M6 6h9.2l-1.5 3 1.5 3H6"/></svg></button>
         </div>
         <div class="question-text">${escapeHtml(q.question)}</div>
+        ${engineDebugMarkup(q)}
         ${q.diagram_svg ? `<div class="training-diagram">${safeDiagramSvg(q.diagram_svg)}</div>` : ''}
         <div class="options">
           ${q.options.map((opt, i) => `
@@ -808,7 +828,7 @@ const tg = window.Telegram?.WebApp;
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         topic,
-        difficulty: 'середній',
+        difficulty: 'NMT HARD',
         initData: tg?.initData || null,
         count: Math.max(1, Math.min(5, Number(count) || 4)),
       }),

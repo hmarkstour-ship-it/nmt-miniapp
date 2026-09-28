@@ -1,21 +1,18 @@
 {
   "name": "nmt-math-miniapp",
-  "version": "1.0.0",
-  "description": "Telegram Mini App: AI-генератор завдань з математики для підготовки до НМТ",
+  "version": "4.0.0",
+  "description": "Telegram Mini App — NMT Engine 4.0 AI Hybrid",
   "type": "module",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "nmt:stage7:smoke": "node nmt-engine/examples/stage7-smoke-test.js",
     "nmt:bank:build": "node scripts/build-nmt-bank.js",
-    "nmt:stage6:smoke": "node nmt-engine/examples/stage6-smoke-test.js",
-    "nmt:stage8:smoke": "node nmt-engine/examples/stage8-smoke-test.js",
     "nmt:bank:runtime-build": "node scripts/build-runtime-bank.js",
-    "nmt:stage9:smoke": "node nmt-engine/examples/stage9-smoke-test.js",
-    "nmt:stage10:smoke": "node nmt-engine/examples/stage10-smoke-test.js",
-    "nmt:stage10:calibrate": "node scripts/rebuild-stage10-calibration.js",
-    "nmt:core:audit": "node scripts/audit-core-clean.js"
+    "nmt:core:audit": "node scripts/audit-engine4.js",
+    "nmt:v4:bank": "node scripts/build-runtime-bank.js",
+    "nmt:v4:audit": "node scripts/audit-engine4.js",
+    "nmt:v4:ai-review": "node scripts/ai-review-bank.js"
   },
   "engines": {
     "node": ">=18.0.0"

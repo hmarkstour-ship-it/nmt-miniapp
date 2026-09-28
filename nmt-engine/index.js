@@ -7,7 +7,6 @@ export * from './solver/index.js';
 export * from './validation/index.js';
 export * from './visuals/index.js';
 export * from './diversity/index.js';
-export * from './difficulty/index.js';
 export * from './selection/index.js';
 export * from './integration/index.js';
 
@@ -18,3 +17,5 @@ export * from './runtime/index.js';
 export * from './mock/index.js';
 
 export * from './analytics/index.js';
+
+export * from './v4/index.js';

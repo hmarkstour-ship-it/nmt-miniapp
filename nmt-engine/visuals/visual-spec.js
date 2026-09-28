@@ -1,4 +1,4 @@
-export const VISUAL_ENGINE_VERSION = 3;
+export const VISUAL_ENGINE_VERSION = 4;
 
 export function createVisualSpec({ type, diagram_type = null, data = {}, labels = {}, metadata = {} }) {
   if (!type) throw new Error('Visual spec requires type');
@@ -8,7 +8,7 @@ export function createVisualSpec({ type, diagram_type = null, data = {}, labels 
     data: data ?? {},
     labels: labels ?? {},
     metadata: {
-      renderer: 'nmt-engine4-visual-engine-v3',
+      renderer: 'nmt-engine4-hybrid-visual-v4',
       visual_engine_version: VISUAL_ENGINE_VERSION,
       ...metadata,
     },

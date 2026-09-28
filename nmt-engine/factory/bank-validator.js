@@ -1,33 +1,3 @@
 import { validateQuestion } from '../generation/question-generator.js';
-
-export function validateBankItem(item) {
-  const errors = [];
-  if (!validateQuestion(item)) errors.push('invalid_question_shape');
-  if (!item?.id || !String(item.id).startsWith('nmt3-')) errors.push('invalid_bank_id');
-  if (!item?.bank_meta?.content_hash) errors.push('missing_content_hash');
-  if (!Number.isFinite(Number(item?.bank_meta?.difficulty_score))) errors.push('missing_difficulty_score');
-  if (!item?.bank_meta?.difficulty_band) errors.push('missing_difficulty_band');
-  if (!item?.bank_meta?.usage) errors.push('missing_usage_metadata');
-  return { ok: errors.length === 0, errors };
-}
-
-export function validateQuestionBank(bank) {
-  const errors = [];
-  if (!bank || typeof bank !== 'object') return { ok: false, errors: ['bank must be an object'] };
-  if (!Array.isArray(bank.items)) return { ok: false, errors: ['bank.items must be an array'] };
-  if (bank.item_count !== bank.items.length) errors.push('item_count_mismatch');
-
-  const ids = new Set();
-  const hashes = new Set();
-  bank.items.forEach((item, index) => {
-    const itemResult = validateBankItem(item);
-    for (const error of itemResult.errors) errors.push(`item_${index + 1}:${error}`);
-    if (ids.has(item.id)) errors.push(`item_${index + 1}:duplicate_id`);
-    ids.add(item.id);
-    const hash = item.bank_meta?.content_hash;
-    if (hash && hashes.has(hash)) errors.push(`item_${index + 1}:duplicate_content_hash`);
-    if (hash) hashes.add(hash);
-  });
-
-  return { ok: errors.length === 0, errors };
-}
+export function validateBankItem(item){const e=[];if(!validateQuestion(item))e.push('invalid_question_shape');if(!item?.id||!String(item.id).startsWith('nmt4-'))e.push('invalid_bank_id');if(!item?.bank_meta?.content_hash)e.push('missing_content_hash');if(!item?.bank_meta?.genome_signature)e.push('missing_genome_signature');if(!Number.isFinite(Number(item?.bank_meta?.complexity_score)))e.push('missing_complexity_score');if(!Number.isFinite(Number(item?.bank_meta?.quality_score)))e.push('missing_quality_score');if(!Number.isFinite(Number(item?.bank_meta?.novelty_score)))e.push('missing_novelty_score');if(!item?.bank_meta?.usage)e.push('missing_usage_metadata');if(item?.difficulty!=='NMT HARD')e.push('wrong_production_standard');return{ok:!e.length,errors:e}}
+export function validateQuestionBank(bank){const e=[];if(!bank||typeof bank!=='object')return{ok:false,errors:['bank must be object']};if(!Array.isArray(bank.items))return{ok:false,errors:['bank.items must be array']};if(bank.item_count!==bank.items.length)e.push('item_count_mismatch');const ids=new Set(),hashes=new Set();bank.items.forEach((item,i)=>{for(const x of validateBankItem(item).errors)e.push(`item_${i+1}:${x}`);if(ids.has(item.id))e.push(`item_${i+1}:duplicate_id`);ids.add(item.id);const h=item.bank_meta?.content_hash;if(h&&hashes.has(h))e.push(`item_${i+1}:duplicate_content_hash`);if(h)hashes.add(h)});return{ok:!e.length,errors:e}}

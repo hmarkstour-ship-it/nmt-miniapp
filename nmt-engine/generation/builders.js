@@ -2,7 +2,7 @@ import { QUESTION_BLUEPRINTS } from '../../nmt-knowledge.js';
 import { createVisualSpec, renderVisual } from '../visuals/index.js';
 import { LETTERS, randInt, shuffle, ua, uniqueStrings } from './utils.js';
 
-export const CORE_ENGINE_VERSION = 11;
+export const CORE_ENGINE_VERSION = 40;
 const BLUEPRINTS = new Map(QUESTION_BLUEPRINTS.map((x) => [x.id, x]));
 const LABELS = Object.freeze({
   numbers:'Числа та дроби', percents:'Відсотки та пропорції', powers_roots:'Степені та корені', logarithms:'Логарифми',
@@ -28,9 +28,9 @@ function meta(blueprintId, variant, extra = {}) {
     source_confidence: bp.source_confidence ?? 2,
     engine_version: CORE_ENGINE_VERSION,
     core_meta: {
-      source: 'nmt-engine3-core',
+      source: 'nmt-engine4-ai-hybrid',
       core_version: CORE_ENGINE_VERSION,
-      model: 'structured-parameters-solver-distractors',
+      model: 'question-genome-constraint-first-independent-solver',
       ...extra,
     },
   };
@@ -44,7 +44,7 @@ function attachVisual(visualInput) {
 
 export function makeChoice(blueprintId, {
   topic, variant='base', question, correct, distractors, explanation,
-  visual=null, difficulty='середній', coreMeta={},
+  visual=null, difficulty='NMT HARD', coreMeta={},
 }) {
   let options = uniqueStrings([correct, ...(distractors ?? [])]);
   let guard = 0;
@@ -65,7 +65,7 @@ export function makeMatching(blueprintId, {
   visual=null, coreMeta={},
 }) {
   return {
-    type:'matching', topic, topic_label:LABELS[topic] ?? topic, question,
+    type:'matching', topic, topic_label:LABELS[topic] ?? topic, difficulty:'NMT HARD', question,
     left, match_options:options.map((label, i) => ({ code:LETTERS[i], label:String(label) })),
     correct_pairs:correctPairs, explanation, max_score:3,
     ...attachVisual(visual), question_skeleton:questionSkeleton(question),
@@ -78,7 +78,7 @@ export function makeShort(blueprintId, {
   visual=null, answerHint='Введи число', coreMeta={},
 }) {
   return {
-    type:'short', topic, topic_label:LABELS[topic] ?? topic, question,
+    type:'short', topic, topic_label:LABELS[topic] ?? topic, difficulty:'NMT HARD', question,
     correct_value:Number(correctValue), correct_display:ua(correctValue), explanation,
     max_score:2, answer_hint:answerHint,
     ...attachVisual(visual), question_skeleton:questionSkeleton(question),
@@ -88,7 +88,7 @@ export function makeShort(blueprintId, {
 
 export function validateQuestion(q) {
   if (!q || !q.question || !q.topic || !q.blueprint_id) return false;
-  if (q.visual_spec && (!q.diagram_svg || q.visual_spec.metadata?.renderer !== 'nmt-engine4-visual-engine-v3')) return false;
+  if (q.visual_spec && (!q.diagram_svg || q.visual_spec.metadata?.renderer !== 'nmt-engine4-hybrid-visual-v4')) return false;
   if (q.type === 'choice') return Array.isArray(q.options) && q.options.length === 5 && new Set(q.options).size === 5 && Number.isInteger(q.correct_index) && q.correct_index >= 0 && q.correct_index < 5 && typeof q.explanation === 'string' && q.explanation.length > 0;
   if (q.type === 'matching') return Array.isArray(q.left) && q.left.length === 3 && Array.isArray(q.match_options) && q.match_options.length === 5 && new Set(q.match_options.map(x => x.label)).size === 5 && Object.values(q.correct_pairs ?? {}).length === 3;
   if (q.type === 'short') return Number.isFinite(q.correct_value);

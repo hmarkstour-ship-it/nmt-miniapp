@@ -50,7 +50,7 @@ const PROJECT_ROOT = fileURLToPath(new URL('.', import.meta.url));
 const RUNTIME_FALLBACK_ENABLED = /^(1|true|yes)$/i.test(String(process.env.NMT_RUNTIME_FALLBACK || 'false'));
 const TRAINING_VISUAL_MODE = ['plain', 'visual', 'any'].includes(process.env.NMT_TRAINING_VISUAL_MODE)
   ? process.env.NMT_TRAINING_VISUAL_MODE
-  : 'plain';
+  : 'any';
 const STAGE10_AUTO_QUARANTINE = /^(1|true|yes)$/i.test(String(process.env.NMT_STAGE10_AUTO_QUARANTINE || 'false'));
 
 let offlineBankRuntime = null;
@@ -61,7 +61,7 @@ try {
   console.log(`✅ NMT Engine core v${GENERATOR_VERSION}, visual v${VISUAL_ENGINE_VERSION}, runtime v${RUNTIME_VERSION}: offline bank loaded (${loaded.itemCount} items)`);
 } catch (err) {
   offlineBankLoadError = err;
-  console.error(`❌ NMT Engine Stage 8: ${err.message}`);
+  console.error(`❌ NMT Engine 4 runtime: ${err.message}`);
 }
 
 if (!GEMINI_API_KEY) {
@@ -2232,7 +2232,7 @@ app.post('/api/report-question', async (req, res) => {
 
 // Додаткова AI-допомога після відповіді
 app.post('/api/explain-more', async (req, res) => {
-  const { initData, mode = 'simple', topic = 'mixed', difficulty = 'середній', question } = req.body;
+  const { initData, mode = 'simple', topic = 'mixed', difficulty = 'NMT HARD', question } = req.body;
 
   try {
     const telegramUser = verifyTelegramInitData(initData);
@@ -2300,7 +2300,7 @@ app.post('/api/explain-more', async (req, res) => {
 app.post('/api/questions-batch', async (req, res) => {
   const {
     topic = 'mixed',
-    difficulty = 'середній',
+    difficulty = 'NMT HARD',
     initData,
     count = 4,
   } = req.body;
@@ -2402,7 +2402,7 @@ app.post('/api/questions-batch', async (req, res) => {
 app.post('/api/generate-question', async (req, res) => {
   const {
     topic = 'mixed',
-    difficulty = 'середній',
+    difficulty = 'NMT HARD',
     initData,
   } = req.body;
 
