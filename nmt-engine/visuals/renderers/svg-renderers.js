@@ -13,9 +13,9 @@ function shell(inner, aria = 'Математична схема', viewBox = '0 0
       .a{stroke:var(--accent-color,#4f7cff);stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round}
       .fill{fill:color-mix(in srgb,var(--accent-color,#4f7cff) 16%,transparent);stroke:var(--accent-color,#4f7cff);stroke-width:1.6}
       .soft{fill:color-mix(in srgb,currentColor 6%,transparent);stroke:currentColor;stroke-opacity:.5;stroke-width:1.2}
-      .t{font:700 15px system-ui,-apple-system,"Segoe UI",sans-serif;fill:currentColor}
-      .m{font:600 13px system-ui,-apple-system,"Segoe UI",sans-serif;fill:currentColor}
-      .s{font:500 11px system-ui,-apple-system,"Segoe UI",sans-serif;fill:currentColor;opacity:.62}
+      .t{font:700 15px system-ui,-apple-system,"Segoe UI",sans-serif;fill:currentColor;paint-order:stroke;stroke:#fffdf9;stroke-width:4px;stroke-linejoin:round}
+      .m{font:600 13px system-ui,-apple-system,"Segoe UI",sans-serif;fill:currentColor;paint-order:stroke;stroke:#fffdf9;stroke-width:4px;stroke-linejoin:round}
+      .s{font:500 11px system-ui,-apple-system,"Segoe UI",sans-serif;fill:currentColor;opacity:.62;paint-order:stroke;stroke:#fffdf9;stroke-width:3px;stroke-linejoin:round}
       .grid{stroke:currentColor;stroke-opacity:.10;stroke-width:1}
       .axis{stroke:currentColor;stroke-opacity:.72;stroke-width:1.7;fill:none}
       .dot{fill:var(--accent-color,#4f7cff);stroke:currentColor;stroke-width:.8}
@@ -25,6 +25,18 @@ function shell(inner, aria = 'Математична схема', viewBox = '0 0
   ${inner}
 </svg>`;
 }
+
+function pointAlong(from,to,distance){
+  const dx=to[0]-from[0],dy=to[1]-from[1],len=Math.hypot(dx,dy)||1;
+  return [from[0]+dx/len*distance,from[1]+dy/len*distance];
+}
+
+function arcBetween(vertex,ray1,ray2,r=34,sweep=0){
+  const p1=pointAlong(vertex,ray1,r),p2=pointAlong(vertex,ray2,r);
+  return `M${p1[0].toFixed(1)} ${p1[1].toFixed(1)} A${r} ${r} 0 0 ${sweep} ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`;
+}
+
+function polar(cx,cy,r,deg){const a=deg*Math.PI/180;return [cx+r*Math.cos(a),cy+r*Math.sin(a)];}
 
 function gridLines(x0=54,y0=250,x1=438,y1=42,xStep=48,yStep=40) {
   let out='';
@@ -78,9 +90,10 @@ export function renderFunctionGraph(spec) {
 
 export function renderTrapezoid(spec) {
   const {top=8,bottom=14,height=6,angle=null}=spec.data;
-  const mirrored=Number(top+bottom+height)%2===0;
-  const pts=mirrored?{a:[72,238],d:[405,238],b:[145,72],c:[344,72]}:{a:[72,238],d:[405,238],b:[118,72],c:[318,72]};
-  return shell(`<path class="g" d="M${pts.a.join(' ')}L${pts.d.join(' ')}L${pts.c.join(' ')}L${pts.b.join(' ')}Z"/><path class="d" d="M${pts.b[0]} ${pts.b[1]}V238"/><path class="thin" d="M${pts.b[0]} 220h18v18"/><text class="t" x="55" y="260">A</text><text class="t" x="408" y="260">D</text><text class="t" x="${pts.b[0]-8}" y="60">B</text><text class="t" x="${pts.c[0]+5}" y="60">C</text><text class="m" x="235" y="265">${esc(bottom)}</text><text class="m" x="225" y="62">${esc(top)}</text><text class="m" x="${pts.b[0]+12}" y="158">${esc(height)}</text>${angle!=null?`<path class="a" d="M365 238 A40 40 0 0 0 381 202"/><text class="m" x="341" y="198">${esc(angle)}°</text>`:''}<text class="s" x="55" y="294">AD ∥ BC</text>`,'Трапеція');
+  const pts={a:[72,238],d:[405,238],b:[145,72],c:[344,72]};
+  const arc=angle!=null?arcBetween(pts.d,pts.a,pts.c,36,1):null;
+  const mid=angle!=null?pointAlong(pts.d,pts.c,58):null;
+  return shell(`<path class="g" d="M${pts.a.join(' ')}L${pts.d.join(' ')}L${pts.c.join(' ')}L${pts.b.join(' ')}Z"/><path class="d" d="M${pts.b[0]} ${pts.b[1]}V238"/><path class="thin" d="M${pts.b[0]} 220h18v18"/><text class="t" x="55" y="260">A</text><text class="t" x="408" y="260">D</text><text class="t" x="${pts.b[0]-8}" y="60">B</text><text class="t" x="${pts.c[0]+5}" y="60">C</text><text class="m" x="235" y="274">${esc(bottom)}</text><text class="m" x="225" y="56">${esc(top)}</text><text class="m" x="${pts.b[0]+22}" y="158">${esc(height)}</text>${arc?`<path class="a" d="${arc}"/><text class="m" x="${mid[0]-12}" y="${mid[1]-12}">${esc(angle)}°</text>`:''}<text class="s" x="55" y="294">AD ∥ BC • схема не в масштабі</text>`,'Трапеція');
 }
 
 export function renderParallelogramDiagonal(spec) {
@@ -94,19 +107,35 @@ export function renderParallelLines(spec) {
 }
 
 export function renderTriangleSides(spec) {
-  const {left=5,right=7,base=8,angle=null}=spec.data;
-  const apexX=175+(Number(left)*13)%120;
-  return shell(`<path class="g" d="M70 240L410 240L${apexX} 55Z"/><text class="t" x="54" y="262">A</text><text class="t" x="414" y="262">B</text><text class="t" x="${apexX-7}" y="44">C</text>${base!==''?`<text class="m" x="235" y="266">${esc(base)}</text>`:''}<text class="m" x="${Math.max(86,apexX-94)}" y="145">${esc(left)}</text><text class="m" x="${Math.min(350,apexX+88)}" y="145">${esc(right)}</text>${angle!=null?`<path class="a" d="M105 240 A38 38 0 0 0 91 207"/><text class="m" x="108" y="203">${esc(angle)}°</text>`:''}<text class="s" x="56" y="294">схема не в масштабі</text>`,'Трикутник');
+  const {left='',right='',base='',angle=null}=spec.data;
+  const A=[70,240],B=[410,240],C=[250,55];
+  const arc=angle!=null?arcBetween(A,B,C,38,0):null;
+  const angleLabel=angle!=null?pointAlong(A,C,62):null;
+  return shell(`<path class="g" d="M${A.join(' ')}L${B.join(' ')}L${C.join(' ')}Z"/><text class="t" x="54" y="262">A</text><text class="t" x="414" y="262">B</text><text class="t" x="243" y="44">C</text>${base!==''&&base!=null?`<text class="m" x="235" y="274">${esc(base)}</text>`:''}${left!==''&&left!=null?`<text class="m" x="128" y="132">${esc(left)}</text>`:''}${right!==''&&right!=null?`<text class="m" x="338" y="132">${esc(right)}</text>`:''}${arc?`<path class="a" d="${arc}"/><text class="m" x="${angleLabel[0]+4}" y="${angleLabel[1]-4}">${esc(angle)}°</text>`:''}<text class="s" x="56" y="294">схема не в масштабі</text>`,'Трикутник');
+}
+
+export function renderTriangleBisector(spec) {
+  const {bd='',ratioLeft='',ratioRight=''}=spec.data;
+  const A=[78,240],B=[407,240],C=[236,54],D=[205,240];
+  return shell(`<path class="g" d="M${A.join(' ')}L${B.join(' ')}L${C.join(' ')}Z"/><path class="a" d="M${C.join(' ')}L${D.join(' ')}"/><circle class="dot" cx="${D[0]}" cy="${D[1]}" r="4"/><text class="t" x="60" y="262">B</text><text class="t" x="412" y="262">C</text><text class="t" x="229" y="42">A</text><text class="t" x="196" y="264">D</text>${bd!==''?`<text class="m" x="132" y="274">BD=${esc(bd)}</text>`:''}${ratioLeft!==''&&ratioRight!==''?`<text class="m" x="245" y="90">AB:AC=${esc(ratioLeft)}:${esc(ratioRight)}</text>`:''}<path class="thin" d="${arcBetween(C,A,D,27,0)}"/><path class="thin" d="${arcBetween(C,D,B,34,0)}"/><text class="s" x="56" y="294">AD — бісектриса • схема не в масштабі</text>`,'Трикутник із бісектрисою');
 }
 
 export function renderRightTriangle(spec) {
-  const {a=3,b=4,c='?'}=spec.data;
-  return shell(`<path class="g" d="M90 242H396L90 72Z"/><path class="thin" d="M90 222h20v20"/><text class="m" x="230" y="268">${esc(a)}</text><text class="m" x="56" y="160">${esc(b)}</text><text class="m" x="260" y="142">${esc(c)}</text><text class="t" x="72" y="263">A</text><text class="t" x="401" y="263">B</text><text class="t" x="72" y="65">C</text>`,'Прямокутний трикутник');
+  const {a='',b='',c='',showAltitude=false}=spec.data;
+  const A=[90,242],B=[396,242],C=[90,72];
+  const vx=C[0]-B[0],vy=C[1]-B[1],wx=A[0]-B[0],wy=A[1]-B[1];
+  const t=(wx*vx+wy*vy)/(vx*vx+vy*vy);
+  const H=[B[0]+t*vx,B[1]+t*vy];
+  return shell(`<path class="g" d="M${A.join(' ')}L${B.join(' ')}L${C.join(' ')}Z"/><path class="thin" d="M90 222h20v20"/>${showAltitude?`<path class="a" d="M${A.join(' ')}L${H[0].toFixed(1)} ${H[1].toFixed(1)}"/><path class="thin" d="M${(H[0]-8).toFixed(1)} ${(H[1]+4).toFixed(1)}l7 12 12-7"/>`:''}${a!==''?`<text class="m" x="230" y="272">${esc(a)}</text>`:''}${b!==''?`<text class="m" x="52" y="160">${esc(b)}</text>`:''}${c!==''?`<text class="m" x="270" y="142">${esc(c)}</text>`:''}<text class="t" x="72" y="263">A</text><text class="t" x="401" y="263">B</text><text class="t" x="72" y="65">C</text>${showAltitude?'<text class="s" x="56" y="294">висота з вершини прямого кута позначена кольором</text>':''}`,'Прямокутний трикутник');
 }
 
 export function renderCircleAngle(spec) {
-  const {central=100}=spec.data;
-  return shell(`<circle class="g" cx="240" cy="158" r="108"/><circle class="dot" cx="240" cy="158" r="4"/><path class="thin" d="M240 158L240 50 M240 158L334 212"/><path class="g" d="M240 50L138 212L334 212"/><path class="a" d="M240 111 A48 48 0 0 1 281 182"/><text class="m" x="288" y="116">${esc(central)}°</text><text class="t" x="232" y="40">A</text><text class="t" x="122" y="231">B</text><text class="t" x="340" y="231">C</text><text class="t" x="249" y="156">O</text>`,'Коло з кутами');
+  const central=Math.max(10,Math.min(170,Number(spec.data.central??100)));
+  const cx=240,cy=158,R=108,rArc=42;
+  const aDeg=-90-central/2,cDeg=-90+central/2,bDeg=90;
+  const A=polar(cx,cy,R,aDeg),C=polar(cx,cy,R,cDeg),B=polar(cx,cy,R,bDeg);
+  const a1=polar(cx,cy,rArc,aDeg),a2=polar(cx,cy,rArc,cDeg),mid=polar(cx,cy,67,-90);
+  return shell(`<circle class="g" cx="${cx}" cy="${cy}" r="${R}"/><circle class="dot" cx="${cx}" cy="${cy}" r="4"/><path class="thin" d="M${cx} ${cy}L${A[0].toFixed(1)} ${A[1].toFixed(1)} M${cx} ${cy}L${C[0].toFixed(1)} ${C[1].toFixed(1)}"/><path class="g" d="M${A[0].toFixed(1)} ${A[1].toFixed(1)}L${B[0].toFixed(1)} ${B[1].toFixed(1)}L${C[0].toFixed(1)} ${C[1].toFixed(1)}"/><path class="a" d="M${a1[0].toFixed(1)} ${a1[1].toFixed(1)} A${rArc} ${rArc} 0 0 1 ${a2[0].toFixed(1)} ${a2[1].toFixed(1)}"/><text class="m" x="${mid[0]-13}" y="${mid[1]+4}">${esc(central)}°</text><text class="t" x="${A[0]-16}" y="${A[1]-8}">A</text><text class="t" x="${B[0]-5}" y="${B[1]+22}">B</text><text class="t" x="${C[0]+7}" y="${C[1]-8}">C</text><text class="t" x="${cx+8}" y="${cy+5}">O</text><text class="s" x="56" y="294">дуга кута побудована за напрямками радіусів</text>`,'Коло з кутами');
 }
 
 export function renderCircleDiameter(spec) {

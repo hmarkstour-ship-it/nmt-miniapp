@@ -1,6 +1,6 @@
 import { createVisualSpec, renderVisual } from '../../visuals/index.js';
 
-const SVG_TYPES = new Set(['function_graph','triangle_sides','right_triangle','circle_angle','circle_diameter','circle_rectangle','parallel_lines','trapezoid','parallelogram_diagonal','similar_triangles','bar_chart','line_chart','rect_prism','cube','linked_solids']);
+const SVG_TYPES = new Set(['function_graph','triangle_sides','triangle_bisector','right_triangle','circle_angle','circle_diameter','circle_rectangle','parallel_lines','trapezoid','parallelogram_diagonal','similar_triangles','bar_chart','line_chart','rect_prism','cube','linked_solids']);
 
 export function chooseRenderer({ kind, complexity='standard', interactive=false, precision='normal' } = {}) {
   if (kind === 'table' || kind === 'matrix') return 'html';

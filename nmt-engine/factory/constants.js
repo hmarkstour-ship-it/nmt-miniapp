@@ -1,5 +1,5 @@
-export const FACTORY_VERSION = 40;
-export const BANK_SCHEMA_VERSION = '4.0';
+export const FACTORY_VERSION = 41;
+export const BANK_SCHEMA_VERSION = '4.1';
 export const DEFAULT_FACTORY_OPTIONS = Object.freeze({
   total: 1600,
   seed: 74001,

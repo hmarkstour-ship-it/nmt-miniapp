@@ -8,14 +8,24 @@ function sig(item){return item?.bank_meta?.genome_signature??null}
 function structuralSimilarity(a,b){const ga=a?.bank_meta?.genome,gb=b?.bank_meta?.genome;return ga&&gb?1-genomeDistance(ga,gb):0}
 function score(item,{avoidTexts,recentItems,selected,usage,random}){
  let s=quality(item)*1.05+novelty(item)*.45;
- if(avoidTexts.has(item.question))s-=180;
- const sk=item.question_skeleton; if(sk&&recentItems.some(x=>x.question_skeleton===sk))s-=110;
- const gs=sig(item); if(gs&&recentItems.some(x=>sig(x)===gs))s-=140;
+ if(avoidTexts.has(item.question))s-=220;
+ const sk=item.question_skeleton; if(sk&&recentItems.some(x=>x.question_skeleton===sk))s-=165;
+ const gs=sig(item); if(gs&&recentItems.some(x=>sig(x)===gs))s-=190;
  const recentSim=Math.max(0,...recentItems.map(x=>structuralSimilarity(item,x)));
  const batchSim=Math.max(0,...selected.map(x=>structuralSimilarity(item,x)));
- s-=recentSim*52+batchSim*88;
- s-=clamp(usage.get(item.id)??0,0,40)*2.2;
- return s+random()*9;
+ s-=recentSim*72+batchSim*118;
+
+ // Endless mixed stream: aggressively rotate topics/families so the user does not
+ // feel that the app is serving one template with different numbers.
+ const last1=recentItems.at(-1), last3=recentItems.slice(-3), last8=recentItems.slice(-8);
+ if(last1?.topic===item.topic)s-=95;
+ s-=last3.filter(x=>x.topic===item.topic).length*38;
+ s-=last8.filter(x=>x.blueprint_id===item.blueprint_id).length*44;
+ s-=selected.filter(x=>x.topic===item.topic).length*92;
+ s-=selected.filter(x=>x.blueprint_id===item.blueprint_id).length*115;
+
+ s-=clamp(usage.get(item.id)??0,0,40)*2.8;
+ return s+random()*7;
 }
 export function selectTrainingBatch(index,{topic='mixed',count=4,visualMode='any',avoidTexts=[],usage=new Map(),seed=Date.now(),disabledIds=new Set()}={}){
  const pool=index.trainingPool({topic,visualMode}).filter(x=>!disabledIds.has(x.id)); if(!pool.length)return[];

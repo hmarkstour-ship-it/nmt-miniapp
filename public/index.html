@@ -42,9 +42,9 @@
     <div class="brand-head-left">
       <div class="brand-mini-mark" aria-hidden="true">∑</div>
       <div class="test-header-copy">
-        <div class="page-eyebrow">Практика</div>
-        <h1>Тренування</h1>
-        <p class="page-subtitle">Розв’язуй у своєму темпі й одразу відстежуй прогрес.</p>
+        <div class="page-eyebrow">Безкінечна практика</div>
+        <h1>Тести</h1>
+        <p class="page-subtitle">Змішані завдання з усієї програми НМТ — одне за одним без поділу на теми.</p>
       </div>
     </div>
     <div class="header-actions">
@@ -54,7 +54,7 @@
 
   <select class="topic-select" id="topicSelect" aria-hidden="true" tabindex="-1"></select>
 
-  <button class="topic-picker" id="topicPicker" type="button">
+  <button class="topic-picker" id="topicPicker" type="button" hidden aria-hidden="true">
     <div class="topic-picker-icon" id="topicPickerIcon">🎯</div>
     <div class="topic-picker-copy">
       <div class="topic-picker-kicker">Обрана тема</div>
@@ -246,7 +246,7 @@
 </section>
 </main>
 
-<div class="topic-overlay" id="topicOverlay" aria-hidden="true">
+<div class="topic-overlay" id="topicOverlay" aria-hidden="true" hidden>
   <div class="topic-sheet" role="dialog" aria-modal="true" aria-label="Вибір теми НМТ">
     <div class="topic-sheet-handle"></div>
     <div class="topic-sheet-head">

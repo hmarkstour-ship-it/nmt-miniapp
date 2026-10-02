@@ -1,3 +1,7 @@
+# NMT Engine 4.1 — Quality & Diversity
+
+This build contains the Engine 4.1 quality/diversity patch. See `ENGINE4_1_PATCH_AUDIT.md`.
+
 # NMT Math Mini App — NMT Engine 4.0 AI Hybrid
 
 Telegram Mini App for hard NMT-style mathematics practice.

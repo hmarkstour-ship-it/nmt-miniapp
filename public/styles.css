@@ -1646,3 +1646,16 @@ svg { max-width:100%; }
 }
 
 .engine-debug{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0;padding:9px 10px;border:1px dashed rgba(127,127,127,.35);border-radius:10px;font-size:10px;line-height:1.25;opacity:.72}.engine-debug span{padding:3px 6px;border-radius:6px;background:rgba(127,127,127,.08)}
+
+/* Engine 4.1 — structured solution */
+.solution-topic { display:inline-flex; margin:-2px 0 14px; padding:6px 10px; border-radius:999px; background:rgba(138,105,52,.09); color:#7a6037; font-size:11px; font-weight:750; letter-spacing:.02em; }
+.solution-block { margin-top:13px; padding:13px 14px; border-radius:16px; background:rgba(255,255,255,.42); border:1px solid rgba(58,52,44,.06); }
+.solution-block:first-of-type { margin-top:0; }
+.solution-method { background:#fbf6ea; border-color:rgba(138,105,52,.10); }
+.solution-kicker { margin-bottom:6px; color:#80663f; font-size:11px; font-weight:780; text-transform:uppercase; letter-spacing:.055em; }
+.solution-text { color:#3f3e3a; font-size:14px; line-height:1.58; overflow-wrap:anywhere; }
+.solution-answer { margin-top:14px; padding:13px 14px; display:flex; align-items:center; justify-content:space-between; gap:12px; border-radius:16px; background:#e8f2ec; border:1px solid rgba(65,111,88,.12); }
+.solution-answer span { color:#52705f; font-size:12px; font-weight:720; }
+.solution-answer strong { color:#315b47; font-size:17px; font-weight:800; text-align:right; }
+.solution-block .explanation-steps { margin-top:4px; }
+.solution-block .katex, .solution-answer .katex { font-size:1em; }

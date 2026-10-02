@@ -1,156 +1,156 @@
 {
   "valid": true,
   "validationErrors": [],
-  "itemCount": 739,
-  "uniqueContentCount": 739,
-  "uniqueSkeletonCount": 95,
-  "uniqueGenomeCount": 67,
+  "itemCount": 1303,
+  "uniqueContentCount": 1303,
+  "uniqueSkeletonCount": 107,
+  "uniqueGenomeCount": 68,
   "mockSlotsCovered": 22,
   "byType": {
-    "choice": 653,
-    "short": 83,
+    "choice": 1198,
+    "short": 102,
     "matching": 3
   },
   "byTopic": {
-    "numbers": 19,
-    "inequalities": 54,
-    "stereometry": 74,
-    "planimetry": 180,
-    "powers_roots": 23,
-    "probability_stats": 55,
-    "mixed": 26,
-    "word_problems": 73,
-    "calculus": 51,
-    "functions": 38,
-    "trigonometry": 28,
-    "systems": 23,
-    "progressions": 20,
-    "logarithms": 21,
-    "percents": 22,
-    "equations": 32
+    "probability_stats": 96,
+    "mixed": 44,
+    "trigonometry": 58,
+    "planimetry": 328,
+    "stereometry": 125,
+    "logarithms": 35,
+    "powers_roots": 48,
+    "word_problems": 114,
+    "inequalities": 97,
+    "calculus": 75,
+    "numbers": 37,
+    "equations": 57,
+    "percents": 43,
+    "functions": 74,
+    "progressions": 34,
+    "systems": 38
   },
   "byBlueprint": {
-    "algebra_simplify": 19,
-    "linear_inequality_pick": 26,
-    "vectors_3d": 33,
-    "geometry_statements": 23,
-    "powers_roots_transform": 22,
-    "data_chart_reading": 33,
-    "probability_counting_basic": 22,
-    "advanced_single_choice": 26,
-    "word_work_rate": 34,
-    "solid_geometry_concept": 23,
-    "calculus_basic": 33,
-    "function_graph_transform": 37,
-    "circle_inscribed_angle": 35,
-    "trig_exact_values": 28,
-    "systems_linear": 23,
-    "planimetry_angle_parallel": 35,
-    "progression_ap": 20,
-    "similar_triangles_ratio": 33,
-    "log_exp_equation_interval": 21,
-    "short_calculus": 18,
-    "quadratic_inequality_interval": 28,
+    "data_chart_reading": 60,
+    "advanced_single_choice": 44,
+    "trig_exact_values": 58,
+    "planimetry_angle_parallel": 60,
+    "circle_inscribed_angle": 69,
+    "probability_counting_basic": 36,
+    "geometry_statements": 39,
+    "similar_triangles_ratio": 60,
+    "vectors_3d": 65,
+    "log_exp_equation_interval": 35,
+    "powers_roots_transform": 47,
+    "word_motion": 36,
+    "quadratic_inequality_interval": 54,
+    "circle_rectangle_geometry": 30,
+    "calculus_basic": 55,
+    "algebra_simplify": 37,
+    "quadratic_equation": 53,
+    "applied_ratio_percent": 43,
+    "short_calculus": 20,
+    "linear_inequality_pick": 43,
+    "word_work_rate": 60,
+    "function_graph_transform": 73,
     "short_applied": 18,
-    "circle_rectangle_geometry": 18,
-    "triangle_cosine_nmt": 35,
-    "word_motion": 21,
     "short_stereometry_linked_solids": 18,
-    "applied_ratio_percent": 22,
+    "triangle_cosine_nmt": 69,
+    "progression_ap": 34,
+    "solid_geometry_concept": 42,
+    "systems_linear": 38,
     "short_parameter_roots": 4,
-    "quadratic_equation": 28,
     "matching_expressions": 1,
     "matching_functions": 1,
     "matching_planimetry": 1
   },
   "byRenderer": {
-    "none": 474,
-    "canvas": 33,
-    "threejs": 41,
-    "svg": 173,
-    "tikz": 18
+    "canvas": 60,
+    "none": 829,
+    "svg": 324,
+    "tikz": 30,
+    "threejs": 60
   },
-  "visualCount": 265,
-  "trainingPlainCount": 406,
-  "trainingVisualCount": 247,
-  "averageComplexityScore": 87.9,
+  "visualCount": 474,
+  "trainingPlainCount": 742,
+  "trainingVisualCount": 456,
+  "averageComplexityScore": 87.8,
   "averageQualityScore": 91.7,
-  "averageNoveltyScore": 71.9,
-  "averageNmtSimilarity": 93.8,
+  "averageNoveltyScore": 71.8,
+  "averageNmtSimilarity": 93.9,
   "slotCoverage": {
     "1": {
       "type": "choice",
-      "compatibleItems": 33,
+      "compatibleItems": 60,
       "blueprintCount": 1
     },
     "2": {
       "type": "choice",
-      "compatibleItems": 75,
+      "compatibleItems": 134,
       "blueprintCount": 3
     },
     "3": {
       "type": "choice",
-      "compatibleItems": 70,
+      "compatibleItems": 129,
       "blueprintCount": 2
     },
     "4": {
       "type": "choice",
-      "compatibleItems": 54,
+      "compatibleItems": 97,
       "blueprintCount": 2
     },
     "5": {
       "type": "choice",
-      "compatibleItems": 23,
+      "compatibleItems": 42,
       "blueprintCount": 1
     },
     "6": {
       "type": "choice",
-      "compatibleItems": 37,
+      "compatibleItems": 73,
       "blueprintCount": 1
     },
     "7": {
       "type": "choice",
-      "compatibleItems": 77,
+      "compatibleItems": 132,
       "blueprintCount": 3
     },
     "8": {
       "type": "choice",
-      "compatibleItems": 33,
+      "compatibleItems": 65,
       "blueprintCount": 1
     },
     "9": {
       "type": "choice",
-      "compatibleItems": 61,
+      "compatibleItems": 118,
       "blueprintCount": 3
     },
     "10": {
       "type": "choice",
-      "compatibleItems": 58,
+      "compatibleItems": 108,
       "blueprintCount": 2
     },
     "11": {
       "type": "choice",
-      "compatibleItems": 68,
+      "compatibleItems": 126,
       "blueprintCount": 3
     },
     "12": {
       "type": "choice",
-      "compatibleItems": 19,
+      "compatibleItems": 34,
       "blueprintCount": 1
     },
     "13": {
       "type": "choice",
-      "compatibleItems": 164,
+      "compatibleItems": 300,
       "blueprintCount": 6
     },
     "14": {
       "type": "choice",
-      "compatibleItems": 50,
+      "compatibleItems": 105,
       "blueprintCount": 2
     },
     "15": {
       "type": "choice",
-      "compatibleItems": 170,
+      "compatibleItems": 308,
       "blueprintCount": 6
     },
     "16": {
@@ -170,12 +170,12 @@
     },
     "19": {
       "type": "short",
-      "compatibleItems": 32,
+      "compatibleItems": 41,
       "blueprintCount": 2
     },
     "20": {
       "type": "short",
-      "compatibleItems": 20,
+      "compatibleItems": 23,
       "blueprintCount": 2
     },
     "21": {
@@ -185,7 +185,7 @@
     },
     "22": {
       "type": "short",
-      "compatibleItems": 13,
+      "compatibleItems": 20,
       "blueprintCount": 2
     }
   }

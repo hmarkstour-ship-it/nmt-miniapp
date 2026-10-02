@@ -1673,7 +1673,7 @@ function verifyTelegramInitData(initData) {
 // ---- Роути --------------------------------------------------------------------
 
 app.get('/api/topics', (req, res) => {
-  res.json(getPublicTopics());
+  res.json([{ key: 'mixed', label: '🎯 Змішані завдання НМТ' }]);
 });
 
 
@@ -2305,6 +2305,7 @@ app.post('/api/questions-batch', async (req, res) => {
     count = 4,
   } = req.body;
 
+  const effectiveTopic = 'mixed';
   const batchSize = Math.max(1, Math.min(5, Number(count) || 4));
 
   try {
@@ -2312,19 +2313,19 @@ app.post('/api/questions-batch', async (req, res) => {
     const user = await getOrCreateUser(telegramUser);
     const telegramId = user?.telegram_id ?? null;
     const avoidList = telegramId
-      ? await getRecentQuestions(telegramId, topic, 60)
+      ? await getRecentQuestions(telegramId, effectiveTopic, 60)
       : [];
 
     const questions = [];
 
     if (offlineBankRuntime) {
       const selected = offlineBankRuntime.pickTrainingBatch({
-        topic,
+        topic: effectiveTopic,
         difficulty,
         count: batchSize,
         visualMode: TRAINING_VISUAL_MODE,
         avoidTexts: avoidList,
-        seed: `${telegramId || 'anon'}:${topic}:${Date.now()}`,
+        seed: `${telegramId || 'anon'}:${effectiveTopic}:${Date.now()}`,
       });
 
       for (const question of selected) {
@@ -2337,7 +2338,7 @@ app.post('/api/questions-batch', async (req, res) => {
         }
 
         if (telegramId) {
-          await saveQuestionToHistory(telegramId, question.topic || topic, question.question);
+          await saveQuestionToHistory(telegramId, question.topic || effectiveTopic, question.question);
         }
 
         questions.push({
@@ -2354,18 +2355,18 @@ app.post('/api/questions-batch', async (req, res) => {
     if (questions.length < batchSize && RUNTIME_FALLBACK_ENABLED) {
       const fallbackAvoid = [...avoidList, ...questions.map((q) => q.question)];
       while (questions.length < batchSize) {
-        const question = await generateStrictQuestion(topic, difficulty, fallbackAvoid, 6);
+        const question = await generateStrictQuestion(effectiveTopic, difficulty, fallbackAvoid, 6);
         if (!question) break;
         fallbackAvoid.push(question.question);
 
         let bankId = null;
-        try { bankId = await saveQuestionToBank(topic, difficulty, question); }
+        try { bankId = await saveQuestionToBank(effectiveTopic, difficulty, question); }
         catch (saveErr) { console.warn('ENGINE FALLBACK SAVE:', saveErr.message); }
 
-        if (telegramId) await saveQuestionToHistory(telegramId, question.topic || topic, question.question);
+        if (telegramId) await saveQuestionToHistory(telegramId, question.topic || effectiveTopic, question.question);
         questions.push({
           ...question,
-          topic,
+          topic: effectiveTopic,
           difficulty,
           verified: true,
           bank_id: bankId,
@@ -2406,12 +2407,14 @@ app.post('/api/generate-question', async (req, res) => {
     initData,
   } = req.body;
 
+  const effectiveTopic = 'mixed';
+
   try {
     const telegramUser = verifyTelegramInitData(initData);
     const user = await getOrCreateUser(telegramUser);
     const telegramId = user?.telegram_id ?? null;
     const avoidList = telegramId
-      ? await getRecentQuestions(telegramId, topic, 60)
+      ? await getRecentQuestions(telegramId, effectiveTopic, 60)
       : [];
 
     let question = null;
@@ -2420,12 +2423,12 @@ app.post('/api/generate-question', async (req, res) => {
 
     if (offlineBankRuntime) {
       [question] = offlineBankRuntime.pickTrainingBatch({
-        topic,
+        topic: effectiveTopic,
         difficulty,
         count: 1,
         visualMode: TRAINING_VISUAL_MODE,
         avoidTexts: avoidList,
-        seed: `${telegramId || 'anon'}:${topic}:single:${Date.now()}`,
+        seed: `${telegramId || 'anon'}:${effectiveTopic}:single:${Date.now()}`,
       });
       if (question && (!isValidQuestion(question) || !hasSafeQuestionMath(question))) question = null;
       if (question) {
@@ -2436,9 +2439,9 @@ app.post('/api/generate-question', async (req, res) => {
 
     if (!question && RUNTIME_FALLBACK_ENABLED) {
       source = 'engine-fallback';
-      question = await generateStrictQuestion(topic, difficulty, avoidList, 4);
+      question = await generateStrictQuestion(effectiveTopic, difficulty, avoidList, 4);
       if (question) {
-        try { bankId = await saveQuestionToBank(topic, difficulty, question); }
+        try { bankId = await saveQuestionToBank(effectiveTopic, difficulty, question); }
         catch (saveErr) { console.warn('ENGINE FALLBACK SAVE:', saveErr.message); }
       }
     }
@@ -2451,7 +2454,7 @@ app.post('/api/generate-question', async (req, res) => {
       });
     }
 
-    if (telegramId) await saveQuestionToHistory(telegramId, question.topic || topic, question.question);
+    if (telegramId) await saveQuestionToHistory(telegramId, question.topic || effectiveTopic, question.question);
     const freshUser = telegramUser ? await getOrCreateUser(telegramUser) : null;
 
     res.json({

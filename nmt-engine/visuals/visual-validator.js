@@ -6,6 +6,7 @@ const SUPPORTED = new Set([
   'parallelogram_diagonal',
   'parallel_lines',
   'triangle_sides',
+  'triangle_bisector',
   'right_triangle',
   'circle_angle',
   'circle_diameter',
@@ -21,6 +22,6 @@ export function validateVisualSpec(spec) {
   if (!spec || typeof spec !== 'object') return { ok:false, errors:['visual spec must be an object'] };
   if (!SUPPORTED.has(spec.type)) errors.push(`unsupported visual type: ${spec.type}`);
   if (!spec.data || typeof spec.data !== 'object') errors.push('visual data must be an object');
-  if (spec.metadata?.renderer !== 'nmt-engine4-hybrid-visual-v4') errors.push('visual must be created by Visual Engine v4');
+  if (spec.metadata?.renderer !== 'nmt-engine4-hybrid-visual-v5') errors.push('visual must be created by Visual Engine v5');
   return { ok:errors.length===0, errors };
 }

@@ -2,5 +2,3 @@
 node_modules/
 fix-index.cjs
 npm-debug.log
-.env.engine4.backup
-*.env.backup

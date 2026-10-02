@@ -1,6 +1,6 @@
-export const ENGINE4_VERSION = '4.0.0';
-export const ENGINE4_CORE_VERSION = 40;
-export const ENGINE4_RUNTIME_VERSION = 40;
+export const ENGINE4_VERSION = '4.1.0';
+export const ENGINE4_CORE_VERSION = 41;
+export const ENGINE4_RUNTIME_VERSION = 41;
 export const GENOME_VERSION = 1;
 export const COMPLEXITY_MIN = 65;
 export const COMPLEXITY_MAX = 96;

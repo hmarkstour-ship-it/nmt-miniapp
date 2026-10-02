@@ -1,6 +1,6 @@
 {
   "name": "nmt-math-miniapp",
-  "version": "4.0.0",
+  "version": "4.1.0",
   "description": "Telegram Mini App — NMT Engine 4.0 AI Hybrid",
   "type": "module",
   "main": "server.js",

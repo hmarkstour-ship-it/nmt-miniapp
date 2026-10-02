@@ -6,6 +6,7 @@ import { visualQualityHeuristic } from './visual/hybrid-router.js';
 import { genomeSignature } from './genome.js';
 import { validateQuestion } from '../generation/builders.js';
 import { NOVELTY_MIN, QUALITY_MIN } from './constants.js';
+import { validateVisualSemantics } from './visual/semantic-validator.js';
 
 function distractorQuality(q){
   if(q.type!=='choice') return 92;
@@ -23,13 +24,16 @@ export function evaluateV4Candidate(question,{history=[]}={}){
   const actualGenome=question.genome ?? question?.core_meta?.genome ?? question?.coreMeta?.genome ?? question?.core_meta?.genome ?? question?.genome;
   if(!actualGenome) return {accepted:false,reason:'missing_genome',quality:{overall:0}};
   const mathOk=validateQuestion(question);
+  const visualSemantic=validateVisualSemantics(question);
+  const mathAndVisualOk=mathOk&&visualSemantic.ok;
   const complexity=analyzeComplexity(actualGenome);
   const refs=retrieveReferenceExamples({topic:actualGenome.topic,subtopic:actualGenome.subtopic,concept:actualGenome.concept});
   const nmt=nmtSimilarityHeuristic(question,actualGenome,refs);
   const novelty=noveltyScore({question,genome:actualGenome},history);
   const visual=visualQualityHeuristic(question.visual_bundle);
-  const quality=computeQualityScore({math:mathOk?100:0,nmt,novelty:novelty.score,visual,distractors:distractorQuality(question),wording:wordingQuality(question),complexity});
-  return {accepted:mathOk&&complexity.accepted&&novelty.score>=NOVELTY_MIN&&quality.overall>=QUALITY_MIN,mathOk,complexity,nmt_similarity:nmt,novelty,visual_quality:visual,quality,references:refs.map(r=>r.id),genome_signature:genomeSignature(actualGenome)};
+  const visualScore=visualSemantic.ok?visual:Math.min(45,visual);
+  const quality=computeQualityScore({math:mathAndVisualOk?100:0,nmt,novelty:novelty.score,visual:visualScore,distractors:distractorQuality(question),wording:wordingQuality(question),complexity});
+  return {accepted:mathAndVisualOk&&complexity.accepted&&novelty.score>=NOVELTY_MIN&&quality.overall>=QUALITY_MIN,mathOk,visual_semantic:visualSemantic,complexity,nmt_similarity:nmt,novelty,visual_quality:visualScore,quality,references:refs.map(r=>r.id),genome_signature:genomeSignature(actualGenome)};
 }
 
 export function selectBestV4Candidate(candidates,{history=[]}={}){

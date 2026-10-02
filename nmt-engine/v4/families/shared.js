@@ -12,7 +12,7 @@ export const gcd=(a,b)=>{a=Math.abs(a);b=Math.abs(b);while(b)[a,b]=[b,a%b];retur
 function baseCoreMeta(genome, extra={}) {
   return {
     source:'nmt-engine4-ai-hybrid',
-    core_version:40,
+    core_version:41,
     model:'question-genome-constraint-first-independent-solver',
     genome,
     genome_version:genome.version,

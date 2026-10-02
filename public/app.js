@@ -575,6 +575,30 @@ const tg = window.Telegram?.WebApp;
     return ['Розв’язання для цього завдання не надійшло.'];
   }
 
+
+  function getStructuredSolution(q) {
+    const solution = q?.solution;
+    if (solution && typeof solution === 'object') {
+      return {
+        given: solution.given || 'Використовуємо дані з умови.',
+        find: solution.find || 'Знайти величину, яку вимагає умова.',
+        method: solution.method || 'Добираємо математичний зв’язок між відомими та шуканою величиною.',
+        steps: Array.isArray(solution.steps) && solution.steps.length ? solution.steps : getExplanationSteps(q),
+        why: solution.why || 'Отриманий результат випливає з умови та застосованих математичних співвідношень.',
+        answer: solution.answer || (q?.type === 'choice' ? q?.options?.[q?.correct_index] : q?.correct_display) || '—',
+      };
+    }
+    const steps = getExplanationSteps(q);
+    return {
+      given: q?.question || 'Дані наведено в умові.',
+      find: 'Знайти величину, яку вимагає умова.',
+      method: steps[0] || 'Використовуємо відповідну математичну властивість.',
+      steps,
+      why: 'Перевіряємо, що знайдене значення відповідає саме запитаній величині.',
+      answer: q?.type === 'choice' ? q?.options?.[q?.correct_index] : q?.correct_display || '—',
+    };
+  }
+
   function showQuestionSmooth(q, { immediate = false } = {}) {
     const currentCard = cardArea.querySelector('.card');
     if (immediate || !currentCard) {
@@ -646,11 +670,12 @@ const tg = window.Telegram?.WebApp;
 
     const letters = ['А', 'Б', 'В', 'Г', 'Д'];
     const explanationSteps = getExplanationSteps(q);
+    const solution = getStructuredSolution(q);
 
     cardArea.innerHTML = `
       <div class="card card-enter">
         <div class="card-top">
-          <div class="card-label">${escapeHtml(stripLeadingEmoji(topicSelect.options[topicSelect.selectedIndex]?.text || ''))}</div>
+          <div class="card-label">Змішаний тренувальний потік</div>
           <button class="report-btn" id="reportBtn" type="button" aria-label="Повідомити про проблему"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 20V5.5M6 6h9.2l-1.5 3 1.5 3H6"/></svg></button>
         </div>
         <div class="question-text">${escapeHtml(q.question)}</div>
@@ -667,13 +692,32 @@ const tg = window.Telegram?.WebApp;
         <div class="explanation" id="explanation">
           <div class="explanation-title">
             <span class="explanation-title-icon">✦</span>
-            <span>Розв’язання</span>
+            <span>Повний розбір</span>
           </div>
-          <ol class="explanation-steps">
-            ${explanationSteps.map((step) => `
-              <li class="explanation-step">${escapeHtml(step)}</li>
-            `).join('')}
-          </ol>
+          <div class="solution-topic">${escapeHtml(q.topic_label || 'Тема НМТ')}</div>
+          <div class="solution-block">
+            <div class="solution-kicker">1. Що дано</div>
+            <div class="solution-text">${escapeHtml(solution.given)}</div>
+          </div>
+          <div class="solution-block">
+            <div class="solution-kicker">2. Що треба знайти</div>
+            <div class="solution-text">${escapeHtml(solution.find)}</div>
+          </div>
+          <div class="solution-block solution-method">
+            <div class="solution-kicker">3. Ідея розв’язання</div>
+            <div class="solution-text">${escapeHtml(solution.method)}</div>
+          </div>
+          <div class="solution-block">
+            <div class="solution-kicker">4. Розв’язуємо крок за кроком</div>
+            <ol class="explanation-steps">
+              ${solution.steps.map((step) => `<li class="explanation-step">${escapeHtml(step)}</li>`).join('')}
+            </ol>
+          </div>
+          <div class="solution-block">
+            <div class="solution-kicker">5. Чому це правильна відповідь</div>
+            <div class="solution-text">${escapeHtml(solution.why)}</div>
+          </div>
+          <div class="solution-answer"><span>Відповідь</span><strong>${escapeHtml(solution.answer)}</strong></div>
           <div class="ai-help" id="aiHelp">
             <div class="ai-help-title">Потрібна ще допомога?</div>
             <div class="ai-help-actions">
@@ -822,7 +866,7 @@ const tg = window.Telegram?.WebApp;
   function clearPrefetch() { clearQuestionQueue(); }
 
   async function requestQuestionBatch(count = 4) {
-    const topic = topicSelect.value;
+    const topic = 'mixed';
     const res = await fetchWithTimeout(`${API_BASE}/api/questions-batch`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -840,7 +884,7 @@ const tg = window.Telegram?.WebApp;
   }
 
   function ensureQuestionQueue(targetSize = 4) {
-    const topic = topicSelect.value;
+    const topic = 'mixed';
     if (state.batchTopic && state.batchTopic !== topic) clearQuestionQueue();
     if (state.questionQueue.length >= targetSize) return Promise.resolve(state.questionQueue);
     if (state.batchPromise && state.batchTopic === topic) return state.batchPromise;
@@ -1063,9 +1107,9 @@ const tg = window.Telegram?.WebApp;
     document.body.style.overflow = '';
   }
 
-  topicPicker.addEventListener('click', openTopicSheet);
-  topicSheetClose.addEventListener('click', closeTopicSheet);
-  topicOverlay.addEventListener('click', (event) => {
+  topicPicker?.addEventListener('click', openTopicSheet);
+  topicSheetClose?.addEventListener('click', closeTopicSheet);
+  topicOverlay?.addEventListener('click', (event) => {
     if (event.target === topicOverlay) closeTopicSheet();
   });
 
@@ -1168,37 +1212,14 @@ const tg = window.Telegram?.WebApp;
   });
 
   async function loadTopics() {
-    let topics = FALLBACK_TOPICS;
-
-    try {
-      const res = await fetchWithTimeout(`${API_BASE}/api/topics?v=3`, { cache: 'no-store' });
-      if (!res.ok) throw new Error('Помилка /api/topics');
-
-      const freshTopics = await res.json();
-      if (Array.isArray(freshTopics) && freshTopics.some((t) => t.key === 'logarithms')) {
-        topics = freshTopics;
-      } else {
-        console.warn('Отримано застарілий список тем — використовую актуальний локальний список.');
-      }
-    } catch (err) {
-      console.error('Помилка завантаження тем:', err);
-    }
-
-    loadedTopics = topics;
-    topicSelect.innerHTML = loadedTopics
-      .map((t) => `<option value="${escapeHtml(t.key)}">${escapeHtml(t.label)}</option>`)
-      .join('');
-
-    let savedTopic = '';
-    try { savedTopic = localStorage.getItem('nmt_topic') || ''; } catch (_) {}
-
-    if (savedTopic && loadedTopics.some((t) => t.key === savedTopic)) {
-      topicSelect.value = savedTopic;
-    } else if (loadedTopics.some((t) => t.key === 'mixed')) {
-      topicSelect.value = 'mixed';
-    }
-
-    renderTopicList();
+    // Engine 4.1: training is intentionally one endless mixed stream.
+    // Topic-specific practice is removed from the product UI.
+    loadedTopics = [{ key: 'mixed', label: '🎯 Змішані завдання НМТ' }];
+    topicSelect.innerHTML = '<option value="mixed">Змішані завдання НМТ</option>';
+    topicSelect.value = 'mixed';
+    try { localStorage.removeItem('nmt_topic'); } catch (_) {}
+    if (topicPickerTitle) topicPickerTitle.textContent = 'Змішані завдання НМТ';
+    if (topicPickerSubtitle) topicPickerSubtitle.textContent = 'Безкінечний тренувальний потік';
   }
 
   function escapeHtml(str) {
