@@ -3,7 +3,12 @@ const tg = window.Telegram?.WebApp;
   tg?.expand();
 
   function syncTelegramTheme() {
-    document.body?.classList.toggle('telegram-dark', tg?.colorScheme === 'dark');
+    // v1.0.1: одна фіксована світла тема незалежно від Telegram.
+    document.documentElement.style.colorScheme = 'light';
+    document.body?.classList.remove('telegram-dark');
+    try { tg?.setHeaderColor?.('#f2eee6'); } catch (_) {}
+    try { tg?.setBackgroundColor?.('#f2eee6'); } catch (_) {}
+    try { tg?.setBottomBarColor?.('#f2eee6'); } catch (_) {}
   }
   syncTelegramTheme();
   tg?.onEvent?.('themeChanged', syncTelegramTheme);
@@ -14,7 +19,8 @@ const tg = window.Telegram?.WebApp;
   const FETCH_TIMEOUT_MS = 30000;
   const QUESTION_TIMEOUT_MS = 55000;
   const BACKEND_WAKE_MAX_MS = 75000;
-  const BUILD_VERSION = 'launch-polish-v1.0.0';
+  const BUILD_VERSION = 'launch-polish-v1.0.1';
+  const APP_VERSION = '1.0.1';
   console.log('[NMT build]', BUILD_VERSION);
 
   async function fetchWithTimeout(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS) {
@@ -253,14 +259,60 @@ const tg = window.Telegram?.WebApp;
     try { localStorage.setItem(onboardingStorageKey(), '1'); } catch (_) {}
   }
 
+  function onboardingIllustration(index) {
+    const illustrations = [
+      `<svg viewBox="0 0 360 280" role="img" aria-label="Нескінченні змішані тести">
+        <defs>
+          <linearGradient id="obGoldA" x1="0" x2="1"><stop stop-color="#b8924f"/><stop offset="1" stop-color="#d6b36a"/></linearGradient>
+        </defs>
+        <rect x="48" y="20" width="264" height="240" rx="34" fill="#fffdfa" stroke="rgba(53,49,43,.10)"/>
+        <rect x="76" y="50" width="90" height="16" rx="8" fill="rgba(214,179,106,.18)"/>
+        <rect x="76" y="86" width="194" height="12" rx="6" fill="#ded8cd"/>
+        <rect x="76" y="108" width="160" height="12" rx="6" fill="#ebe5da"/>
+        <rect x="76" y="148" width="208" height="44" rx="15" fill="#f7f2e9" stroke="rgba(53,49,43,.08)"/>
+        <circle cx="100" cy="170" r="10" fill="url(#obGoldA)"/>
+        <rect x="121" y="164" width="118" height="12" rx="6" fill="#d9d2c6"/>
+        <path d="M118 221h124" stroke="#e5dfd3" stroke-width="12" stroke-linecap="round"/>
+        <path d="M118 221h78" stroke="url(#obGoldA)" stroke-width="12" stroke-linecap="round"/>
+        <circle cx="280" cy="50" r="26" fill="rgba(214,179,106,.13)"/>
+        <path d="M269 50h22M280 39v22" stroke="#a67f3f" stroke-width="4" stroke-linecap="round"/>
+      </svg>`,
+      `<svg viewBox="0 0 360 280" role="img" aria-label="Коротке пояснення по кроках">
+        <rect x="43" y="23" width="274" height="234" rx="34" fill="#fffdfa" stroke="rgba(53,49,43,.10)"/>
+        <circle cx="87" cy="74" r="17" fill="rgba(214,179,106,.16)"/><text x="87" y="80" text-anchor="middle" font-size="16" font-family="Arial" font-weight="700" fill="#9b7438">1</text>
+        <rect x="119" y="67" width="150" height="13" rx="6.5" fill="#ddd7cc"/>
+        <circle cx="87" cy="128" r="17" fill="rgba(214,179,106,.16)"/><text x="87" y="134" text-anchor="middle" font-size="16" font-family="Arial" font-weight="700" fill="#9b7438">2</text>
+        <rect x="119" y="121" width="120" height="13" rx="6.5" fill="#ddd7cc"/>
+        <circle cx="87" cy="182" r="17" fill="rgba(214,179,106,.16)"/><text x="87" y="188" text-anchor="middle" font-size="16" font-family="Arial" font-weight="700" fill="#9b7438">3</text>
+        <rect x="119" y="175" width="165" height="13" rx="6.5" fill="#ddd7cc"/>
+        <rect x="75" y="218" width="210" height="18" rx="9" fill="#edf5f0"/>
+        <path d="M253 51l10 10 20-25" fill="none" stroke="#47795f" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`,
+      `<svg viewBox="0 0 360 280" role="img" aria-label="Пробний НМТ">
+        <rect x="49" y="20" width="262" height="240" rx="34" fill="#fffdfa" stroke="rgba(53,49,43,.10)"/>
+        <rect x="77" y="50" width="86" height="16" rx="8" fill="rgba(214,179,106,.18)"/>
+        <circle cx="260" cy="62" r="25" fill="#f7f2e9"/>
+        <path d="M260 49v14l10 6" fill="none" stroke="#a67f3f" stroke-width="4" stroke-linecap="round"/>
+        <rect x="77" y="99" width="205" height="12" rx="6" fill="#dcd6ca"/>
+        <rect x="77" y="122" width="174" height="12" rx="6" fill="#e9e3d8"/>
+        <g fill="#f7f2e9" stroke="rgba(53,49,43,.08)"><rect x="77" y="157" width="92" height="42" rx="13"/><rect x="190" y="157" width="92" height="42" rx="13"/></g>
+        <rect x="77" y="219" width="205" height="16" rx="8" fill="#eee7da"/>
+        <rect x="77" y="219" width="134" height="16" rx="8" fill="#b8924f"/>
+      </svg>`
+    ];
+    return illustrations[index] || illustrations[0];
+  }
+
   function renderOnboardingSlide() {
     if (!onboardingStage) return;
     const slide = ONBOARDING_SLIDES[onboardingIndex] || ONBOARDING_SLIDES[0];
     onboardingStage.innerHTML = `
-      <div class="onboarding-icon" aria-hidden="true">${escapeHtml(slide.icon)}</div>
-      <div class="onboarding-eyebrow">${escapeHtml(slide.eyebrow)}</div>
-      <h3>${escapeHtml(slide.title)}</h3>
-      <p>${escapeHtml(slide.text)}</p>`;
+      <div class="onboarding-illustration">${onboardingIllustration(onboardingIndex)}</div>
+      <div class="onboarding-copy">
+        <div class="onboarding-eyebrow">${escapeHtml(slide.eyebrow)}</div>
+        <h3>${escapeHtml(slide.title)}</h3>
+        <p>${escapeHtml(slide.text)}</p>
+      </div>`;
     onboardingProgress?.querySelectorAll('span').forEach((dot, i) => dot.classList.toggle('active', i === onboardingIndex));
     if (onboardingBack) onboardingBack.hidden = onboardingIndex === 0;
     if (onboardingNext) onboardingNext.textContent = onboardingIndex === ONBOARDING_SLIDES.length - 1 ? 'Почати' : 'Далі';
@@ -288,6 +340,82 @@ const tg = window.Telegram?.WebApp;
   function maybeShowFirstRunOnboarding() {
     if (hasCompletedOnboarding()) return;
     setTimeout(() => openOnboarding({ manual: false }), 240);
+  }
+
+  function closeSettingsScreen() {
+    document.getElementById('appSettingsScreen')?.remove();
+    document.body.classList.remove('modal-open');
+  }
+
+  function openTelegramSupport() {
+    const url = 'https://t.me/Lazaran';
+    try {
+      if (typeof tg?.openTelegramLink === 'function') tg.openTelegramLink(url);
+      else window.open(url, '_blank', 'noopener');
+    } catch (_) {
+      window.open(url, '_blank', 'noopener');
+    }
+  }
+
+  function openSettingsScreen() {
+    document.getElementById('appSettingsScreen')?.remove();
+    const soundEnabled = window.NMTUX?.getSoundEnabled?.() !== false;
+    document.body.insertAdjacentHTML('beforeend', `
+      <section class="app-settings-screen" id="appSettingsScreen" aria-label="Налаштування" role="dialog" aria-modal="true">
+        <div class="app-settings-shell">
+          <header class="app-settings-head">
+            <button class="app-settings-back" type="button" data-settings-back aria-label="Назад">←</button>
+            <strong>Налаштування</strong>
+            <span class="app-settings-head-spacer"></span>
+          </header>
+
+          <div class="app-settings-intro">
+            <h2>Налаштування</h2>
+            <p>Лише основні речі — без зайвих перемикачів.</p>
+          </div>
+
+          <div class="app-settings-group">
+            <button class="app-settings-row" type="button" data-settings-sound>
+              <span class="app-settings-icon" aria-hidden="true">♪</span>
+              <span class="app-settings-copy"><strong>Звуки</strong><small>Легкий звук правильної, неправильної відповіді та завершення НМТ</small></span>
+              <span class="premium-switch ${soundEnabled ? 'on' : ''}" data-settings-sound-switch aria-hidden="true"><i></i></span>
+            </button>
+          </div>
+
+          <div class="app-settings-group">
+            <button class="app-settings-row" type="button" data-settings-tutorial>
+              <span class="app-settings-icon" aria-hidden="true">?</span>
+              <span class="app-settings-copy"><strong>Як це працює</strong><small>Ще раз відкрити короткий тур по застосунку</small></span>
+              <span class="app-settings-chevron" aria-hidden="true">›</span>
+            </button>
+            <button class="app-settings-row" type="button" data-settings-report>
+              <span class="app-settings-icon" aria-hidden="true">!</span>
+              <span class="app-settings-copy"><strong>Повідомити про проблему</strong><small>Скинь скрін і короткий опис у Telegram: @Lazaran</small></span>
+              <span class="app-settings-chevron" aria-hidden="true">›</span>
+            </button>
+          </div>
+
+          <div class="app-settings-version">NMT Math · v${APP_VERSION}</div>
+        </div>
+      </section>`);
+    document.body.classList.add('modal-open');
+
+    const root = document.getElementById('appSettingsScreen');
+    root?.querySelector('[data-settings-back]')?.addEventListener('click', closeSettingsScreen);
+    root?.querySelector('[data-settings-sound]')?.addEventListener('click', () => {
+      const current = window.NMTUX?.getSoundEnabled?.() !== false;
+      const next = !current;
+      window.NMTUX?.setSoundEnabled?.(next);
+      root.querySelector('[data-settings-sound-switch]')?.classList.toggle('on', next);
+      if (next) window.NMTUX?.playSound?.('correct');
+      window.NMTUX?.haptic?.('selection');
+    });
+    root?.querySelector('[data-settings-tutorial]')?.addEventListener('click', () => {
+      closeSettingsScreen();
+      setTimeout(() => openOnboarding({ manual: true }), 70);
+    });
+    root?.querySelector('[data-settings-report]')?.addEventListener('click', openTelegramSupport);
+    window.NMTUX?.haptic?.('light');
   }
 
   function formatJoinDate(value) {
@@ -481,15 +609,9 @@ const tg = window.Telegram?.WebApp;
         </section>
 
         <section class="profile-settings-card" aria-label="Налаштування">
-          <div class="profile-settings-title">Налаштування</div>
-          <button class="profile-setting-row" type="button" data-sound-toggle>
-            <span class="profile-setting-icon" aria-hidden="true">♪</span>
-            <span class="profile-setting-copy"><strong>Звуки</strong><small>Легкий feedback під час тренування</small></span>
-            <span class="premium-switch ${window.NMTUX?.getSoundEnabled?.() !== false ? 'on' : ''}" data-sound-switch aria-hidden="true"><i></i></span>
-          </button>
-          <button class="profile-setting-row" type="button" data-open-tutorial>
-            <span class="profile-setting-icon" aria-hidden="true">?</span>
-            <span class="profile-setting-copy"><strong>Як це працює</strong><small>Короткий тур по застосунку</small></span>
+          <button class="profile-setting-row profile-setting-row-main" type="button" data-open-settings>
+            <span class="profile-setting-icon" aria-hidden="true">⚙</span>
+            <span class="profile-setting-copy"><strong>Налаштування</strong><small>Звуки, допомога та зв’язок</small></span>
             <span class="profile-setting-chevron">›</span>
           </button>
         </section>
@@ -522,15 +644,7 @@ const tg = window.Telegram?.WebApp;
         button.addEventListener('click', () => switchView(button.dataset.profileAction));
       });
 
-      profileContent.querySelector('[data-open-tutorial]')?.addEventListener('click', () => openOnboarding({ manual: true }));
-      profileContent.querySelector('[data-sound-toggle]')?.addEventListener('click', () => {
-        const current = window.NMTUX?.getSoundEnabled?.() !== false;
-        const next = !current;
-        window.NMTUX?.setSoundEnabled?.(next);
-        profileContent.querySelector('[data-sound-switch]')?.classList.toggle('on', next);
-        if (next) window.NMTUX?.playSound?.('correct');
-        window.NMTUX?.haptic?.('selection');
-      });
+      profileContent.querySelector('[data-open-settings]')?.addEventListener('click', openSettingsScreen);
 
       profileLoaded = true;
       profileDirty = false;

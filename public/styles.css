@@ -1950,3 +1950,259 @@ body.telegram-dark .nmt-diagram svg .s { stroke:#232529; }
   .card.feedback-correct,
   .card.feedback-wrong { animation: none !important; transition: none !important; }
 }
+
+
+/* =========================================================
+   v1.0.1 — fixed light theme + launch polish
+   ========================================================= */
+:root { color-scheme: light !important; }
+html, body { color-scheme: light !important; }
+html { background: var(--bg) !important; }
+body.telegram-dark { color: var(--ink) !important; }
+
+/* One clean startup indicator: no second progress bar. */
+.startup-screen {
+  background:
+    radial-gradient(65% 48% at 12% 0%, rgba(214,179,106,.18), transparent 68%),
+    radial-gradient(58% 42% at 95% 95%, rgba(184,146,79,.10), transparent 72%),
+    linear-gradient(180deg, #f7f3ec 0%, #f2eee6 56%, #ece6db 100%) !important;
+  color: var(--ink) !important;
+}
+.startup-ambient-a { background: radial-gradient(circle, rgba(214,179,106,.15), transparent 68%) !important; }
+.startup-ambient-b { background: radial-gradient(circle, rgba(184,146,79,.10), transparent 70%) !important; }
+.startup-brand { width: 164px; height: 164px; margin-bottom: 18px; }
+.startup-logo-shell {
+  width: 98px; height: 98px; border-radius: 30px;
+  color: #a67f3f !important;
+  background: rgba(255,253,249,.96) !important;
+  border: 1px solid rgba(53,49,43,.09) !important;
+  box-shadow: 0 18px 52px rgba(51,43,32,.12), inset 0 1px 0 rgba(255,255,255,.9) !important;
+  animation: none !important;
+}
+.startup-robot { font-size: 62px; }
+.startup-orbit {
+  inset: 10px;
+  border: 2px solid rgba(184,146,79,.14) !important;
+  border-top-color: #b8924f !important;
+  animation: startupOrbitSpin 1.05s linear infinite !important;
+}
+.startup-orbit::before, .startup-orbit::after, .startup-orbit span { display: none !important; }
+.startup-wordmark { color: #9a753b !important; margin-bottom: 9px; }
+.startup-title { color: var(--ink) !important; font-size: clamp(27px, 7.8vw, 36px); }
+.startup-subtitle { color: var(--muted) !important; margin-top: 9px; }
+.startup-progress { display: none !important; }
+.startup-note { color: var(--muted-2) !important; }
+.startup-note-dot { background: #b8924f !important; box-shadow: 0 0 0 4px rgba(184,146,79,.08) !important; }
+
+/* First-run onboarding is now a true full-screen experience. */
+.onboarding-overlay {
+  align-items: stretch !important;
+  padding: 0 !important;
+  background:
+    radial-gradient(70% 45% at 12% 0%, rgba(214,179,106,.15), transparent 65%),
+    linear-gradient(180deg, #f7f3ec 0%, var(--bg) 62%, #eee8dd 100%) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.onboarding-card {
+  width: min(100%, 520px) !important;
+  min-height: 100dvh !important;
+  margin: 0 auto !important;
+  padding: calc(18px + env(safe-area-inset-top,0px)) 20px calc(22px + env(safe-area-inset-bottom,0px)) !important;
+  border-radius: 0 !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  display: flex !important;
+  flex-direction: column !important;
+  transform: none !important;
+}
+.onboarding-overlay.show .onboarding-card { transform: none !important; }
+.onboarding-skip {
+  position: static !important;
+  align-self: flex-end;
+  min-height: 38px;
+  padding: 0 8px;
+  background: transparent !important;
+  font-size: 13px;
+}
+.onboarding-progress {
+  order: 4;
+  justify-content: center;
+  margin: 14px 0 14px !important;
+}
+.onboarding-progress span {
+  width: 7px !important;
+  height: 7px !important;
+  background: rgba(66,59,48,.14) !important;
+}
+.onboarding-progress span.active {
+  width: 24px !important;
+  background: #b8924f !important;
+}
+.onboarding-stage {
+  flex: 1;
+  min-height: 0 !important;
+  padding: 6px 0 10px !important;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.onboarding-illustration {
+  width: 100%;
+  min-height: 260px;
+  max-height: 40vh;
+  display: grid;
+  place-items: center;
+  margin: 0 0 22px;
+}
+.onboarding-illustration svg {
+  width: min(360px, 96%);
+  height: auto;
+  filter: drop-shadow(0 22px 35px rgba(51,43,32,.08));
+}
+.onboarding-copy { max-width: 440px; }
+.onboarding-eyebrow { font-size: 12px !important; letter-spacing: .01em !important; }
+.onboarding-stage h3 {
+  margin: 8px 0 10px !important;
+  font-size: clamp(28px, 8vw, 38px) !important;
+  line-height: 1.02 !important;
+}
+.onboarding-stage p {
+  font-size: 15px !important;
+  line-height: 1.55 !important;
+  max-width: 430px;
+}
+.onboarding-actions {
+  order: 5;
+  grid-template-columns: auto minmax(0,1fr) !important;
+  gap: 9px !important;
+}
+.onboarding-actions .primary-btn,
+.onboarding-actions .secondary-btn {
+  min-height: 54px !important;
+  border-radius: 18px !important;
+}
+
+/* Profile only contains a clean entry into full-screen settings. */
+.profile-setting-row-main { min-height: 68px; }
+.profile-setting-row-main .profile-setting-icon { color: #9b7438; }
+
+/* Full-screen settings */
+.app-settings-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 10030;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background:
+    radial-gradient(65% 42% at 12% 0%, rgba(214,179,106,.13), transparent 66%),
+    linear-gradient(180deg, #f7f3ec 0%, var(--bg) 60%, #eee8dd 100%);
+  animation: appSettingsIn .24s cubic-bezier(.22,1,.36,1) both;
+}
+@keyframes appSettingsIn {
+  from { opacity: .3; transform: translate3d(4%,0,0); }
+  to { opacity: 1; transform: translate3d(0,0,0); }
+}
+.app-settings-shell {
+  width: min(100%, 520px);
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: calc(14px + env(safe-area-inset-top,0px)) 18px calc(28px + env(safe-area-inset-bottom,0px));
+}
+.app-settings-head {
+  min-height: 50px;
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  text-align: center;
+}
+.app-settings-head > strong { font-size: 14px; }
+.app-settings-head-spacer { width: 44px; }
+.app-settings-back {
+  width: 42px; height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  color: var(--ink);
+  background: rgba(255,253,249,.92);
+  box-shadow: var(--shadow-xs);
+  font-size: 20px;
+}
+.app-settings-intro { padding: 18px 2px 22px; }
+.app-settings-intro h2 {
+  margin: 0 0 7px;
+  font-size: 32px;
+  letter-spacing: -.045em;
+}
+.app-settings-intro p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.app-settings-group {
+  overflow: hidden;
+  margin-bottom: 14px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: rgba(255,253,249,.96);
+  box-shadow: var(--shadow-xs);
+}
+.app-settings-row {
+  width: 100%;
+  min-height: 72px;
+  padding: 14px 15px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  text-align: left;
+}
+.app-settings-row + .app-settings-row { border-top: 1px solid var(--line); }
+.app-settings-icon {
+  width: 38px; height: 38px;
+  flex: 0 0 38px;
+  border-radius: 13px;
+  display: grid;
+  place-items: center;
+  color: #9b7438;
+  background: rgba(214,179,106,.14);
+  font-weight: 780;
+}
+.app-settings-copy { min-width: 0; flex: 1; }
+.app-settings-copy strong { display: block; font-size: 15px; margin-bottom: 3px; }
+.app-settings-copy small { display: block; color: var(--muted); font-size: 12.5px; line-height: 1.38; }
+.app-settings-chevron { color: var(--muted-2); font-size: 22px; }
+.app-settings-version {
+  padding: 18px 6px 8px;
+  text-align: center;
+  color: var(--muted-2);
+  font-size: 11px;
+  letter-spacing: .02em;
+}
+
+/* Make sure old dark-theme rules never become active accidentally. */
+body.telegram-dark {
+  --bg: #f2eee6 !important;
+  --bg-2: #ebe5da !important;
+  --surface: rgba(255,253,249,.94) !important;
+  --surface-strong: #fffdfa !important;
+  --surface-soft: #f7f2e9 !important;
+  --surface-muted: #eee8dc !important;
+  --ink: #202226 !important;
+  --ink-2: #383a3e !important;
+  --muted: #85827c !important;
+  --muted-2: #a09b92 !important;
+  background:
+    radial-gradient(70% 45% at 12% 0%, rgba(214,179,106,.16), transparent 65%),
+    radial-gradient(55% 38% at 96% 16%, rgba(139,126,104,.11), transparent 72%),
+    linear-gradient(180deg, #f5f1e9 0%, #f2eee6 48%, #eee8dd 100%) !important;
+}
+
+@media (max-height: 690px) {
+  .onboarding-illustration { min-height: 210px; max-height: 34vh; margin-bottom: 14px; }
+  .onboarding-stage h3 { font-size: 27px !important; }
+  .onboarding-stage p { font-size: 14px !important; }
+}
