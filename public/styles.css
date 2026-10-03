@@ -2609,3 +2609,645 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* =========================================================
+   v1.0.3 — OBSIDIAN GOLD
+   One fixed premium palette across every screen.
+   No Telegram/system theme switching and no mixed white cards.
+   ========================================================= */
+:root {
+  color-scheme: dark !important;
+  --bg: #17191D !important;
+  --bg-2: #1E2126 !important;
+  --surface: rgba(37,40,46,.96) !important;
+  --surface-strong: #25282E !important;
+  --surface-soft: #2B2F35 !important;
+  --surface-muted: #30343A !important;
+  --ink: #F5F2EA !important;
+  --ink-2: #D7D3CA !important;
+  --muted: #A9A7A1 !important;
+  --muted-2: #7F817F !important;
+  --graphite: #25282E !important;
+  --graphite-2: #2B2F35 !important;
+  --gold: #C6A15B !important;
+  --gold-2: #D5B56E !important;
+  --gold-soft: #8F7546 !important;
+  --gold-wash: rgba(198,161,91,.12) !important;
+  --line: rgba(255,255,255,.07) !important;
+  --line-strong: rgba(255,255,255,.11) !important;
+  --success: #6FAF8E !important;
+  --success-bg: rgba(111,175,142,.12) !important;
+  --danger: #D47676 !important;
+  --danger-bg: rgba(212,118,118,.12) !important;
+  --shadow-xs: 0 5px 16px rgba(0,0,0,.13) !important;
+  --shadow-sm: 0 12px 30px rgba(0,0,0,.18) !important;
+  --shadow-md: 0 20px 54px rgba(0,0,0,.25) !important;
+}
+
+html,
+body,
+body.fixed-premium-theme,
+body.telegram-dark {
+  color-scheme: dark !important;
+  color: var(--ink) !important;
+  background:
+    radial-gradient(72% 42% at 5% -4%, rgba(198,161,91,.12), transparent 65%),
+    radial-gradient(58% 36% at 100% 8%, rgba(92,101,116,.08), transparent 70%),
+    linear-gradient(180deg, #1B1D21 0%, #17191D 54%, #15171A 100%) !important;
+  background-attachment: fixed !important;
+}
+
+/* Global typography & accent language */
+.page-eyebrow,
+.topic-picker-kicker,
+.card-label,
+.cheat-kicker,
+.profile-page-kicker,
+.nmt-kicker,
+.nmt-exam-label,
+.nmt-result-kicker,
+.profile-metric-label,
+.profile-focus-kicker,
+.profile-identity-overline,
+.cheat-formula-label,
+.admin-card-head small,
+.admin-panel-head small {
+  color: var(--gold-2) !important;
+}
+
+.page-subtitle,
+.topic-picker-subtitle,
+.cheat-section-meta,
+.cheat-formula-note,
+.profile-page-head p,
+.cheat-head p,
+.nmt-page-head p,
+.profile-since-new,
+.profile-snapshot-card > span,
+.profile-snapshot-card small,
+.profile-quick-actions button small,
+.profile-disclosure summary span:not(.profile-disclosure-arrow),
+.profile-stat-new span,
+.topic-stat-row-new span,
+.nmt-result-card-head span,
+.nmt-review-head p,
+.nmt-review-toggle small,
+.nmt-review-answer span,
+.nmt-review-explanation > span,
+.app-settings-copy small,
+.app-settings-intro p,
+.admin-login-card p,
+.admin-panel-meta,
+.admin-mini-stats span {
+  color: var(--muted) !important;
+}
+
+/* One card system everywhere. */
+.topic-picker,
+.card,
+.status,
+.profile-page-loading,
+.nmt-loading-card,
+.nmt-error-card,
+.question-skeleton,
+.cheat-section,
+.profile-metric-card,
+.profile-snapshot-card,
+.profile-quick-actions button,
+.profile-disclosure,
+.profile-stat-new,
+.topic-stat-row-new,
+.profile-settings-card,
+.profile-streak-card,
+.profile-focus-card,
+.nmt-hero-card,
+.nmt-question-card,
+.nmt-result-card,
+.nmt-review-item,
+.ai-help-panel,
+.report-panel,
+.nmt-finish-panel,
+.app-settings-group,
+.admin-stat-grid article {
+  color: var(--ink) !important;
+  background: linear-gradient(155deg, #272A30 0%, #23262B 100%) !important;
+  border-color: var(--line) !important;
+  box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255,255,255,.025) !important;
+}
+
+/* Hero cards stay slightly richer but remain in the same family. */
+.profile-identity-card,
+.profile-snapshot-card.profile-snapshot-dark,
+.cheat-source-card,
+.nmt-result-hero {
+  color: var(--ink) !important;
+  background:
+    radial-gradient(90% 120% at 0% 0%, rgba(198,161,91,.12), transparent 60%),
+    linear-gradient(145deg, #2B2F35 0%, #202329 100%) !important;
+  border: 1px solid var(--line) !important;
+  box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255,255,255,.025) !important;
+}
+
+/* Training / test choices */
+.card-label,
+.nmt-question-meta span,
+.nmt-hero-badge,
+.nmt-result-focus-topics span {
+  background: rgba(198,161,91,.10) !important;
+  color: #D5B56E !important;
+  border-color: rgba(198,161,91,.12) !important;
+}
+
+.report-btn,
+.topic-picker-chevron,
+.cheat-section-chevron,
+.profile-snapshot-icon,
+.profile-quick-actions button > span,
+.profile-disclosure-arrow,
+.nmt-format-number,
+.nmt-hero-note > span,
+.nmt-review-number,
+.nmt-review-state,
+.nmt-match-row-number,
+.nmt-match-sheet-letter,
+.nmt-choice > span,
+.option-letter {
+  color: #D5B56E !important;
+  background: #30343A !important;
+  border-color: var(--line) !important;
+}
+
+.option,
+.nmt-choice,
+.nmt-match-row-v2,
+.nmt-match-sheet-option,
+.topic-item,
+.report-reason,
+.nmt-short-input-shell,
+.nmt-match-options-preview,
+.cheat-formula,
+.nmt-review-answer,
+.nmt-review-body,
+.solution-block,
+.ai-chip,
+.secondary-btn,
+.nmt-nav-btn,
+.cheat-pdf-btn,
+.nmt-inline-btn,
+.nmt-short-actions {
+  color: var(--ink) !important;
+  background: #2B2F35 !important;
+  border-color: var(--line) !important;
+  box-shadow: none !important;
+}
+
+.option:hover,
+.nmt-choice:hover,
+.nmt-match-row-v2:hover,
+.nmt-match-sheet-option:hover,
+.topic-item:hover,
+.report-reason:hover,
+.profile-quick-actions button:hover,
+.app-settings-row:hover {
+  background: #30343A !important;
+}
+
+.option.selected,
+.nmt-choice.selected,
+.nmt-match-row-v2.selected,
+.nmt-match-sheet-option.selected,
+.topic-item.active {
+  color: var(--ink) !important;
+  background: rgba(198,161,91,.13) !important;
+  border-color: rgba(198,161,91,.45) !important;
+  box-shadow: 0 0 0 2px rgba(198,161,91,.055) !important;
+}
+.option.selected .option-letter,
+.nmt-choice.selected > span,
+.nmt-match-sheet-option.selected .nmt-match-sheet-letter,
+.topic-item.active .topic-item-check {
+  color: #E1C780 !important;
+  background: rgba(198,161,91,.18) !important;
+}
+
+.option.correct,
+.nmt-review-answer.correct {
+  color: var(--ink) !important;
+  background: rgba(111,175,142,.12) !important;
+  border-color: rgba(111,175,142,.32) !important;
+}
+.option.correct .option-letter,
+.nmt-review-item.correct .nmt-review-state {
+  color: #9DD0B4 !important;
+  background: rgba(111,175,142,.16) !important;
+}
+.option.wrong {
+  color: var(--ink) !important;
+  background: rgba(212,118,118,.12) !important;
+  border-color: rgba(212,118,118,.30) !important;
+}
+.option.wrong .option-letter,
+.nmt-review-item.wrong .nmt-review-state {
+  color: #E6A0A0 !important;
+  background: rgba(212,118,118,.16) !important;
+}
+
+/* Explanation is intentionally calm, not a bright nested card. */
+.explanation {
+  color: var(--ink) !important;
+  background: #202329 !important;
+  border-color: var(--line) !important;
+}
+.explanation-title-icon {
+  color: #E0C27F !important;
+  background: rgba(198,161,91,.14) !important;
+}
+.explanation-step,
+.ai-help-result,
+.ai-help-title,
+.nmt-result-summary-copy,
+.cheat-formula-math,
+.profile-focus-topic small,
+.nmt-hero-note {
+  color: var(--ink-2) !important;
+}
+.ai-help { border-top-color: var(--line) !important; }
+.ai-chip { color: var(--ink-2) !important; }
+
+/* Buttons: gold primary, graphite secondary. */
+.primary-btn,
+.nmt-start-btn,
+.nmt-nav-btn.primary,
+.nmt-finish-btn,
+.nmt-inline-done {
+  color: #17191D !important;
+  background: linear-gradient(145deg, #D5B56E 0%, #C6A15B 100%) !important;
+  border: 1px solid rgba(229,200,137,.18) !important;
+  box-shadow: 0 10px 28px rgba(198,161,91,.16), inset 0 1px 0 rgba(255,255,255,.18) !important;
+}
+.secondary-btn,
+.nmt-nav-btn,
+.cheat-pdf-btn,
+.nmt-inline-btn {
+  color: var(--ink) !important;
+  background: #2B2F35 !important;
+  border: 1px solid var(--line-strong) !important;
+}
+
+/* Loading / skeleton uses graphite shimmer, never white. */
+.skeleton-line,
+.skeleton-option,
+.skeleton-status {
+  background: linear-gradient(90deg, #25282E 25%, #30343A 50%, #25282E 75%) !important;
+  background-size: 200% 100% !important;
+  color: var(--muted) !important;
+}
+.spinner {
+  border-color: rgba(198,161,91,.14) !important;
+  border-top-color: var(--gold-2) !important;
+}
+
+/* Cheatsheet */
+.cheat-section-btn { color: var(--ink) !important; }
+.cheat-section-icon,
+.cheat-mark,
+.nmt-page-mark,
+.profile-page-mark,
+.brand-mini-mark,
+.topic-picker-icon,
+.nmt-hero-emblem {
+  color: #DFC37F !important;
+  background: linear-gradient(145deg, #30343A, #25282E) !important;
+  border-color: var(--line) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.035), 0 10px 26px rgba(0,0,0,.18) !important;
+}
+.cheat-formula-label { color: var(--gold-2) !important; }
+.cheat-formula-math { color: var(--ink) !important; }
+
+/* Profile */
+.profile-avatar-new {
+  color: #E0C27F !important;
+  background: #30343A !important;
+  border-color: var(--line-strong) !important;
+}
+.profile-mini-badge {
+  color: #E0C27F !important;
+  background: rgba(198,161,91,.09) !important;
+  border-color: rgba(198,161,91,.14) !important;
+}
+.profile-metric-track,
+.topic-stat-bar-new {
+  background: #34383F !important;
+}
+.profile-metric-track span,
+.topic-stat-bar-new span {
+  background: linear-gradient(90deg, #A98448, #D5B56E) !important;
+}
+.profile-focus-card {
+  background:
+    radial-gradient(85% 120% at 0% 0%, rgba(198,161,91,.13), transparent 58%),
+    linear-gradient(145deg, #2B2F35, #24272D) !important;
+  border-color: rgba(198,161,91,.16) !important;
+}
+.profile-focus-kicker { color: var(--gold-2) !important; }
+.profile-focus-button {
+  color: #17191D !important;
+  background: linear-gradient(145deg, #D5B56E, #C6A15B) !important;
+}
+.profile-disclosure-body { border-top-color: var(--line) !important; }
+
+/* NMT */
+.nmt-facts-grid > div,
+.nmt-format-row,
+.nmt-palette-item,
+.nmt-match-options-preview {
+  color: var(--ink) !important;
+  background: #2B2F35 !important;
+  border-color: var(--line) !important;
+}
+.nmt-palette-item { color: var(--muted) !important; }
+.nmt-palette-item.answered {
+  color: #E0C27F !important;
+  background: rgba(198,161,91,.13) !important;
+  border-color: rgba(198,161,91,.22) !important;
+}
+.nmt-palette-item.current {
+  color: #17191D !important;
+  background: #C6A15B !important;
+  border-color: #C6A15B !important;
+}
+.nmt-question-meta span:last-child {
+  color: var(--muted) !important;
+  background: #30343A !important;
+}
+.nmt-short-wrap > label,
+.nmt-answer-help,
+.nmt-short-actions > span,
+.nmt-match-options-title,
+.nmt-short-input-shell > span {
+  color: var(--muted) !important;
+}
+.nmt-short-input { color: var(--ink) !important; }
+.nmt-short-input::placeholder { color: #696D72 !important; }
+.nmt-match-sheet,
+.topic-sheet,
+.report-panel,
+.nmt-finish-panel {
+  color: var(--ink) !important;
+  background: #202329 !important;
+  border-color: var(--line) !important;
+  box-shadow: 0 -22px 60px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.02) !important;
+}
+.nmt-match-sheet-handle,
+.topic-sheet-handle { background: #555A61 !important; }
+.nmt-match-sheet-close,
+.topic-sheet-close,
+.sheet-close {
+  color: var(--ink) !important;
+  background: #30343A !important;
+}
+
+/* Geometry/graphs are the only deliberate “paper” inset because generated SVGs
+   contain dark strokes. It is warm gray, never pure white, and always framed. */
+.nmt-diagram,
+.diagram,
+.visual-container,
+.question-visual {
+  background: #E7E1D7 !important;
+  border: 1px solid rgba(255,255,255,.10) !important;
+  box-shadow: inset 0 0 0 1px rgba(23,25,29,.05) !important;
+}
+
+/* Bottom navigation uses the same graphite hierarchy. */
+.liquid-bottom-nav,
+.liquid-nav-track {
+  background: rgba(30,33,38,.92) !important;
+  border-color: var(--line) !important;
+  box-shadow: 0 16px 42px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.035) !important;
+  backdrop-filter: blur(22px) saturate(125%) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(125%) !important;
+}
+.liquid-nav-item { color: #7E8288 !important; }
+.liquid-nav-item.active { color: #F5F2EA !important; }
+.liquid-nav-indicator {
+  background: linear-gradient(145deg, rgba(198,161,91,.14), #2B2F35) !important;
+  border-color: rgba(198,161,91,.16) !important;
+}
+
+/* Startup */
+.startup-screen {
+  background:
+    radial-gradient(75% 58% at 6% 0%, rgba(198,161,91,.16), transparent 62%),
+    radial-gradient(58% 48% at 100% 100%, rgba(91,99,114,.08), transparent 70%),
+    linear-gradient(160deg, #22252A 0%, #1B1D21 48%, #15171A 100%) !important;
+  color: var(--ink) !important;
+}
+.startup-logo-shell {
+  color: #E0C27F !important;
+  background: linear-gradient(145deg, #2F333A, #202329) !important;
+  border-color: rgba(198,161,91,.18) !important;
+  box-shadow: 0 26px 64px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.035), 0 0 0 9px rgba(198,161,91,.028) !important;
+}
+.startup-orbit { border-color: rgba(198,161,91,.13) !important; border-top-color: #D5B56E !important; }
+.startup-wordmark { color: #D5B56E !important; }
+.startup-title { color: #F5F2EA !important; }
+.startup-subtitle { color: #A9A7A1 !important; }
+.startup-note { color: #7F817F !important; }
+.startup-note-dot { background: #C6A15B !important; }
+
+/* Onboarding */
+.onboarding-overlay,
+.app-settings-screen {
+  color: var(--ink) !important;
+  background:
+    radial-gradient(72% 44% at 5% 0%, rgba(198,161,91,.12), transparent 64%),
+    radial-gradient(60% 38% at 100% 96%, rgba(91,99,114,.07), transparent 70%),
+    linear-gradient(165deg, #202329 0%, #1A1D21 50%, #15171A 100%) !important;
+}
+.onboarding-copy h3,
+.app-settings-head > strong,
+.app-settings-intro h2 { color: var(--ink) !important; }
+.onboarding-copy p,
+.onboarding-skip { color: var(--muted) !important; }
+.onboarding-eyebrow { color: var(--gold-2) !important; }
+.onboarding-progress span { background: #363A40 !important; }
+.onboarding-progress span.active { background: var(--gold) !important; }
+.onboarding-illustration svg { filter: drop-shadow(0 24px 44px rgba(0,0,0,.24)) !important; }
+
+/* Settings */
+.app-settings-back {
+  color: var(--ink) !important;
+  background: #25282E !important;
+  border-color: var(--line) !important;
+}
+.app-settings-row { color: var(--ink) !important; }
+.app-settings-row + .app-settings-row { border-top-color: var(--line) !important; }
+.app-settings-icon {
+  color: #D5B56E !important;
+  background: rgba(198,161,91,.11) !important;
+}
+.premium-switch { background: #3B3F46 !important; }
+.premium-switch.on { background: #C6A15B !important; }
+.premium-switch i { background: #F5F2EA !important; }
+.app-settings-version { color: #6F7378 !important; }
+
+/* Admin area follows exactly the same palette. */
+.admin-login-overlay { background: rgba(8,10,13,.72) !important; }
+.admin-login-card,
+.admin-panel-screen,
+.admin-live-card,
+.admin-analytics-card,
+.admin-mini-stats {
+  color: var(--ink) !important;
+  background: linear-gradient(155deg, #272A30 0%, #202329 100%) !important;
+  border-color: var(--line) !important;
+  box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255,255,255,.025) !important;
+}
+.admin-panel-screen {
+  background:
+    radial-gradient(72% 42% at 5% 0%, rgba(198,161,91,.11), transparent 64%),
+    linear-gradient(165deg, #202329 0%, #191C20 52%, #141619 100%) !important;
+}
+.admin-stat-grid article {
+  color: var(--ink) !important;
+  background: #25282E !important;
+  border: 1px solid var(--line) !important;
+}
+.admin-stat-grid strong,
+.admin-live-card strong,
+.admin-card-head strong,
+.admin-mini-stats strong,
+.admin-panel-head { color: var(--ink) !important; }
+.admin-stat-grid span,
+.admin-live-card small,
+.admin-live-card p,
+.admin-chart-value,
+.admin-chart-column small { color: var(--muted) !important; }
+.admin-login-mark {
+  color: #17191D !important;
+  background: linear-gradient(145deg, #D5B56E, #C6A15B) !important;
+}
+.admin-login-card input {
+  color: var(--ink) !important;
+  background: #2B2F35 !important;
+  border-color: var(--line-strong) !important;
+}
+.admin-panel-back,
+.admin-panel-refresh,
+.admin-login-close {
+  color: var(--ink) !important;
+  background: #2B2F35 !important;
+  border-color: var(--line) !important;
+}
+.admin-chart-rail { background: #30343A !important; }
+.admin-chart-rail span { background: linear-gradient(180deg, #D5B56E, #A98448) !important; }
+
+/* Error / toast */
+.error-box,
+.nmt-error-card,
+.admin-error-card { color: #E3A1A1 !important; }
+.toast {
+  color: var(--ink) !important;
+  background: #30343A !important;
+  border: 1px solid var(--line) !important;
+}
+
+/* KaTeX inherits the same readable warm text. */
+.katex,
+.katex-display,
+.question-text,
+.nmt-question-text,
+.nmt-review-question { color: var(--ink) !important; }
+
+/* Never let the previous light-theme fallback repaint the app. */
+body.telegram-dark {
+  --bg: #17191D !important;
+  --bg-2: #1E2126 !important;
+  --surface: rgba(37,40,46,.96) !important;
+  --surface-strong: #25282E !important;
+  --surface-soft: #2B2F35 !important;
+  --surface-muted: #30343A !important;
+  --ink: #F5F2EA !important;
+  --ink-2: #D7D3CA !important;
+  --muted: #A9A7A1 !important;
+  --muted-2: #7F817F !important;
+}
+
+/* v1.0.3 — final consistency pass for remaining legacy light surfaces */
+.training-diagram {
+  background: #E7E1D7 !important;
+  border-color: rgba(255,255,255,.10) !important;
+  box-shadow: inset 0 0 0 1px rgba(23,25,29,.05) !important;
+}
+.solution-topic {
+  color: #D5B56E !important;
+  background: rgba(198,161,91,.10) !important;
+}
+.solution-block,
+.solution-method {
+  color: var(--ink) !important;
+  background: #202329 !important;
+  border-color: var(--line) !important;
+}
+.solution-kicker { color: var(--gold-2) !important; }
+.solution-text { color: var(--ink-2) !important; }
+.solution-answer {
+  color: var(--ink) !important;
+  background: rgba(111,175,142,.12) !important;
+  border-color: rgba(111,175,142,.24) !important;
+}
+.solution-answer span { color: #9ABEA9 !important; }
+.solution-answer strong { color: #B8DEC8 !important; }
+
+.streak,
+.profile-streak-pill,
+.profile-setting-icon,
+.profile-empty-state,
+.nmt-format-card,
+.nmt-exam-topbar,
+.nmt-exam-tools button,
+.nmt-palette,
+.nmt-resume-card {
+  color: var(--ink) !important;
+  background: linear-gradient(155deg, #272A30 0%, #23262B 100%) !important;
+  border-color: var(--line) !important;
+  box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255,255,255,.025) !important;
+}
+.profile-streak-pill,
+.streak { color: #E5CB8D !important; }
+.profile-setting-icon { color: var(--gold-2) !important; }
+.profile-empty-state { color: var(--muted) !important; }
+
+.nmt-format-row { border-top-color: var(--line) !important; }
+.nmt-format-row > i,
+.nmt-match-row-action,
+.nmt-match-sheet-check,
+.profile-quick-actions button i { color: var(--gold-2) !important; }
+.nmt-resume-copy span { color: var(--muted) !important; }
+.nmt-inline-btn { color: var(--ink) !important; }
+.nmt-exam-tools button {
+  color: var(--ink-2) !important;
+  background: #25282E !important;
+}
+.nmt-progress-track { background: #30343A !important; }
+.nmt-progress-track span { background: linear-gradient(90deg, #A98448, #D5B56E) !important; }
+.nmt-palette { background: #202329 !important; }
+
+.topic-sheet-title,
+.report-head h3,
+.nmt-finish-panel h3,
+.nmt-match-sheet-head strong { color: var(--ink) !important; }
+.topic-item-title,
+.topic-item-subtitle { color: inherit; }
+.report-overlay,
+.topic-overlay,
+.nmt-finish-overlay,
+.nmt-match-overlay { background: rgba(8,10,13,.62) !important; }
+
+/* Keep every non-visual SVG/icon in the brand language. */
+.brand-mini-mark svg,
+.cheat-mark svg,
+.profile-page-mark svg,
+.nmt-page-mark svg,
+.profile-setting-icon svg,
+.app-settings-icon svg { stroke: currentColor !important; }

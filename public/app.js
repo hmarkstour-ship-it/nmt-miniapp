@@ -3,13 +3,13 @@ const tg = window.Telegram?.WebApp;
   tg?.expand();
 
   function syncTelegramTheme() {
-    // v1.0.2: fixed branded theme. Telegram/system dark mode no longer changes the UI.
-    document.documentElement.style.colorScheme = 'light';
+    // v1.0.3: fixed Obsidian Gold theme. Telegram/system theme never recolors the app.
+    document.documentElement.style.colorScheme = 'dark';
     document.body?.classList.remove('telegram-dark');
     document.body?.classList.add('fixed-premium-theme');
-    try { tg?.setHeaderColor?.('#1b1e23'); } catch (_) {}
-    try { tg?.setBackgroundColor?.('#1b1e23'); } catch (_) {}
-    try { tg?.setBottomBarColor?.('#1b1e23'); } catch (_) {}
+    try { tg?.setHeaderColor?.('#17191d'); } catch (_) {}
+    try { tg?.setBackgroundColor?.('#17191d'); } catch (_) {}
+    try { tg?.setBottomBarColor?.('#17191d'); } catch (_) {}
   }
   syncTelegramTheme();
   tg?.onEvent?.('themeChanged', syncTelegramTheme);
@@ -20,8 +20,8 @@ const tg = window.Telegram?.WebApp;
   const FETCH_TIMEOUT_MS = 30000;
   const QUESTION_TIMEOUT_MS = 55000;
   const BACKEND_WAKE_MAX_MS = 75000;
-  const BUILD_VERSION = 'launch-polish-v1.0.2';
-  const APP_VERSION = '1.0.2';
+  const BUILD_VERSION = 'launch-polish-v1.0.3';
+  const APP_VERSION = '1.0.3';
   console.log('[NMT build]', BUILD_VERSION);
 
   async function fetchWithTimeout(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS) {
@@ -263,41 +263,41 @@ const tg = window.Telegram?.WebApp;
     const illustrations = [
       `<svg viewBox="0 0 360 280" role="img" aria-label="Нескінченні змішані тести">
         <defs>
-          <linearGradient id="obGoldA" x1="0" x2="1"><stop stop-color="#b8924f"/><stop offset="1" stop-color="#d6b36a"/></linearGradient>
+          <linearGradient id="obGoldA" x1="0" x2="1"><stop stop-color="#C6A15B"/><stop offset="1" stop-color="#D5B56E"/></linearGradient>
         </defs>
-        <rect x="48" y="20" width="264" height="240" rx="34" fill="#fffdfa" stroke="rgba(53,49,43,.10)"/>
+        <rect x="48" y="20" width="264" height="240" rx="34" fill="#25282E" stroke="rgba(255,255,255,.08)"/>
         <rect x="76" y="50" width="90" height="16" rx="8" fill="rgba(214,179,106,.18)"/>
-        <rect x="76" y="86" width="194" height="12" rx="6" fill="#ded8cd"/>
-        <rect x="76" y="108" width="160" height="12" rx="6" fill="#ebe5da"/>
-        <rect x="76" y="148" width="208" height="44" rx="15" fill="#f7f2e9" stroke="rgba(53,49,43,.08)"/>
+        <rect x="76" y="86" width="194" height="12" rx="6" fill="#555960"/>
+        <rect x="76" y="108" width="160" height="12" rx="6" fill="#3A3E45"/>
+        <rect x="76" y="148" width="208" height="44" rx="15" fill="#2B2F35" stroke="rgba(255,255,255,.07)"/>
         <circle cx="100" cy="170" r="10" fill="url(#obGoldA)"/>
-        <rect x="121" y="164" width="118" height="12" rx="6" fill="#d9d2c6"/>
-        <path d="M118 221h124" stroke="#e5dfd3" stroke-width="12" stroke-linecap="round"/>
+        <rect x="121" y="164" width="118" height="12" rx="6" fill="#62666D"/>
+        <path d="M118 221h124" stroke="#3E4249" stroke-width="12" stroke-linecap="round"/>
         <path d="M118 221h78" stroke="url(#obGoldA)" stroke-width="12" stroke-linecap="round"/>
         <circle cx="280" cy="50" r="26" fill="rgba(214,179,106,.13)"/>
-        <path d="M269 50h22M280 39v22" stroke="#a67f3f" stroke-width="4" stroke-linecap="round"/>
+        <path d="M269 50h22M280 39v22" stroke="#C6A15B" stroke-width="4" stroke-linecap="round"/>
       </svg>`,
       `<svg viewBox="0 0 360 280" role="img" aria-label="Коротке пояснення по кроках">
-        <rect x="43" y="23" width="274" height="234" rx="34" fill="#fffdfa" stroke="rgba(53,49,43,.10)"/>
-        <circle cx="87" cy="74" r="17" fill="rgba(214,179,106,.16)"/><text x="87" y="80" text-anchor="middle" font-size="16" font-family="Arial" font-weight="700" fill="#9b7438">1</text>
-        <rect x="119" y="67" width="150" height="13" rx="6.5" fill="#ddd7cc"/>
-        <circle cx="87" cy="128" r="17" fill="rgba(214,179,106,.16)"/><text x="87" y="134" text-anchor="middle" font-size="16" font-family="Arial" font-weight="700" fill="#9b7438">2</text>
-        <rect x="119" y="121" width="120" height="13" rx="6.5" fill="#ddd7cc"/>
-        <circle cx="87" cy="182" r="17" fill="rgba(214,179,106,.16)"/><text x="87" y="188" text-anchor="middle" font-size="16" font-family="Arial" font-weight="700" fill="#9b7438">3</text>
-        <rect x="119" y="175" width="165" height="13" rx="6.5" fill="#ddd7cc"/>
-        <rect x="75" y="218" width="210" height="18" rx="9" fill="#edf5f0"/>
-        <path d="M253 51l10 10 20-25" fill="none" stroke="#47795f" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+        <rect x="43" y="23" width="274" height="234" rx="34" fill="#25282E" stroke="rgba(255,255,255,.08)"/>
+        <circle cx="87" cy="74" r="17" fill="rgba(214,179,106,.16)"/><text x="87" y="80" text-anchor="middle" font-size="16" font-family="Arial" font-weight="700" fill="#D5B56E">1</text>
+        <rect x="119" y="67" width="150" height="13" rx="6.5" fill="#565A61"/>
+        <circle cx="87" cy="128" r="17" fill="rgba(214,179,106,.16)"/><text x="87" y="134" text-anchor="middle" font-size="16" font-family="Arial" font-weight="700" fill="#D5B56E">2</text>
+        <rect x="119" y="121" width="120" height="13" rx="6.5" fill="#565A61"/>
+        <circle cx="87" cy="182" r="17" fill="rgba(214,179,106,.16)"/><text x="87" y="188" text-anchor="middle" font-size="16" font-family="Arial" font-weight="700" fill="#D5B56E">3</text>
+        <rect x="119" y="175" width="165" height="13" rx="6.5" fill="#565A61"/>
+        <rect x="75" y="218" width="210" height="18" rx="9" fill="#23332C"/>
+        <path d="M253 51l10 10 20-25" fill="none" stroke="#6FAF8E" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>`,
       `<svg viewBox="0 0 360 280" role="img" aria-label="Пробний НМТ">
-        <rect x="49" y="20" width="262" height="240" rx="34" fill="#fffdfa" stroke="rgba(53,49,43,.10)"/>
+        <rect x="49" y="20" width="262" height="240" rx="34" fill="#25282E" stroke="rgba(255,255,255,.08)"/>
         <rect x="77" y="50" width="86" height="16" rx="8" fill="rgba(214,179,106,.18)"/>
-        <circle cx="260" cy="62" r="25" fill="#f7f2e9"/>
-        <path d="M260 49v14l10 6" fill="none" stroke="#a67f3f" stroke-width="4" stroke-linecap="round"/>
-        <rect x="77" y="99" width="205" height="12" rx="6" fill="#dcd6ca"/>
-        <rect x="77" y="122" width="174" height="12" rx="6" fill="#e9e3d8"/>
-        <g fill="#f7f2e9" stroke="rgba(53,49,43,.08)"><rect x="77" y="157" width="92" height="42" rx="13"/><rect x="190" y="157" width="92" height="42" rx="13"/></g>
-        <rect x="77" y="219" width="205" height="16" rx="8" fill="#eee7da"/>
-        <rect x="77" y="219" width="134" height="16" rx="8" fill="#b8924f"/>
+        <circle cx="260" cy="62" r="25" fill="#2B2F35"/>
+        <path d="M260 49v14l10 6" fill="none" stroke="#C6A15B" stroke-width="4" stroke-linecap="round"/>
+        <rect x="77" y="99" width="205" height="12" rx="6" fill="#565A61"/>
+        <rect x="77" y="122" width="174" height="12" rx="6" fill="#3D4148"/>
+        <g fill="#2B2F35" stroke="rgba(255,255,255,.07)"><rect x="77" y="157" width="92" height="42" rx="13"/><rect x="190" y="157" width="92" height="42" rx="13"/></g>
+        <rect x="77" y="219" width="205" height="16" rx="8" fill="#3A3E45"/>
+        <rect x="77" y="219" width="134" height="16" rx="8" fill="#C6A15B"/>
       </svg>`
     ];
     return illustrations[index] || illustrations[0];
