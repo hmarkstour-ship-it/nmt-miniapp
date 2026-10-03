@@ -3,12 +3,13 @@ const tg = window.Telegram?.WebApp;
   tg?.expand();
 
   function syncTelegramTheme() {
-    // v1.0.1: одна фіксована світла тема незалежно від Telegram.
+    // v1.0.2: fixed branded theme. Telegram/system dark mode no longer changes the UI.
     document.documentElement.style.colorScheme = 'light';
     document.body?.classList.remove('telegram-dark');
-    try { tg?.setHeaderColor?.('#f2eee6'); } catch (_) {}
-    try { tg?.setBackgroundColor?.('#f2eee6'); } catch (_) {}
-    try { tg?.setBottomBarColor?.('#f2eee6'); } catch (_) {}
+    document.body?.classList.add('fixed-premium-theme');
+    try { tg?.setHeaderColor?.('#1b1e23'); } catch (_) {}
+    try { tg?.setBackgroundColor?.('#1b1e23'); } catch (_) {}
+    try { tg?.setBottomBarColor?.('#1b1e23'); } catch (_) {}
   }
   syncTelegramTheme();
   tg?.onEvent?.('themeChanged', syncTelegramTheme);
@@ -19,8 +20,8 @@ const tg = window.Telegram?.WebApp;
   const FETCH_TIMEOUT_MS = 30000;
   const QUESTION_TIMEOUT_MS = 55000;
   const BACKEND_WAKE_MAX_MS = 75000;
-  const BUILD_VERSION = 'launch-polish-v1.0.1';
-  const APP_VERSION = '1.0.1';
+  const BUILD_VERSION = 'launch-polish-v1.0.2';
+  const APP_VERSION = '1.0.2';
   console.log('[NMT build]', BUILD_VERSION);
 
   async function fetchWithTimeout(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS) {
@@ -120,7 +121,6 @@ const tg = window.Telegram?.WebApp;
   const cheatList = document.getElementById('cheatList');
   const openOfficialPdf = document.getElementById('openOfficialPdf');
   const profileContent = document.getElementById('profileContent');
-  const profileHelpBtn = document.getElementById('profileHelpBtn');
   const onboardingOverlay = document.getElementById('onboardingOverlay');
   const onboardingStage = document.getElementById('onboardingStage');
   const onboardingProgress = document.getElementById('onboardingProgress');
@@ -357,6 +357,261 @@ const tg = window.Telegram?.WebApp;
     }
   }
 
+  const ACTIVITY_SESSION_ID = (() => {
+    try {
+      let id = sessionStorage.getItem('nmt_activity_session_v1');
+      if (!id) {
+        id = window.crypto?.randomUUID?.() || `sess_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+        sessionStorage.setItem('nmt_activity_session_v1', id);
+      }
+      return id;
+    } catch (_) {
+      return `sess_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    }
+  })();
+  let activityTimer = null;
+  let adminRefreshTimer = null;
+
+  async function sendActivityHeartbeat() {
+    const initData = tg?.initData || '';
+    if (!initData) return false;
+    try {
+      const res = await fetchWithTimeout(`${API_BASE}/api/activity/heartbeat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData, sessionId: ACTIVITY_SESSION_ID }),
+      }, 9000);
+      return res.ok;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function startActivityTracking() {
+    if (activityTimer) return;
+    sendActivityHeartbeat();
+    activityTimer = setInterval(() => {
+      if (document.visibilityState === 'visible') sendActivityHeartbeat();
+    }, 45000);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') sendActivityHeartbeat();
+    });
+  }
+
+  function getAdminToken() {
+    try { return sessionStorage.getItem('nmt_admin_token_v1') || ''; } catch (_) { return ''; }
+  }
+
+  function setAdminToken(token) {
+    try {
+      if (token) sessionStorage.setItem('nmt_admin_token_v1', token);
+      else sessionStorage.removeItem('nmt_admin_token_v1');
+    } catch (_) {}
+  }
+
+  function closeAdminPanel() {
+    if (adminRefreshTimer) clearInterval(adminRefreshTimer);
+    adminRefreshTimer = null;
+    document.getElementById('adminPanelScreen')?.remove();
+    document.getElementById('adminLoginOverlay')?.remove();
+    if (!document.getElementById('appSettingsScreen')) document.body.classList.remove('modal-open');
+  }
+
+  function formatAdminNumber(value) {
+    return new Intl.NumberFormat('uk-UA').format(Number(value) || 0);
+  }
+
+  function formatAdminMinutes(value) {
+    const minutes = Number(value) || 0;
+    if (minutes < 60) return `${minutes.toFixed(minutes < 10 ? 1 : 0)} хв`;
+    const h = Math.floor(minutes / 60);
+    const m = Math.round(minutes % 60);
+    return `${h} год ${m} хв`;
+  }
+
+  function adminChartMarkup(daily = []) {
+    const points = Array.isArray(daily) ? daily : [];
+    const max = Math.max(1, ...points.map((x) => Number(x.users) || 0));
+    return points.map((item, index) => {
+      const value = Number(item.users) || 0;
+      const height = Math.max(value ? 8 : 2, Math.round((value / max) * 100));
+      const date = new Date(`${item.day}T12:00:00`);
+      const label = index % 3 === 0 || index === points.length - 1
+        ? new Intl.DateTimeFormat('uk-UA', { day: '2-digit', month: '2-digit' }).format(date)
+        : '';
+      return `<div class="admin-chart-column" title="${escapeHtml(item.day)} · ${value}">
+        <div class="admin-chart-value">${value || ''}</div>
+        <div class="admin-chart-rail"><span style="height:${height}%"></span></div>
+        <small>${escapeHtml(label)}</small>
+      </div>`;
+    }).join('');
+  }
+
+  async function fetchAdminStats(token = getAdminToken()) {
+    const res = await fetchWithTimeout(`${API_BASE}/api/admin/stats`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store',
+    }, 12000);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      if (res.status === 401) setAdminToken('');
+      throw new Error(data.error || 'Не вдалося завантажити адмін-статистику.');
+    }
+    return data;
+  }
+
+  async function refreshAdminPanel(root, { quiet = false } = {}) {
+    const content = root?.querySelector('[data-admin-content]');
+    const updated = root?.querySelector('[data-admin-updated]');
+    if (!content) return;
+    if (!quiet) content.classList.add('loading');
+    try {
+      const data = await fetchAdminStats();
+      const m = data.summary || {};
+      content.innerHTML = `
+        <div class="admin-live-card">
+          <span class="admin-live-dot"></span>
+          <div><strong>${formatAdminNumber(m.active_now)}</strong><small>активні зараз</small></div>
+          <p>Онлайн = активність за останні 2 хвилини</p>
+        </div>
+        <div class="admin-stat-grid">
+          <article><strong>${formatAdminNumber(m.total_users)}</strong><span>всього користувачів</span></article>
+          <article><strong>${formatAdminNumber(m.active_today)}</strong><span>за сьогодні</span></article>
+          <article><strong>${formatAdminNumber(m.active_7d)}</strong><span>за 7 днів</span></article>
+          <article><strong>${formatAdminNumber(m.active_30d)}</strong><span>за 30 днів</span></article>
+          <article><strong>${formatAdminMinutes(m.avg_session_minutes)}</strong><span>середня сесія</span></article>
+          <article><strong>+${formatAdminNumber(m.new_users_7d)}</strong><span>нових за 7 днів</span></article>
+        </div>
+        <section class="admin-analytics-card">
+          <div class="admin-card-head"><div><small>АКТИВНІСТЬ</small><strong>Останні 14 днів</strong></div></div>
+          <div class="admin-chart">${adminChartMarkup(data.daily)}</div>
+        </section>
+        <section class="admin-mini-stats">
+          <div><strong>${formatAdminNumber(m.total_sessions)}</strong><span>сесій загалом</span></div>
+          <div><strong>${formatAdminNumber(m.answers_7d)}</strong><span>відповідей за 7 днів</span></div>
+          <div><strong>${formatAdminNumber(m.finished_nmt_30d)}</strong><span>НМТ завершено за 30 днів</span></div>
+        </section>`;
+      if (updated) updated.textContent = `Оновлено ${new Intl.DateTimeFormat('uk-UA', { hour: '2-digit', minute: '2-digit' }).format(new Date(data.generated_at || Date.now()))}`;
+    } catch (err) {
+      if (!getAdminToken()) {
+        closeAdminPanel();
+        openAdminLogin();
+        return;
+      }
+      content.innerHTML = `<div class="admin-error-card">${escapeHtml(err.message)}</div>`;
+    } finally {
+      content.classList.remove('loading');
+    }
+  }
+
+  function openAdminPanel() {
+    document.getElementById('adminLoginOverlay')?.remove();
+    document.getElementById('adminPanelScreen')?.remove();
+    if (!getAdminToken()) return openAdminLogin();
+    document.body.insertAdjacentHTML('beforeend', `
+      <section class="admin-panel-screen" id="adminPanelScreen" role="dialog" aria-modal="true" aria-label="Адмін-панель">
+        <div class="admin-panel-shell">
+          <header class="admin-panel-head">
+            <button type="button" class="admin-panel-back" data-admin-close aria-label="Закрити">←</button>
+            <div><small>NMT CONTROL</small><strong>Адмін-панель</strong></div>
+            <button type="button" class="admin-panel-refresh" data-admin-refresh aria-label="Оновити">↻</button>
+          </header>
+          <div class="admin-panel-meta"><span data-admin-updated>Завантаження…</span><span>v${APP_VERSION}</span></div>
+          <div class="admin-panel-content" data-admin-content><div class="admin-panel-loader"><span></span><p>Завантажуємо статистику…</p></div></div>
+        </div>
+      </section>`);
+    document.body.classList.add('modal-open');
+    const root = document.getElementById('adminPanelScreen');
+    root?.querySelector('[data-admin-close]')?.addEventListener('click', closeAdminPanel);
+    root?.querySelector('[data-admin-refresh]')?.addEventListener('click', () => {
+      window.NMTUX?.playSound?.('tap');
+      refreshAdminPanel(root);
+    });
+    refreshAdminPanel(root);
+    if (adminRefreshTimer) clearInterval(adminRefreshTimer);
+    adminRefreshTimer = setInterval(() => {
+      if (document.visibilityState === 'visible' && document.getElementById('adminPanelScreen')) refreshAdminPanel(root, { quiet: true });
+    }, 30000);
+    window.NMTUX?.haptic?.('light');
+  }
+
+  function openAdminLogin() {
+    document.getElementById('adminLoginOverlay')?.remove();
+    document.body.insertAdjacentHTML('beforeend', `
+      <div class="admin-login-overlay" id="adminLoginOverlay" role="dialog" aria-modal="true" aria-label="Вхід в адмін-панель">
+        <section class="admin-login-card">
+          <button type="button" class="admin-login-close" data-admin-login-close aria-label="Закрити">×</button>
+          <div class="admin-login-mark">N</div>
+          <small>ПРИХОВАНИЙ РЕЖИМ</small>
+          <h3>Адмін-панель</h3>
+          <p>Введи пароль, щоб відкрити статистику застосунку.</p>
+          <form data-admin-login-form>
+            <input type="password" inputmode="numeric" autocomplete="current-password" maxlength="16" placeholder="Пароль" aria-label="Пароль адмін-панелі" required>
+            <button class="primary-btn" type="submit">Увійти</button>
+          </form>
+          <div class="admin-login-error" data-admin-login-error></div>
+        </section>
+      </div>`);
+    document.body.classList.add('modal-open');
+    const overlay = document.getElementById('adminLoginOverlay');
+    const input = overlay?.querySelector('input');
+    const form = overlay?.querySelector('[data-admin-login-form]');
+    const error = overlay?.querySelector('[data-admin-login-error]');
+    overlay?.querySelector('[data-admin-login-close]')?.addEventListener('click', () => {
+      overlay.remove();
+      if (!document.getElementById('appSettingsScreen')) document.body.classList.remove('modal-open');
+    });
+    overlay?.addEventListener('click', (event) => {
+      if (event.target === overlay) overlay.querySelector('[data-admin-login-close]')?.click();
+    });
+    form?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const button = form.querySelector('button');
+      const password = input?.value || '';
+      if (!password) return;
+      button.disabled = true;
+      if (error) error.textContent = '';
+      try {
+        const res = await fetchWithTimeout(`${API_BASE}/api/admin/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password, initData: tg?.initData || '' }),
+        }, 12000);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.token) throw new Error(data.error || 'Не вдалося увійти.');
+        setAdminToken(data.token);
+        window.NMTUX?.playSound?.('confirm');
+        window.NMTUX?.haptic?.('success');
+        openAdminPanel();
+      } catch (err) {
+        if (error) error.textContent = err.message;
+        window.NMTUX?.haptic?.('error');
+      } finally {
+        button.disabled = false;
+      }
+    });
+    setTimeout(() => input?.focus(), 160);
+  }
+
+  function bindSecretAdminEntry(root) {
+    const version = root?.querySelector('[data-version-secret]');
+    if (!version) return;
+    let taps = 0;
+    let resetTimer = null;
+    version.addEventListener('click', () => {
+      taps += 1;
+      clearTimeout(resetTimer);
+      resetTimer = setTimeout(() => { taps = 0; }, 2500);
+      window.NMTUX?.playSound?.('tap');
+      if (taps < 5) return;
+      taps = 0;
+      clearTimeout(resetTimer);
+      window.NMTUX?.haptic?.('selection');
+      if (getAdminToken()) openAdminPanel();
+      else openAdminLogin();
+    });
+  }
+
   function openSettingsScreen() {
     document.getElementById('appSettingsScreen')?.remove();
     const soundEnabled = window.NMTUX?.getSoundEnabled?.() !== false;
@@ -377,7 +632,7 @@ const tg = window.Telegram?.WebApp;
           <div class="app-settings-group">
             <button class="app-settings-row" type="button" data-settings-sound>
               <span class="app-settings-icon" aria-hidden="true">♪</span>
-              <span class="app-settings-copy"><strong>Звуки</strong><small>Легкий звук правильної, неправильної відповіді та завершення НМТ</small></span>
+              <span class="app-settings-copy"><strong>Звуки</strong><small>Тихі звуки відповідей, вибору в НМТ та завершення тесту</small></span>
               <span class="premium-switch ${soundEnabled ? 'on' : ''}" data-settings-sound-switch aria-hidden="true"><i></i></span>
             </button>
           </div>
@@ -395,26 +650,34 @@ const tg = window.Telegram?.WebApp;
             </button>
           </div>
 
-          <div class="app-settings-version">NMT Math · v${APP_VERSION}</div>
+          <button class="app-settings-version" type="button" data-version-secret>NMT Math · v${APP_VERSION}</button>
         </div>
       </section>`);
     document.body.classList.add('modal-open');
 
     const root = document.getElementById('appSettingsScreen');
-    root?.querySelector('[data-settings-back]')?.addEventListener('click', closeSettingsScreen);
+    root?.querySelector('[data-settings-back]')?.addEventListener('click', () => {
+      window.NMTUX?.playSound?.('tap');
+      closeSettingsScreen();
+    });
     root?.querySelector('[data-settings-sound]')?.addEventListener('click', () => {
       const current = window.NMTUX?.getSoundEnabled?.() !== false;
       const next = !current;
       window.NMTUX?.setSoundEnabled?.(next);
       root.querySelector('[data-settings-sound-switch]')?.classList.toggle('on', next);
-      if (next) window.NMTUX?.playSound?.('correct');
+      if (next) window.NMTUX?.playSound?.('select');
       window.NMTUX?.haptic?.('selection');
     });
     root?.querySelector('[data-settings-tutorial]')?.addEventListener('click', () => {
+      window.NMTUX?.playSound?.('tap');
       closeSettingsScreen();
       setTimeout(() => openOnboarding({ manual: true }), 70);
     });
-    root?.querySelector('[data-settings-report]')?.addEventListener('click', openTelegramSupport);
+    root?.querySelector('[data-settings-report]')?.addEventListener('click', () => {
+      window.NMTUX?.playSound?.('tap');
+      openTelegramSupport();
+    });
+    bindSecretAdminEntry(root);
     window.NMTUX?.haptic?.('light');
   }
 
@@ -1411,7 +1674,10 @@ const tg = window.Telegram?.WebApp;
   }, { passive: false });
 
   navItems.forEach((btn) => {
-    btn.addEventListener('click', () => switchView(btn.dataset.view || 'tests'));
+    btn.addEventListener('click', () => {
+      window.NMTUX?.playSound?.('tap');
+      switchView(btn.dataset.view || 'tests');
+    });
   });
 
   window.addEventListener('resize', () => updateNavIndicator(state.currentView), { passive: true });
@@ -1421,15 +1687,16 @@ const tg = window.Telegram?.WebApp;
     btn.addEventListener('click', () => submitReport(btn.dataset.reason || 'Інше'));
   });
 
-  profileHelpBtn?.addEventListener('click', () => openOnboarding({ manual: true }));
   onboardingSkip?.addEventListener('click', () => closeOnboarding({ complete: true }));
   onboardingBack?.addEventListener('click', () => {
+    window.NMTUX?.playSound?.('tap');
     onboardingIndex = Math.max(0, onboardingIndex - 1);
     renderOnboardingSlide();
     window.NMTUX?.haptic?.('selection');
   });
   onboardingNext?.addEventListener('click', () => {
     window.NMTUX?.unlockAudio?.();
+    window.NMTUX?.playSound?.('tap');
     if (onboardingIndex >= ONBOARDING_SLIDES.length - 1) {
       if (!onboardingManual) markOnboardingDone();
       closeOnboarding({ complete: false });
@@ -1463,11 +1730,13 @@ const tg = window.Telegram?.WebApp;
       // Static Site відкривається одразу, а тут у фоні будимо Web Service.
       // Поки він прокидається, користувач бачить наш startup screen, а не Render.
       await waitForBackend();
+      startActivityTracking();
 
       await loadTopics();
 
       // Спочатку намагаємось підтягнути збережений прогрес
       const progressLoaded = await loadProgress();
+      sendActivityHeartbeat();
 
       // Одним запитом беремо відразу кілька завдань; перше показуємо, решта лишаються в буфері.
       await ensureQuestionQueue(4);

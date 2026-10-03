@@ -50,17 +50,26 @@
 
   function playSound(kind) {
     if (!getSoundEnabled()) return;
-    // Deliberately subtle: feedback, not a mobile game soundtrack.
-    if (kind === 'correct') {
-      tone(660, 0, 0.10, 0.030, 'sine');
-      tone(880, 0.075, 0.13, 0.024, 'sine');
+    // v1.0.2: very soft UI sounds. Short, warm and deliberately quiet.
+    if (kind === 'tap') {
+      tone(430, 0, 0.038, 0.007, 'sine');
+      tone(620, 0.015, 0.032, 0.0045, 'sine');
+    } else if (kind === 'select') {
+      tone(560, 0, 0.050, 0.010, 'sine');
+      tone(760, 0.028, 0.055, 0.0065, 'sine');
+    } else if (kind === 'confirm') {
+      tone(520, 0, 0.055, 0.010, 'sine');
+      tone(700, 0.045, 0.065, 0.007, 'sine');
+    } else if (kind === 'correct') {
+      tone(660, 0, 0.09, 0.022, 'sine');
+      tone(880, 0.07, 0.12, 0.017, 'sine');
     } else if (kind === 'wrong') {
-      tone(300, 0, 0.12, 0.025, 'sine');
-      tone(240, 0.08, 0.12, 0.018, 'sine');
+      tone(300, 0, 0.10, 0.018, 'sine');
+      tone(240, 0.07, 0.10, 0.013, 'sine');
     } else if (kind === 'finish') {
-      tone(523.25, 0, 0.11, 0.025, 'sine');
-      tone(659.25, 0.09, 0.12, 0.026, 'sine');
-      tone(783.99, 0.19, 0.17, 0.028, 'sine');
+      tone(523.25, 0, 0.10, 0.019, 'sine');
+      tone(659.25, 0.08, 0.11, 0.020, 'sine');
+      tone(783.99, 0.17, 0.15, 0.021, 'sine');
     }
   }
 

@@ -33,7 +33,11 @@ export function validateRenderedSvg(markup, spec = null) {
   }
   if (/\b(?:NaN|Infinity|undefined|null)\b/.test(markup)) errors.push('svg_contains_invalid_numeric_value');
   if (/<script\b|javascript:|\son\w+\s*=/i.test(markup)) errors.push('svg_contains_unsafe_markup');
-  if ((spec?.type === 'triangle_sides' || spec?.type === 'trapezoid' || spec?.type === 'parallel_lines' || spec?.type === 'parallelogram_diagonal' || spec?.type === 'circle_angle') && !/\bA\d/.test(markup)) {
+  const expectsAngleArc = spec?.type === 'parallel_lines'
+    || spec?.type === 'parallelogram_diagonal'
+    || spec?.type === 'circle_angle'
+    || ((spec?.type === 'triangle_sides' || spec?.type === 'trapezoid') && spec?.data?.angle != null);
+  if (expectsAngleArc && !/\bA\d/.test(markup)) {
     errors.push('angle_visual_missing_arc');
   }
   return { ok:errors.length===0, errors };

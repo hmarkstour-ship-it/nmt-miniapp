@@ -2206,3 +2206,406 @@ body.telegram-dark {
   .onboarding-stage h3 { font-size: 27px !important; }
   .onboarding-stage p { font-size: 14px !important; }
 }
+
+/* =========================================================
+   v1.0.2 — graphite launch polish
+   Fixed branded theme: no Telegram/system dark-mode switching.
+   Dark chrome + warm light content cards.
+   ========================================================= */
+:root {
+  color-scheme: light !important;
+  --app-shell-1: #2a2d33;
+  --app-shell-2: #1f2227;
+  --app-shell-3: #17191d;
+  --app-shell-text: #f5f1e9;
+  --app-shell-muted: rgba(245,241,233,.58);
+  --app-shell-line: rgba(255,255,255,.08);
+  --app-gold: #d4b16a;
+  --app-gold-2: #b88c43;
+}
+
+html { background: #15171b !important; }
+body.fixed-premium-theme,
+body {
+  background:
+    radial-gradient(80% 48% at 8% -2%, rgba(210,176,107,.16), transparent 64%),
+    radial-gradient(72% 46% at 100% 16%, rgba(101,108,123,.12), transparent 68%),
+    linear-gradient(160deg, var(--app-shell-1) 0%, var(--app-shell-2) 45%, var(--app-shell-3) 100%) !important;
+  background-attachment: fixed !important;
+}
+
+/* Shell headings sit on the graphite background. */
+.test-header.brand-page-head h1,
+.cheat-head h2,
+.profile-page-head h2,
+.nmt-page-head h2 { color: var(--app-shell-text) !important; }
+.test-header.brand-page-head p,
+.cheat-head p,
+.profile-page-head p,
+.nmt-page-head p { color: var(--app-shell-muted) !important; }
+.page-eyebrow,
+.topic-picker-kicker,
+.cheat-kicker,
+.profile-page-kicker,
+.nmt-kicker { color: #d6b36a !important; }
+.brand-mini-mark,
+.cheat-mark,
+.profile-page-mark,
+.nmt-page-mark {
+  background: rgba(255,255,255,.07) !important;
+  border: 1px solid rgba(255,255,255,.08) !important;
+  color: #e5c77f !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 10px 26px rgba(0,0,0,.12) !important;
+}
+
+/* Cards remain warm and readable, but are less milky/flat. */
+.topic-picker,
+.card,
+.question-card,
+.cheat-section,
+.profile-identity-card,
+.profile-streak-card,
+.profile-focus-card,
+.profile-disclosure,
+.profile-settings-card,
+.nmt-hero-card,
+.nmt-question-card,
+.nmt-result-card,
+.nmt-review-card,
+.nmt-error-card,
+.ai-help-panel,
+.report-panel,
+.nmt-finish-panel {
+  background: linear-gradient(155deg, rgba(252,249,243,.98), rgba(239,232,220,.96)) !important;
+  border-color: rgba(255,255,255,.62) !important;
+  box-shadow: 0 18px 48px rgba(4,7,12,.18), inset 0 1px 0 rgba(255,255,255,.88) !important;
+}
+
+/* Dark premium bottom navigation. */
+.liquid-bottom-nav {
+  background: rgba(24,27,32,.86) !important;
+  border-color: rgba(255,255,255,.09) !important;
+  box-shadow: 0 18px 48px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.05) !important;
+  backdrop-filter: blur(22px) saturate(130%) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(130%) !important;
+}
+.liquid-nav-item { color: rgba(248,244,236,.46) !important; }
+.liquid-nav-item.active { color: #f5e6bd !important; }
+.liquid-nav-item svg { stroke: currentColor !important; }
+.liquid-nav-indicator {
+  background: linear-gradient(145deg, rgba(212,177,106,.16), rgba(255,255,255,.06)) !important;
+  border: 1px solid rgba(212,177,106,.18) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 10px 24px rgba(0,0,0,.18) !important;
+}
+
+/* Restore the nicer dark startup, but keep a single loading motion. */
+.startup-screen {
+  background:
+    radial-gradient(70% 58% at 8% 2%, rgba(217,181,111,.18), transparent 62%),
+    radial-gradient(55% 48% at 100% 100%, rgba(115,124,142,.13), transparent 70%),
+    linear-gradient(160deg, #30333a 0%, #22252b 48%, #17191d 100%) !important;
+  color: #fff !important;
+  transition: opacity .7s cubic-bezier(.22,1,.36,1), visibility .7s ease, filter .7s ease !important;
+}
+.startup-screen.hide { filter: blur(8px); }
+.startup-logo-shell {
+  width: 106px !important;
+  height: 106px !important;
+  border-radius: 31px !important;
+  color: #e6c987 !important;
+  background: linear-gradient(145deg, rgba(59,63,71,.96), rgba(26,29,34,.98)) !important;
+  border: 1px solid rgba(234,210,159,.18) !important;
+  box-shadow: 0 26px 64px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.07), 0 0 0 9px rgba(214,179,106,.03) !important;
+  animation: startupLogoPulse 3.2s ease-in-out infinite !important;
+}
+.startup-orbit {
+  inset: 9px !important;
+  border: 1px solid rgba(224,197,145,.18) !important;
+  border-top-color: #d6b36a !important;
+  animation: startupOrbitSpin 5.8s linear infinite !important;
+}
+.startup-orbit::before,
+.startup-orbit::after,
+.startup-orbit span { display: none !important; }
+.startup-wordmark { color: #d8b76f !important; }
+.startup-title { color: #f8f5ef !important; text-shadow: 0 2px 18px rgba(0,0,0,.15); }
+.startup-subtitle { color: rgba(255,255,255,.52) !important; }
+.startup-note { color: rgba(255,255,255,.34) !important; }
+.startup-note-dot { background: #cfaa60 !important; box-shadow: 0 0 0 4px rgba(207,170,96,.07) !important; }
+
+/* Full-screen onboarding now follows the graphite brand chrome. */
+.onboarding-overlay {
+  background:
+    radial-gradient(72% 44% at 6% 0%, rgba(214,179,106,.17), transparent 64%),
+    radial-gradient(60% 38% at 100% 96%, rgba(99,108,126,.10), transparent 70%),
+    linear-gradient(165deg, #2d3036 0%, #202329 48%, #17191d 100%) !important;
+}
+.onboarding-copy h3 { color: #f7f3eb !important; }
+.onboarding-copy p { color: rgba(247,243,235,.59) !important; }
+.onboarding-eyebrow { color: #d6b36a !important; }
+.onboarding-skip { color: rgba(255,255,255,.48) !important; }
+.onboarding-progress span { background: rgba(255,255,255,.14) !important; }
+.onboarding-progress span.active { background: #d6b36a !important; }
+.onboarding-illustration svg { filter: drop-shadow(0 24px 44px rgba(0,0,0,.22)) !important; }
+
+/* Settings chrome is dark; content rows stay warm/light. */
+.app-settings-screen {
+  background:
+    radial-gradient(70% 42% at 8% 0%, rgba(214,179,106,.14), transparent 64%),
+    linear-gradient(165deg, #2c2f35 0%, #202329 52%, #17191d 100%) !important;
+}
+.app-settings-head > strong,
+.app-settings-intro h2 { color: #f7f3eb !important; }
+.app-settings-intro p { color: rgba(247,243,235,.52) !important; }
+.app-settings-back {
+  color: #f6f1e8 !important;
+  background: rgba(255,255,255,.07) !important;
+  border-color: rgba(255,255,255,.09) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.04) !important;
+}
+.app-settings-group {
+  background: linear-gradient(155deg, rgba(252,249,243,.98), rgba(238,231,219,.96)) !important;
+  border-color: rgba(255,255,255,.55) !important;
+  box-shadow: 0 18px 48px rgba(0,0,0,.18) !important;
+}
+.app-settings-version {
+  display: block;
+  width: fit-content;
+  margin: 14px auto 0;
+  padding: 8px 12px;
+  border: 0;
+  background: transparent;
+  color: rgba(255,255,255,.28) !important;
+  font-size: 11px;
+  letter-spacing: .02em;
+  cursor: default;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Premium micro-motion */
+@keyframes premiumRise {
+  from { opacity: 0; transform: translate3d(0, 12px, 0) scale(.992); filter: blur(1.5px); }
+  to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); filter: blur(0); }
+}
+@keyframes premiumFade {
+  from { opacity: 0; transform: scale(.985); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes softGlow {
+  0%,100% { box-shadow: 0 0 0 rgba(214,179,106,0); }
+  50% { box-shadow: 0 0 28px rgba(214,179,106,.10); }
+}
+
+.view-page.is-center .test-header,
+.view-page.is-center .cheat-head,
+.view-page.is-center .profile-page-head,
+.view-page.is-center .nmt-page-head { animation: premiumRise .42s cubic-bezier(.22,1,.36,1) both; }
+.view-page.is-center .topic-picker,
+.view-page.is-center .nmt-hero-card,
+.view-page.is-center .profile-page-content > *:first-child,
+.view-page.is-center .cheat-section:first-child { animation: premiumRise .48s .04s cubic-bezier(.22,1,.36,1) both; }
+.question-card,
+.nmt-question-card,
+.nmt-result-card,
+.nmt-review-card { animation: premiumRise .34s cubic-bezier(.22,1,.36,1) both; }
+.option,
+.nmt-choice,
+.nmt-match-row-v2,
+.nmt-match-sheet-option,
+.profile-setting-row,
+.app-settings-row,
+.primary-btn,
+.secondary-btn,
+.ai-chip,
+.nmt-nav-btn,
+.nmt-finish-btn {
+  transition: transform .16s cubic-bezier(.22,1,.36,1), box-shadow .22s ease, background .22s ease, border-color .22s ease, opacity .22s ease !important;
+}
+.option:active,
+.nmt-choice:active,
+.nmt-match-row-v2:active,
+.nmt-match-sheet-option:active,
+.profile-setting-row:active,
+.app-settings-row:active,
+.primary-btn:active,
+.secondary-btn:active,
+.ai-chip:active,
+.nmt-nav-btn:active,
+.nmt-finish-btn:active { transform: scale(.982) !important; }
+.option.selected,
+.nmt-choice.selected,
+.nmt-match-row-v2.selected { animation: softGlow .55s ease-out; }
+.liquid-nav-indicator { transition: transform .42s cubic-bezier(.16,1,.3,1), width .32s cubic-bezier(.16,1,.3,1) !important; }
+.toast.show { animation: premiumRise .28s cubic-bezier(.22,1,.36,1) both; }
+.report-panel,
+.nmt-finish-panel { animation: premiumFade .24s cubic-bezier(.22,1,.36,1) both; }
+
+/* Hidden admin entry + panel */
+.admin-login-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10080;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+  background: rgba(8,10,13,.68);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  animation: premiumFade .2s ease both;
+}
+.admin-login-card {
+  position: relative;
+  width: min(100%, 390px);
+  padding: 28px 22px 22px;
+  border-radius: 28px;
+  background: linear-gradient(160deg, #2b2f36, #1c1f24);
+  border: 1px solid rgba(255,255,255,.09);
+  box-shadow: 0 28px 80px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.05);
+  color: #f7f3eb;
+  animation: premiumRise .3s cubic-bezier(.22,1,.36,1) both;
+}
+.admin-login-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 13px;
+  color: rgba(255,255,255,.58);
+  background: rgba(255,255,255,.06);
+  font-size: 22px;
+}
+.admin-login-mark {
+  width: 52px;
+  height: 52px;
+  margin-bottom: 18px;
+  border-radius: 17px;
+  display: grid;
+  place-items: center;
+  color: #1a1c20;
+  background: linear-gradient(145deg, #e0c27f, #b88d46);
+  font-size: 21px;
+  font-weight: 800;
+  box-shadow: 0 12px 30px rgba(184,141,70,.18);
+}
+.admin-login-card > small { color: #d6b36a; font-size: 10px; font-weight: 760; letter-spacing: .16em; }
+.admin-login-card h3 { margin: 7px 0 8px; font-size: 28px; letter-spacing: -.04em; }
+.admin-login-card p { margin: 0 0 20px; color: rgba(255,255,255,.50); font-size: 13px; line-height: 1.45; }
+.admin-login-card form { display: grid; gap: 10px; }
+.admin-login-card input {
+  width: 100%;
+  min-height: 54px;
+  padding: 0 16px;
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 17px;
+  outline: 0;
+  color: #f8f5ef;
+  background: rgba(255,255,255,.065);
+  font-size: 20px;
+  letter-spacing: .16em;
+}
+.admin-login-card input:focus { border-color: rgba(214,179,106,.46); box-shadow: 0 0 0 4px rgba(214,179,106,.07); }
+.admin-login-error { min-height: 18px; margin-top: 9px; color: #e29a91; font-size: 12px; }
+
+.admin-panel-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 10070;
+  overflow-y: auto;
+  background:
+    radial-gradient(70% 42% at 8% 0%, rgba(214,179,106,.13), transparent 64%),
+    linear-gradient(165deg, #2b2e34 0%, #1d2025 52%, #14161a 100%);
+  animation: appSettingsIn .26s cubic-bezier(.22,1,.36,1) both;
+}
+.admin-panel-shell {
+  width: min(100%, 560px);
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: calc(14px + env(safe-area-inset-top,0px)) 17px calc(30px + env(safe-area-inset-bottom,0px));
+}
+.admin-panel-head {
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  gap: 10px;
+  color: #f8f4ed;
+}
+.admin-panel-head > div { text-align: center; }
+.admin-panel-head small { display: block; margin-bottom: 2px; color: #cfae67; font-size: 9px; font-weight: 800; letter-spacing: .16em; }
+.admin-panel-head strong { font-size: 14px; }
+.admin-panel-back,
+.admin-panel-refresh {
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 14px;
+  color: #f4f0e8;
+  background: rgba(255,255,255,.06);
+  font-size: 20px;
+}
+.admin-panel-meta { display: flex; justify-content: space-between; padding: 10px 4px 16px; color: rgba(255,255,255,.34); font-size: 10px; }
+.admin-panel-content { display: grid; gap: 13px; transition: opacity .2s ease; }
+.admin-panel-content.loading { opacity: .62; }
+.admin-panel-loader { min-height: 260px; display: grid; place-items: center; align-content: center; gap: 12px; color: rgba(255,255,255,.45); }
+.admin-panel-loader span { width: 34px; height: 34px; border-radius: 50%; border: 2px solid rgba(255,255,255,.10); border-top-color: #d6b36a; animation: startupOrbitSpin .9s linear infinite; }
+.admin-panel-loader p { margin: 0; font-size: 12px; }
+.admin-live-card,
+.admin-analytics-card,
+.admin-mini-stats {
+  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(255,255,255,.055);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.035), 0 16px 42px rgba(0,0,0,.16);
+}
+.admin-live-card {
+  position: relative;
+  min-height: 112px;
+  padding: 20px;
+  border-radius: 24px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 12px;
+}
+.admin-live-dot { width: 11px; height: 11px; border-radius: 50%; background: #6fca94; box-shadow: 0 0 0 7px rgba(111,202,148,.09), 0 0 24px rgba(111,202,148,.24); }
+.admin-live-card strong { display: block; color: #f8f4ec; font-size: 34px; line-height: 1; letter-spacing: -.04em; }
+.admin-live-card small { color: rgba(255,255,255,.50); font-size: 12px; }
+.admin-live-card p { grid-column: 1/-1; margin: 0; color: rgba(255,255,255,.28); font-size: 10px; }
+.admin-stat-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
+.admin-stat-grid article {
+  min-height: 100px;
+  padding: 16px;
+  border-radius: 20px;
+  background: linear-gradient(155deg, rgba(251,247,239,.97), rgba(232,224,211,.96));
+  box-shadow: 0 14px 34px rgba(0,0,0,.14), inset 0 1px 0 rgba(255,255,255,.8);
+}
+.admin-stat-grid strong { display: block; color: #202226; font-size: 25px; letter-spacing: -.035em; }
+.admin-stat-grid span { display: block; margin-top: 6px; color: #777269; font-size: 11.5px; line-height: 1.35; }
+.admin-analytics-card { padding: 17px 14px 15px; border-radius: 22px; }
+.admin-card-head small { display: block; color: #d0ad65; font-size: 9px; font-weight: 800; letter-spacing: .14em; }
+.admin-card-head strong { display: block; margin-top: 4px; color: #f6f2ea; font-size: 16px; }
+.admin-chart { height: 170px; margin-top: 16px; display: grid; grid-template-columns: repeat(14, minmax(0,1fr)); gap: 5px; align-items: end; }
+.admin-chart-column { height: 100%; min-width: 0; display: grid; grid-template-rows: 18px 1fr 18px; align-items: end; text-align: center; }
+.admin-chart-value { min-height: 16px; color: rgba(255,255,255,.36); font-size: 8px; }
+.admin-chart-rail { position: relative; height: 100%; min-height: 90px; border-radius: 999px; background: rgba(255,255,255,.045); overflow: hidden; }
+.admin-chart-rail span { position: absolute; left: 0; right: 0; bottom: 0; min-height: 2px; border-radius: inherit; background: linear-gradient(180deg, #e0c47f, #a77d3e); box-shadow: 0 0 16px rgba(214,179,106,.13); transition: height .45s cubic-bezier(.22,1,.36,1); }
+.admin-chart-column small { color: rgba(255,255,255,.28); font-size: 7px; white-space: nowrap; }
+.admin-mini-stats { padding: 8px 16px; border-radius: 22px; }
+.admin-mini-stats > div { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 13px 0; }
+.admin-mini-stats > div + div { border-top: 1px solid rgba(255,255,255,.06); }
+.admin-mini-stats strong { color: #f5f1e9; font-size: 15px; }
+.admin-mini-stats span { color: rgba(255,255,255,.42); font-size: 11px; text-align: right; }
+.admin-error-card { padding: 18px; border-radius: 20px; color: #efb2aa; background: rgba(170,77,68,.12); border: 1px solid rgba(226,154,145,.14); font-size: 13px; }
+
+/* Profile help button intentionally removed in v1.0.2. */
+.profile-help-btn { display: none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

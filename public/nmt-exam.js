@@ -356,21 +356,26 @@
   }
 
   function bindExamInteractions(q) {
-    document.getElementById('nmtPrev')?.addEventListener('click', () => goTo(state.index - 1));
-    document.getElementById('nmtNext')?.addEventListener('click', () => goTo(state.index + 1));
-    document.getElementById('nmtFinish')?.addEventListener('click', openFinishOverlay);
+    document.getElementById('nmtPrev')?.addEventListener('click', () => { window.NMTUX?.playSound?.('tap'); goTo(state.index - 1); });
+    document.getElementById('nmtNext')?.addEventListener('click', () => { window.NMTUX?.playSound?.('tap'); goTo(state.index + 1); });
+    document.getElementById('nmtFinish')?.addEventListener('click', () => { window.NMTUX?.playSound?.('tap'); openFinishOverlay(); });
     document.getElementById('nmtPaletteToggle')?.addEventListener('click', () => {
+      window.NMTUX?.playSound?.('tap');
       const palette = document.getElementById('nmtPalette');
       if (palette) palette.hidden = !palette.hidden;
     });
     document.querySelectorAll('[data-nmt-index]').forEach(btn => btn.addEventListener('click', () => goTo(Number(btn.dataset.nmtIndex))));
-    document.getElementById('nmtReferenceBtn')?.addEventListener('click', () => document.querySelector('.liquid-nav-item[data-view="cheatsheet"]')?.click());
+    document.getElementById('nmtReferenceBtn')?.addEventListener('click', () => {
+      window.NMTUX?.playSound?.('tap');
+      document.querySelector('.liquid-nav-item[data-view="cheatsheet"]')?.click();
+    });
 
     if (q.type === 'choice') {
       document.querySelectorAll('[data-choice]').forEach(btn => btn.addEventListener('click', () => {
         const value = Number(btn.dataset.choice);
         state.answers[String(state.index)] = value;
         tg?.HapticFeedback?.selectionChanged?.();
+        window.NMTUX?.playSound?.('select');
         saveCurrentAnswer(value);
         renderExam();
       }));
@@ -400,7 +405,11 @@
           if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
         });
         done?.addEventListener('pointerdown', (event) => event.preventDefault());
-        done?.addEventListener('click', () => input.blur());
+        done?.addEventListener('click', () => {
+          window.NMTUX?.playSound?.('confirm');
+          window.NMTUX?.haptic?.('selection');
+          input.blur();
+        });
       }
     }
   }
@@ -453,6 +462,7 @@
       updated[String(row)] = code;
       state.answers[String(state.index)] = updated;
       tg?.HapticFeedback?.selectionChanged?.();
+      window.NMTUX?.playSound?.('select');
       saveCurrentAnswer(updated);
       closeMatchingSheet();
       setTimeout(renderExam, 110);
@@ -687,7 +697,10 @@
   }
 
   finishCancel?.addEventListener('click', closeFinishOverlay);
-  finishConfirm?.addEventListener('click', () => finishExam(false));
+  finishConfirm?.addEventListener('click', () => {
+    window.NMTUX?.playSound?.('confirm');
+    finishExam(false);
+  });
   finishOverlay?.addEventListener('click', (e) => { if (e.target === finishOverlay) closeFinishOverlay(); });
   window.visualViewport?.addEventListener('resize', () => {
     const active = document.activeElement;

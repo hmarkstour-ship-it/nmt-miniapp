@@ -52,6 +52,12 @@ const TRAINING_VISUAL_MODE = ['plain', 'visual', 'any'].includes(process.env.NMT
   ? process.env.NMT_TRAINING_VISUAL_MODE
   : 'any';
 const STAGE10_AUTO_QUARANTINE = /^(1|true|yes)$/i.test(String(process.env.NMT_STAGE10_AUTO_QUARANTINE || 'false'));
+const ADMIN_PANEL_PASSWORD = String(process.env.ADMIN_PANEL_PASSWORD || '').trim();
+const ADMIN_PANEL_TOKEN_TTL_MS = 6 * 60 * 60 * 1000;
+const ADMIN_LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const ADMIN_LOGIN_MAX_ATTEMPTS = 5;
+const adminTokens = new Map();
+const adminLoginAttempts = new Map();
 
 let offlineBankRuntime = null;
 let offlineBankLoadError = null;
@@ -97,6 +103,25 @@ async function initDb() {
       wrong_count INT NOT NULL DEFAULT 0,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
+  `);
+
+  await pool.query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ;
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS app_sessions (
+      session_id TEXT PRIMARY KEY,
+      telegram_id BIGINT NOT NULL REFERENCES users(telegram_id) ON DELETE CASCADE,
+      started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      last_seen_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_app_sessions_activity
+    ON app_sessions (last_seen_at DESC, telegram_id);
   `);
 
   await pool.query(`
@@ -416,10 +441,12 @@ async function getOrCreateUser(telegramUser) {
   if (!pool || !telegramUser?.id) return null;
 
   const { rows } = await pool.query(
-    `INSERT INTO users (telegram_id, first_name)
-     VALUES ($1, $2)
-     ON CONFLICT (telegram_id) DO UPDATE SET first_name = EXCLUDED.first_name
-     RETURNING telegram_id, first_name, correct_count, wrong_count, created_at`,
+    `INSERT INTO users (telegram_id, first_name, last_seen_at)
+     VALUES ($1, $2, now())
+     ON CONFLICT (telegram_id) DO UPDATE SET
+       first_name = EXCLUDED.first_name,
+       last_seen_at = now()
+     RETURNING telegram_id, first_name, correct_count, wrong_count, created_at, last_seen_at`,
     [telegramUser.id, telegramUser.first_name || null]
   );
   return rows[0];
@@ -1712,10 +1739,185 @@ function verifyTelegramInitData(initData) {
   return userJson ? JSON.parse(userJson) : null;
 }
 
+function safePasswordEqual(a, b) {
+  const left = Buffer.from(String(a || ''), 'utf8');
+  const right = Buffer.from(String(b || ''), 'utf8');
+  if (left.length !== right.length || !left.length) return false;
+  return crypto.timingSafeEqual(left, right);
+}
+
+function adminAttemptKey(req) {
+  return String(req.headers['x-forwarded-for'] || req.ip || 'unknown').split(',')[0].trim();
+}
+
+function isAdminLoginRateLimited(req) {
+  const key = adminAttemptKey(req);
+  const now = Date.now();
+  const current = adminLoginAttempts.get(key);
+  if (!current || now - current.startedAt > ADMIN_LOGIN_WINDOW_MS) {
+    adminLoginAttempts.set(key, { startedAt: now, count: 0 });
+    return false;
+  }
+  return current.count >= ADMIN_LOGIN_MAX_ATTEMPTS;
+}
+
+function registerAdminLoginFailure(req) {
+  const key = adminAttemptKey(req);
+  const now = Date.now();
+  const current = adminLoginAttempts.get(key);
+  if (!current || now - current.startedAt > ADMIN_LOGIN_WINDOW_MS) {
+    adminLoginAttempts.set(key, { startedAt: now, count: 1 });
+  } else {
+    current.count += 1;
+    adminLoginAttempts.set(key, current);
+  }
+}
+
+function clearAdminLoginFailures(req) {
+  adminLoginAttempts.delete(adminAttemptKey(req));
+}
+
+function createAdminToken(telegramId = null) {
+  const token = crypto.randomBytes(32).toString('hex');
+  adminTokens.set(token, {
+    telegramId: telegramId ? String(telegramId) : null,
+    expiresAt: Date.now() + ADMIN_PANEL_TOKEN_TTL_MS,
+  });
+  return token;
+}
+
+function requireAdminToken(req, res, next) {
+  const header = String(req.headers.authorization || '');
+  const token = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
+  const session = token ? adminTokens.get(token) : null;
+  if (!session || session.expiresAt <= Date.now()) {
+    if (token) adminTokens.delete(token);
+    return res.status(401).json({ error: 'Адмін-сесія недійсна або завершилась.' });
+  }
+  req.adminSession = session;
+  next();
+}
+
 // ---- Роути --------------------------------------------------------------------
 
 app.get('/api/topics', (req, res) => {
   res.json([{ key: 'mixed', label: '🎯 Змішані завдання НМТ' }]);
+});
+
+app.post('/api/activity/heartbeat', async (req, res) => {
+  if (!pool) return res.status(503).json({ error: 'База даних недоступна.' });
+  try {
+    const telegramUser = verifyTelegramInitData(req.body?.initData);
+    if (!telegramUser?.id) return res.status(401).json({ error: 'Не вдалося підтвердити Telegram-користувача.' });
+    const sessionId = String(req.body?.sessionId || '').trim().slice(0, 128);
+    if (!sessionId) return res.status(400).json({ error: 'Немає sessionId.' });
+
+    await getOrCreateUser(telegramUser);
+    await pool.query(
+      `INSERT INTO app_sessions (session_id, telegram_id, started_at, last_seen_at)
+       VALUES ($1, $2, now(), now())
+       ON CONFLICT (session_id) DO UPDATE SET
+         telegram_id = EXCLUDED.telegram_id,
+         last_seen_at = now()`,
+      [sessionId, telegramUser.id]
+    );
+    await pool.query(`UPDATE users SET last_seen_at = now() WHERE telegram_id = $1`, [telegramUser.id]);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('HEARTBEAT ERROR:', err);
+    res.status(500).json({ error: 'Не вдалося оновити активність.' });
+  }
+});
+
+app.post('/api/admin/login', async (req, res) => {
+  try {
+    if (!ADMIN_PANEL_PASSWORD) {
+      return res.status(503).json({ error: 'Адмін-панель не налаштована на сервері.' });
+    }
+    if (isAdminLoginRateLimited(req)) {
+      return res.status(429).json({ error: 'Забагато спроб. Спробуй пізніше.' });
+    }
+
+    const telegramUser = verifyTelegramInitData(req.body?.initData);
+    if (BOT_TOKEN && !telegramUser?.id) {
+      registerAdminLoginFailure(req);
+      return res.status(401).json({ error: 'Адмін-вхід доступний лише з Telegram Mini App.' });
+    }
+
+    if (!safePasswordEqual(req.body?.password, ADMIN_PANEL_PASSWORD)) {
+      registerAdminLoginFailure(req);
+      return res.status(401).json({ error: 'Неправильний пароль.' });
+    }
+
+    clearAdminLoginFailures(req);
+    const token = createAdminToken(telegramUser?.id || null);
+    res.json({ token, expires_in: Math.floor(ADMIN_PANEL_TOKEN_TTL_MS / 1000) });
+  } catch (err) {
+    console.error('ADMIN LOGIN ERROR:', err);
+    res.status(500).json({ error: 'Не вдалося увійти в адмін-панель.' });
+  }
+});
+
+app.get('/api/admin/stats', requireAdminToken, async (req, res) => {
+  if (!pool) return res.status(503).json({ error: 'База даних недоступна.' });
+  try {
+    const summaryQuery = await pool.query(`
+      WITH activity_events AS (
+        SELECT telegram_id, asked_at AS activity_at FROM question_history
+        UNION ALL
+        SELECT telegram_id, answered_at AS activity_at FROM user_answers
+        UNION ALL
+        SELECT telegram_id, started_at AS activity_at FROM nmt_exam_attempts
+        UNION ALL
+        SELECT telegram_id, last_seen_at AS activity_at FROM app_sessions
+      )
+      SELECT
+        (SELECT COUNT(*)::int FROM users) AS total_users,
+        (SELECT COUNT(*)::int FROM users WHERE last_seen_at >= now() - interval '2 minutes') AS active_now,
+        (SELECT COUNT(DISTINCT telegram_id)::int FROM activity_events WHERE activity_at >= date_trunc('day', now())) AS active_today,
+        (SELECT COUNT(DISTINCT telegram_id)::int FROM activity_events WHERE activity_at >= now() - interval '7 days') AS active_7d,
+        (SELECT COUNT(DISTINCT telegram_id)::int FROM activity_events WHERE activity_at >= now() - interval '30 days') AS active_30d,
+        (SELECT COUNT(*)::int FROM users WHERE created_at >= now() - interval '7 days') AS new_users_7d,
+        (SELECT COUNT(*)::int FROM app_sessions) AS total_sessions,
+        (SELECT COALESCE(ROUND((AVG(LEAST(EXTRACT(EPOCH FROM (last_seen_at - started_at)), 14400)) / 60.0)::numeric, 1), 0)
+           FROM app_sessions
+          WHERE started_at >= now() - interval '30 days' AND last_seen_at >= started_at) AS avg_session_minutes,
+        (SELECT COUNT(*)::int FROM user_answers WHERE answered_at >= now() - interval '7 days') AS answers_7d,
+        (SELECT COUNT(*)::int FROM nmt_exam_attempts WHERE status = 'finished' AND finished_at >= now() - interval '30 days') AS finished_nmt_30d
+    `);
+
+    const activityQuery = await pool.query(`
+      WITH days AS (
+        SELECT generate_series(current_date - interval '13 days', current_date, interval '1 day')::date AS day
+      ), activity_events AS (
+        SELECT telegram_id, asked_at AS activity_at FROM question_history
+        UNION ALL
+        SELECT telegram_id, answered_at AS activity_at FROM user_answers
+        UNION ALL
+        SELECT telegram_id, started_at AS activity_at FROM nmt_exam_attempts
+        UNION ALL
+        SELECT telegram_id, last_seen_at AS activity_at FROM app_sessions
+      ), activity AS (
+        SELECT date_trunc('day', activity_at)::date AS day, COUNT(DISTINCT telegram_id)::int AS users
+        FROM activity_events
+        WHERE activity_at >= current_date - interval '13 days'
+        GROUP BY 1
+      )
+      SELECT to_char(days.day, 'YYYY-MM-DD') AS day, COALESCE(activity.users, 0)::int AS users
+      FROM days
+      LEFT JOIN activity USING(day)
+      ORDER BY days.day ASC
+    `);
+
+    res.json({
+      generated_at: new Date().toISOString(),
+      summary: summaryQuery.rows[0] || {},
+      daily: activityQuery.rows || [],
+    });
+  } catch (err) {
+    console.error('ADMIN STATS ERROR:', err);
+    res.status(500).json({ error: 'Не вдалося завантажити статистику.' });
+  }
 });
 
 
