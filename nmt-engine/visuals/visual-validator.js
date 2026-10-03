@@ -25,3 +25,16 @@ export function validateVisualSpec(spec) {
   if (spec.metadata?.renderer !== 'nmt-engine4-hybrid-visual-v5') errors.push('visual must be created by Visual Engine v5');
   return { ok:errors.length===0, errors };
 }
+
+export function validateRenderedSvg(markup, spec = null) {
+  const errors = [];
+  if (typeof markup !== 'string' || !markup.trim().startsWith('<svg') || !markup.trim().endsWith('</svg>')) {
+    return { ok:false, errors:['renderer must return a complete svg'] };
+  }
+  if (/\b(?:NaN|Infinity|undefined|null)\b/.test(markup)) errors.push('svg_contains_invalid_numeric_value');
+  if (/<script\b|javascript:|\son\w+\s*=/i.test(markup)) errors.push('svg_contains_unsafe_markup');
+  if ((spec?.type === 'triangle_sides' || spec?.type === 'trapezoid' || spec?.type === 'parallel_lines' || spec?.type === 'parallelogram_diagonal' || spec?.type === 'circle_angle') && !/\bA\d/.test(markup)) {
+    errors.push('angle_visual_missing_arc');
+  }
+  return { ok:errors.length===0, errors };
+}

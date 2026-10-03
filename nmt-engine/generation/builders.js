@@ -71,10 +71,10 @@ export function makeMatching(blueprintId, {
 }) {
   const baseMeta = meta(blueprintId, variant, coreMeta);
   const solution = buildStructuredSolution({ question, explanation, genome: coreMeta?.genome, answerDisplay: 'відповідність указано в правильній комбінації' });
-  const formatted = formatNmtQuestionPayload({ question, explanation, solution });
+  const formatted = formatNmtQuestionPayload({ question, explanation, solution, left, matchOptions: options });
   return {
     type:'matching', topic, topic_label:LABELS[topic] ?? topic, difficulty:'NMT HARD', question:formatted.question,
-    left, match_options:options.map((label, i) => ({ code:LETTERS[i], label:String(label) })),
+    left:formatted.left, match_options:formatted.matchOptions.map((label, i) => ({ code:LETTERS[i], label:String(label) })),
     correct_pairs:correctPairs, explanation:formatted.explanation, solution:formatted.solution, explanation_steps: solutionStepsForLegacy(formatted.solution), max_score:3,
     ...attachVisual(visual), question_skeleton:questionSkeleton(question),
     ...baseMeta,
@@ -87,11 +87,11 @@ export function makeShort(blueprintId, {
 }) {
   const baseMeta = meta(blueprintId, variant, coreMeta);
   const solution = buildStructuredSolution({ question, explanation, genome: coreMeta?.genome, answerDisplay: ua(correctValue) });
-  const formatted = formatNmtQuestionPayload({ question, explanation, solution });
+  const formatted = formatNmtQuestionPayload({ question, explanation, solution, answerHint });
   return {
     type:'short', topic, topic_label:LABELS[topic] ?? topic, difficulty:'NMT HARD', question:formatted.question,
     correct_value:Number(correctValue), correct_display:ua(correctValue), explanation:formatted.explanation, solution:formatted.solution, explanation_steps: solutionStepsForLegacy(formatted.solution),
-    max_score:2, answer_hint:answerHint,
+    max_score:2, answer_hint:formatted.answerHint,
     ...attachVisual(visual), question_skeleton:questionSkeleton(question),
     ...baseMeta,
   };

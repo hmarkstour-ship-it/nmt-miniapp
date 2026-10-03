@@ -1,4 +1,4 @@
-import { validateVisualSpec } from './visual-validator.js';
+import { validateVisualSpec, validateRenderedSvg } from './visual-validator.js';
 import {
   renderBarChart,
   renderLineChart,
@@ -44,8 +44,9 @@ export class VisualEngine {
     const renderer = RENDERERS[spec.type];
     if (!renderer) throw new Error(`No renderer for visual type: ${spec.type}`);
     const markup = renderer(spec);
-    if (typeof markup !== 'string' || !markup.startsWith('<svg')) {
-      throw new Error(`Renderer ${spec.type} did not return SVG`);
+    const renderedValidation = validateRenderedSvg(markup, spec);
+    if (!renderedValidation.ok) {
+      throw new Error(`Invalid rendered visual ${spec.type}: ${renderedValidation.errors.join('; ')}`);
     }
     return markup;
   }

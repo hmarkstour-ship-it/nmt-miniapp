@@ -31,10 +31,25 @@ function pointAlong(from,to,distance){
   return [from[0]+dx/len*distance,from[1]+dy/len*distance];
 }
 
-function arcBetween(vertex,ray1,ray2,r=34,sweep=0){
+function interiorArc(vertex,ray1,ray2,r=34,labelOffset=18){
+  const a1=Math.atan2(ray1[1]-vertex[1],ray1[0]-vertex[0]);
+  const a2=Math.atan2(ray2[1]-vertex[1],ray2[0]-vertex[0]);
+  const twoPi=Math.PI*2;
+  let positive=(a2-a1)%twoPi; if(positive<0)positive+=twoPi;
+  const sweep=positive<=Math.PI?1:0;
+  const delta=sweep?positive:twoPi-positive;
+  const midAngle=sweep?a1+delta/2:a1-delta/2;
   const p1=pointAlong(vertex,ray1,r),p2=pointAlong(vertex,ray2,r);
-  return `M${p1[0].toFixed(1)} ${p1[1].toFixed(1)} A${r} ${r} 0 0 ${sweep} ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`;
+  const mid=[vertex[0]+Math.cos(midAngle)*(r+labelOffset),vertex[1]+Math.sin(midAngle)*(r+labelOffset)];
+  return {
+    path:`M${p1[0].toFixed(1)} ${p1[1].toFixed(1)} A${r} ${r} 0 0 ${sweep} ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`,
+    mid,
+    sweep,
+    degrees:delta*180/Math.PI,
+  };
 }
+function arcBetween(vertex,ray1,ray2,r=34){return interiorArc(vertex,ray1,ray2,r).path;}
+function lineXAtY(p1,p2,y){const dy=p2[1]-p1[1]||1;const t=(y-p1[1])/dy;return p1[0]+t*(p2[0]-p1[0]);}
 
 function polar(cx,cy,r,deg){const a=deg*Math.PI/180;return [cx+r*Math.cos(a),cy+r*Math.sin(a)];}
 
@@ -91,33 +106,39 @@ export function renderFunctionGraph(spec) {
 export function renderTrapezoid(spec) {
   const {top=8,bottom=14,height=6,angle=null}=spec.data;
   const pts={a:[72,238],d:[405,238],b:[145,72],c:[344,72]};
-  const arc=angle!=null?arcBetween(pts.d,pts.a,pts.c,36,1):null;
-  const mid=angle!=null?pointAlong(pts.d,pts.c,58):null;
-  return shell(`<path class="g" d="M${pts.a.join(' ')}L${pts.d.join(' ')}L${pts.c.join(' ')}L${pts.b.join(' ')}Z"/><path class="d" d="M${pts.b[0]} ${pts.b[1]}V238"/><path class="thin" d="M${pts.b[0]} 220h18v18"/><text class="t" x="55" y="260">A</text><text class="t" x="408" y="260">D</text><text class="t" x="${pts.b[0]-8}" y="60">B</text><text class="t" x="${pts.c[0]+5}" y="60">C</text><text class="m" x="235" y="274">${esc(bottom)}</text><text class="m" x="225" y="56">${esc(top)}</text><text class="m" x="${pts.b[0]+22}" y="158">${esc(height)}</text>${arc?`<path class="a" d="${arc}"/><text class="m" x="${mid[0]-12}" y="${mid[1]-12}">${esc(angle)}°</text>`:''}<text class="s" x="55" y="294">AD ∥ BC • схема не в масштабі</text>`,'Трапеція');
+  const angleArc=angle!=null?interiorArc(pts.d,pts.a,pts.c,36,20):null;
+  return shell(`<path class="g" d="M${pts.a.join(' ')}L${pts.d.join(' ')}L${pts.c.join(' ')}L${pts.b.join(' ')}Z"/><path class="d" d="M${pts.b[0]} ${pts.b[1]}V238"/><path class="thin" d="M${pts.b[0]} 220h18v18"/><text class="t" x="55" y="260">A</text><text class="t" x="408" y="260">D</text><text class="t" x="${pts.b[0]-8}" y="60">B</text><text class="t" x="${pts.c[0]+5}" y="60">C</text><text class="m" x="235" y="274">${esc(bottom)}</text><text class="m" x="225" y="56">${esc(top)}</text><text class="m" x="${pts.b[0]+22}" y="158">${esc(height)}</text>${angleArc?`<path class="a" d="${angleArc.path}"/><text class="m" x="${angleArc.mid[0].toFixed(1)}" y="${angleArc.mid[1].toFixed(1)}" text-anchor="middle">${esc(angle)}°</text>`:''}<text class="s" x="55" y="294">AD ∥ BC • схема не в масштабі</text>`,'Трапеція');
 }
 
 export function renderParallelogramDiagonal(spec) {
   const {a=25,b=35}=spec.data;
-  return shell(`<path class="g" d="M75 232L365 232L415 86L125 86Z"/><path class="a" d="M75 232L415 86"/><text class="t" x="58" y="254">A</text><text class="t" x="366" y="254">B</text><text class="t" x="420" y="82">C</text><text class="t" x="108" y="80">D</text><path class="thin" d="M109 215 A34 34 0 0 1 95 195"/><text class="m" x="112" y="191">${esc(a)}°</text><path class="thin" d="M384 99 A34 34 0 0 1 400 124"/><text class="m" x="354" y="132">${esc(b)}°</text><text class="s" x="56" y="292">AB ∥ CD, AD ∥ BC</text>`,'Паралелограм з діагоналлю');
+  const A=[75,232],B=[365,232],C=[415,86],D=[125,86];
+  const arcA=interiorArc(A,B,C,34,20);
+  const arcC=interiorArc(C,A,B,34,20);
+  return shell(`<path class="g" d="M${A.join(' ')}L${B.join(' ')}L${C.join(' ')}L${D.join(' ')}Z"/><path class="a" d="M${A.join(' ')}L${C.join(' ')}"/><text class="t" x="58" y="254">A</text><text class="t" x="366" y="254">B</text><text class="t" x="420" y="82">C</text><text class="t" x="108" y="80">D</text><path class="thin" d="${arcA.path}"/><text class="m" x="${arcA.mid[0].toFixed(1)}" y="${arcA.mid[1].toFixed(1)}" text-anchor="middle">${esc(a)}°</text><path class="thin" d="${arcC.path}"/><text class="m" x="${arcC.mid[0].toFixed(1)}" y="${arcC.mid[1].toFixed(1)}" text-anchor="middle">${esc(b)}°</text><text class="s" x="56" y="292">AB ∥ CD, AD ∥ BC</text>`,'Паралелограм з діагоналлю');
 }
 
 export function renderParallelLines(spec) {
   const {angle=55}=spec.data;
-  return shell(`<path class="g" d="M55 95H425 M55 235H425"/><path class="a" d="M145 282L325 48"/><path class="thin" d="M278 95 A36 36 0 0 1 299 124"/><text class="m" x="302" y="128">${esc(angle)}°</text><path class="thin" d="M185 235 A36 36 0 0 1 164 207"/><text class="m" x="125" y="205">?</text><text class="s" x="58" y="292">a ∥ b</text>`,'Паралельні прямі та січна');
+  const T1=[145,282],T2=[325,48];
+  const top=[lineXAtY(T1,T2,95),95];
+  const bottom=[lineXAtY(T1,T2,235),235];
+  const givenArc=interiorArc(top,[55,95],T1,34,20);
+  const unknownArc=interiorArc(bottom,[55,235],T1,34,20);
+  return shell(`<path class="g" d="M55 95H425 M55 235H425"/><path class="a" d="M${T1.join(' ')}L${T2.join(' ')}"/><path class="thin" d="${givenArc.path}"/><text class="m" x="${givenArc.mid[0].toFixed(1)}" y="${givenArc.mid[1].toFixed(1)}" text-anchor="middle">${esc(angle)}°</text><path class="thin" d="${unknownArc.path}"/><text class="m" x="${unknownArc.mid[0].toFixed(1)}" y="${unknownArc.mid[1].toFixed(1)}" text-anchor="middle">?</text><text class="s" x="58" y="292">a ∥ b</text>`,'Паралельні прямі та січна');
 }
 
 export function renderTriangleSides(spec) {
   const {left='',right='',base='',angle=null}=spec.data;
   const A=[70,240],B=[410,240],C=[250,55];
-  const arc=angle!=null?arcBetween(A,B,C,38,0):null;
-  const angleLabel=angle!=null?pointAlong(A,C,62):null;
-  return shell(`<path class="g" d="M${A.join(' ')}L${B.join(' ')}L${C.join(' ')}Z"/><text class="t" x="54" y="262">A</text><text class="t" x="414" y="262">B</text><text class="t" x="243" y="44">C</text>${base!==''&&base!=null?`<text class="m" x="235" y="274">${esc(base)}</text>`:''}${left!==''&&left!=null?`<text class="m" x="128" y="132">${esc(left)}</text>`:''}${right!==''&&right!=null?`<text class="m" x="338" y="132">${esc(right)}</text>`:''}${arc?`<path class="a" d="${arc}"/><text class="m" x="${angleLabel[0]+4}" y="${angleLabel[1]-4}">${esc(angle)}°</text>`:''}<text class="s" x="56" y="294">схема не в масштабі</text>`,'Трикутник');
+  const angleArc=angle!=null?interiorArc(A,B,C,38,21):null;
+  return shell(`<path class="g" d="M${A.join(' ')}L${B.join(' ')}L${C.join(' ')}Z"/><text class="t" x="54" y="262">A</text><text class="t" x="414" y="262">B</text><text class="t" x="243" y="44">C</text>${base!==''&&base!=null?`<text class="m" x="235" y="274">${esc(base)}</text>`:''}${left!==''&&left!=null?`<text class="m" x="128" y="132">${esc(left)}</text>`:''}${right!==''&&right!=null?`<text class="m" x="338" y="132">${esc(right)}</text>`:''}${angleArc?`<path class="a" d="${angleArc.path}"/><text class="m" x="${angleArc.mid[0].toFixed(1)}" y="${angleArc.mid[1].toFixed(1)}" text-anchor="middle">${esc(angle)}°</text>`:''}<text class="s" x="56" y="294">схема не в масштабі</text>`,'Трикутник');
 }
 
 export function renderTriangleBisector(spec) {
   const {bd='',ratioLeft='',ratioRight=''}=spec.data;
   const A=[78,240],B=[407,240],C=[236,54],D=[205,240];
-  return shell(`<path class="g" d="M${A.join(' ')}L${B.join(' ')}L${C.join(' ')}Z"/><path class="a" d="M${C.join(' ')}L${D.join(' ')}"/><circle class="dot" cx="${D[0]}" cy="${D[1]}" r="4"/><text class="t" x="60" y="262">B</text><text class="t" x="412" y="262">C</text><text class="t" x="229" y="42">A</text><text class="t" x="196" y="264">D</text>${bd!==''?`<text class="m" x="132" y="274">BD=${esc(bd)}</text>`:''}${ratioLeft!==''&&ratioRight!==''?`<text class="m" x="245" y="90">AB:AC=${esc(ratioLeft)}:${esc(ratioRight)}</text>`:''}<path class="thin" d="${arcBetween(C,A,D,27,0)}"/><path class="thin" d="${arcBetween(C,D,B,34,0)}"/><text class="s" x="56" y="294">AD — бісектриса • схема не в масштабі</text>`,'Трикутник із бісектрисою');
+  return shell(`<path class="g" d="M${A.join(' ')}L${B.join(' ')}L${C.join(' ')}Z"/><path class="a" d="M${C.join(' ')}L${D.join(' ')}"/><circle class="dot" cx="${D[0]}" cy="${D[1]}" r="4"/><text class="t" x="60" y="262">B</text><text class="t" x="412" y="262">C</text><text class="t" x="229" y="42">A</text><text class="t" x="196" y="264">D</text>${bd!==''?`<text class="m" x="132" y="274">BD=${esc(bd)}</text>`:''}${ratioLeft!==''&&ratioRight!==''?`<text class="m" x="245" y="90">AB:AC=${esc(ratioLeft)}:${esc(ratioRight)}</text>`:''}<path class="thin" d="${arcBetween(C,A,D,29)}"/><path class="thin" d="${arcBetween(C,D,B,29)}"/><text class="s" x="56" y="294">AD — бісектриса • схема не в масштабі</text>`,'Трикутник із бісектрисою');
 }
 
 export function renderRightTriangle(spec) {
@@ -131,11 +152,11 @@ export function renderRightTriangle(spec) {
 
 export function renderCircleAngle(spec) {
   const central=Math.max(10,Math.min(170,Number(spec.data.central??100)));
-  const cx=240,cy=158,R=108,rArc=42;
+  const cx=240,cy=158,R=108;
   const aDeg=-90-central/2,cDeg=-90+central/2,bDeg=90;
-  const A=polar(cx,cy,R,aDeg),C=polar(cx,cy,R,cDeg),B=polar(cx,cy,R,bDeg);
-  const a1=polar(cx,cy,rArc,aDeg),a2=polar(cx,cy,rArc,cDeg),mid=polar(cx,cy,67,-90);
-  return shell(`<circle class="g" cx="${cx}" cy="${cy}" r="${R}"/><circle class="dot" cx="${cx}" cy="${cy}" r="4"/><path class="thin" d="M${cx} ${cy}L${A[0].toFixed(1)} ${A[1].toFixed(1)} M${cx} ${cy}L${C[0].toFixed(1)} ${C[1].toFixed(1)}"/><path class="g" d="M${A[0].toFixed(1)} ${A[1].toFixed(1)}L${B[0].toFixed(1)} ${B[1].toFixed(1)}L${C[0].toFixed(1)} ${C[1].toFixed(1)}"/><path class="a" d="M${a1[0].toFixed(1)} ${a1[1].toFixed(1)} A${rArc} ${rArc} 0 0 1 ${a2[0].toFixed(1)} ${a2[1].toFixed(1)}"/><text class="m" x="${mid[0]-13}" y="${mid[1]+4}">${esc(central)}°</text><text class="t" x="${A[0]-16}" y="${A[1]-8}">A</text><text class="t" x="${B[0]-5}" y="${B[1]+22}">B</text><text class="t" x="${C[0]+7}" y="${C[1]-8}">C</text><text class="t" x="${cx+8}" y="${cy+5}">O</text><text class="s" x="56" y="294">дуга кута побудована за напрямками радіусів</text>`,'Коло з кутами');
+  const A=polar(cx,cy,R,aDeg),C=polar(cx,cy,R,cDeg),B=polar(cx,cy,R,bDeg),O=[cx,cy];
+  const centralArc=interiorArc(O,A,C,42,22);
+  return shell(`<circle class="g" cx="${cx}" cy="${cy}" r="${R}"/><circle class="dot" cx="${cx}" cy="${cy}" r="4"/><path class="thin" d="M${cx} ${cy}L${A[0].toFixed(1)} ${A[1].toFixed(1)} M${cx} ${cy}L${C[0].toFixed(1)} ${C[1].toFixed(1)}"/><path class="g" d="M${A[0].toFixed(1)} ${A[1].toFixed(1)}L${B[0].toFixed(1)} ${B[1].toFixed(1)}L${C[0].toFixed(1)} ${C[1].toFixed(1)}"/><path class="a" d="${centralArc.path}"/><text class="m" x="${centralArc.mid[0].toFixed(1)}" y="${centralArc.mid[1].toFixed(1)}" text-anchor="middle">${esc(central)}°</text><text class="t" x="${A[0]-16}" y="${A[1]-8}">A</text><text class="t" x="${B[0]-5}" y="${B[1]+22}">B</text><text class="t" x="${C[0]+7}" y="${C[1]-8}">C</text><text class="t" x="${cx+8}" y="${cy+5}">O</text><text class="s" x="56" y="294">кут позначено всередині між відповідними променями</text>`,'Коло з кутами');
 }
 
 export function renderCircleDiameter(spec) {

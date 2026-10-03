@@ -54,7 +54,9 @@
   }
 
   function renderMath(root) {
-    if (!root || typeof window.renderMathInElement !== 'function') return;
+    if (!root) return false;
+    if (window.NMTMath?.render) return window.NMTMath.render(root);
+    if (typeof window.renderMathInElement !== 'function') return false;
     try {
       window.renderMathInElement(root, {
         delimiters: [
@@ -62,12 +64,24 @@
           { left: '\\[', right: '\\]', display: true },
           { left: '\\(', right: '\\)', display: false },
         ],
-        throwOnError: false,
+        throwOnError: true,
         strict: false,
       });
+      return !root.querySelector?.('.katex-error');
     } catch (err) {
       console.warn('NMT KaTeX error:', err);
+      return false;
     }
+  }
+
+  function safeDiagramSvg(svg) {
+    if (typeof svg !== 'string') return '';
+    const value = svg.trim();
+    if (!value.startsWith('<svg') || !value.endsWith('</svg>')) return '';
+    return value
+      .replace(/<script[\s\S]*?<\/script>/gi, '')
+      .replace(/\son\w+\s*=\s*(["']).*?\1/gi, '')
+      .replace(/javascript:/gi, '');
   }
 
   function formatTime(seconds) {
@@ -222,7 +236,7 @@
     el.classList.toggle('danger', state.remainingSeconds <= 120);
   }
 
-  const ENGINE_DEBUG = new URLSearchParams(window.location.search).get('debug') === '1';
+  const ENGINE_DEBUG = ['localhost', '127.0.0.1'].includes(location.hostname) && new URLSearchParams(window.location.search).get('debug') === '1';
 
   function engineDebugMarkup(q) {
     if (!ENGINE_DEBUG) return '';
@@ -244,6 +258,12 @@
     nmtView?.classList.add('exam-running');
     const q = state.questions[state.index];
     if (!q) return;
+    if (window.NMTMath?.validateQuestion && !window.NMTMath.validateQuestion(q)) {
+      clearTimer();
+      content.innerHTML = `<div class="nmt-error-card"><strong>Це завдання не пройшло перевірку оформлення</strong><p>Ми не показуємо зламані формули. Почни новий варіант — це завдання буде виключене з показу.</p><button class="primary-btn" id="nmtBadMathRestart" type="button">Почати новий тест</button></div>`;
+      document.getElementById('nmtBadMathRestart')?.addEventListener('click', () => startExam(true, true));
+      return;
+    }
     const answered = answeredCount();
     const progress = Math.round(((state.index + 1) / state.questions.length) * 100);
 
@@ -271,7 +291,7 @@
         <div class="nmt-question-meta"><span>${escapeHtml(q.topic_label || '')}</span><span>${typeLabel(q.type)}</span></div>
         <div class="nmt-question-text">${escapeHtml(q.question)}</div>
         ${engineDebugMarkup(q)}
-        ${q.diagram_svg ? `<div class="nmt-diagram">${q.diagram_svg}</div>` : ''}
+        ${q.diagram_svg ? `<div class="nmt-diagram">${safeDiagramSvg(q.diagram_svg)}</div>` : ''}
         <div id="nmtAnswerArea">${answerMarkup(q, state.answers[String(state.index)])}</div>
       </article>
 
@@ -506,6 +526,8 @@
       state.result = data.result;
       state.activeAttempt = null;
       window.dispatchEvent(new CustomEvent('nmt:finished', { detail: data.result }));
+      window.NMTUX?.haptic?.('success');
+      window.NMTUX?.playSound?.('finish');
       renderResult(data.result);
     } catch (err) {
       content.innerHTML = `<div class="nmt-error-card"><strong>Не вдалося завершити тест</strong><p>${escapeHtml(err.message)}</p><button class="primary-btn" id="nmtRetryFinish">Повторити</button></div>`;
@@ -595,7 +617,7 @@
       </button>
       <div class="nmt-review-body">
         <div class="nmt-review-question">${escapeHtml(item.question)}</div>
-        ${item.diagram_svg ? `<div class="nmt-diagram compact">${item.diagram_svg}</div>` : ''}
+        ${item.diagram_svg ? `<div class="nmt-diagram compact">${safeDiagramSvg(item.diagram_svg)}</div>` : ''}
         <div class="nmt-review-answer"><span>Твоя відповідь</span><strong>${escapeHtml(item.user_answer)}</strong></div>
         <div class="nmt-review-answer correct"><span>Правильна відповідь</span><strong>${escapeHtml(item.correct_answer)}</strong></div>
         <div class="nmt-review-explanation"><span>Розв’язання</span>${stepsMarkup(item.explanation)}</div>

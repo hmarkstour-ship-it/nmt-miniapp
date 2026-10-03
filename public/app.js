@@ -2,13 +2,19 @@ const tg = window.Telegram?.WebApp;
   tg?.ready();
   tg?.expand();
 
+  function syncTelegramTheme() {
+    document.body?.classList.toggle('telegram-dark', tg?.colorScheme === 'dark');
+  }
+  syncTelegramTheme();
+  tg?.onEvent?.('themeChanged', syncTelegramTheme);
+
   // Frontend працює окремо як Render Static Site.
   // API лишається на Web Service, який може засинати на Free-плані.
   const API_BASE = 'https://nmt-miniapp.onrender.com';
   const FETCH_TIMEOUT_MS = 30000;
   const QUESTION_TIMEOUT_MS = 55000;
   const BACKEND_WAKE_MAX_MS = 75000;
-  const BUILD_VERSION = 'knowledge-base-v1.0.0';
+  const BUILD_VERSION = 'launch-polish-v1.0.0';
   console.log('[NMT build]', BUILD_VERSION);
 
   async function fetchWithTimeout(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS) {
@@ -108,6 +114,13 @@ const tg = window.Telegram?.WebApp;
   const cheatList = document.getElementById('cheatList');
   const openOfficialPdf = document.getElementById('openOfficialPdf');
   const profileContent = document.getElementById('profileContent');
+  const profileHelpBtn = document.getElementById('profileHelpBtn');
+  const onboardingOverlay = document.getElementById('onboardingOverlay');
+  const onboardingStage = document.getElementById('onboardingStage');
+  const onboardingProgress = document.getElementById('onboardingProgress');
+  const onboardingSkip = document.getElementById('onboardingSkip');
+  const onboardingBack = document.getElementById('onboardingBack');
+  const onboardingNext = document.getElementById('onboardingNext');
   const navIndicator = document.getElementById('navIndicator');
   const navItems = Array.from(document.querySelectorAll('.liquid-nav-item'));
   const appViewport = document.getElementById('appViewport');
@@ -134,29 +147,20 @@ const tg = window.Telegram?.WebApp;
   }
 
   function renderMathSafely(root, attempt = 0) {
-    if (!root) return;
+    if (!root) return false;
 
-    if (typeof window.renderMathInElement === 'function') {
-      try {
-        window.renderMathInElement(root, {
-          delimiters: [
-            { left: '$$', right: '$$', display: true },
-            { left: '\\[', right: '\\]', display: true },
-            { left: '\\(', right: '\\)', display: false }
-          ],
-          throwOnError: false,
-          strict: false,
-        });
-        return;
-      } catch (err) {
-        console.warn('KaTeX render error:', err);
-      }
+    if (window.NMTMath?.render) {
+      const ok = window.NMTMath.render(root);
+      if (ok) return true;
     }
 
     // CDN може завантажитися на долю секунди пізніше за основний HTML.
-    if (attempt < 20) {
+    if (attempt < 20 && typeof window.renderMathInElement !== 'function') {
       setTimeout(() => renderMathSafely(root, attempt + 1), 120);
+      return false;
     }
+
+    return false;
   }
 
 
@@ -209,6 +213,81 @@ const tg = window.Telegram?.WebApp;
     toast.classList.add('show');
     clearTimeout(showToast.timer);
     showToast.timer = setTimeout(() => toast.classList.remove('show'), 2200);
+  }
+
+  const ONBOARDING_VERSION = 'launch-v1';
+  const ONBOARDING_SLIDES = [
+    {
+      icon: '∞',
+      eyebrow: 'Тести',
+      title: 'Тренуйся без кінця',
+      text: 'Отримуй змішані завдання з усієї програми НМТ. Ми спеціально чергуємо теми й структури, щоб тренування не перетворювалось на заучування шаблонів.',
+    },
+    {
+      icon: '1·2·3',
+      eyebrow: 'Пояснення',
+      title: 'Коротко й по кроках',
+      text: 'Після відповіді бачиш короткий розв’язок у 2–4 кроки. Якщо щось незрозуміло — попроси пояснити простіше або детальніше.',
+    },
+    {
+      icon: '22',
+      eyebrow: 'Пробний НМТ',
+      title: 'Перевір себе в режимі тесту',
+      text: '22 завдання, таймер, збереження прогресу й повний розбір після завершення — без підказок під час проходження.',
+    },
+  ];
+  let onboardingIndex = 0;
+  let onboardingManual = false;
+
+  function onboardingStorageKey() {
+    const id = tg?.initDataUnsafe?.user?.id || 'local';
+    return `nmt_onboarding_${ONBOARDING_VERSION}_${id}`;
+  }
+
+  function hasCompletedOnboarding() {
+    try { return localStorage.getItem(onboardingStorageKey()) === '1'; }
+    catch (_) { return false; }
+  }
+
+  function markOnboardingDone() {
+    try { localStorage.setItem(onboardingStorageKey(), '1'); } catch (_) {}
+  }
+
+  function renderOnboardingSlide() {
+    if (!onboardingStage) return;
+    const slide = ONBOARDING_SLIDES[onboardingIndex] || ONBOARDING_SLIDES[0];
+    onboardingStage.innerHTML = `
+      <div class="onboarding-icon" aria-hidden="true">${escapeHtml(slide.icon)}</div>
+      <div class="onboarding-eyebrow">${escapeHtml(slide.eyebrow)}</div>
+      <h3>${escapeHtml(slide.title)}</h3>
+      <p>${escapeHtml(slide.text)}</p>`;
+    onboardingProgress?.querySelectorAll('span').forEach((dot, i) => dot.classList.toggle('active', i === onboardingIndex));
+    if (onboardingBack) onboardingBack.hidden = onboardingIndex === 0;
+    if (onboardingNext) onboardingNext.textContent = onboardingIndex === ONBOARDING_SLIDES.length - 1 ? 'Почати' : 'Далі';
+  }
+
+  function openOnboarding({ manual = false } = {}) {
+    if (!onboardingOverlay) return;
+    onboardingManual = manual;
+    onboardingIndex = 0;
+    renderOnboardingSlide();
+    onboardingOverlay.classList.add('show');
+    onboardingOverlay.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('modal-open');
+    window.NMTUX?.haptic?.('light');
+  }
+
+  function closeOnboarding({ complete = true } = {}) {
+    if (!onboardingOverlay) return;
+    if (complete && !onboardingManual) markOnboardingDone();
+    onboardingOverlay.classList.remove('show');
+    onboardingOverlay.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('modal-open');
+  }
+
+  function maybeShowFirstRunOnboarding() {
+    if (hasCompletedOnboarding()) return;
+    setTimeout(() => openOnboarding({ manual: false }), 240);
   }
 
   function formatJoinDate(value) {
@@ -358,11 +437,9 @@ const tg = window.Telegram?.WebApp;
             <div class="profile-name-new">${escapeHtml(data.first_name || 'Учень')}</div>
             <div class="profile-since-new">${escapeHtml(formatJoinDate(data.created_at))}</div>
           </div>
-          <div class="profile-mini-badge" aria-label="Серія ${streak} ${dayWord(streak)}">
-            <span class="profile-mini-badge-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M12.2 2.2c.45 2.95-1.15 4.65-2.4 6.15-1.05 1.25-1.55 2.55-1.3 3.95.18 1.05.72 1.95 1.62 2.62-.15-2.05 1.18-3.4 2.55-4.65 2.12 1.83 3.58 4.08 3.58 6.72A6.25 6.25 0 0 1 10 23.2 6.25 6.25 0 0 1 3.75 17c0-3.75 2.25-6.15 4.72-8.78.12 1.5.52 2.62 1.22 3.5 1.35-1.85 3.25-4.95 2.51-9.52Z"/></svg>
-            </span>
-            <strong class="profile-mini-badge-value">${streak}</strong>
+          <div class="profile-streak-pill" aria-label="Серія ${streak} ${dayWord(streak)}">
+            <span class="profile-streak-flame" aria-hidden="true">🔥</span>
+            <span class="profile-streak-copy"><small>Серія</small><strong>${streak} ${dayWord(streak)}</strong></span>
           </div>
         </section>
 
@@ -403,6 +480,20 @@ const tg = window.Telegram?.WebApp;
           <button type="button" data-profile-action="nmt"><span>22</span><div><strong>Пробний НМТ</strong><small>Перевірити себе</small></div><i>›</i></button>
         </section>
 
+        <section class="profile-settings-card" aria-label="Налаштування">
+          <div class="profile-settings-title">Налаштування</div>
+          <button class="profile-setting-row" type="button" data-sound-toggle>
+            <span class="profile-setting-icon" aria-hidden="true">♪</span>
+            <span class="profile-setting-copy"><strong>Звуки</strong><small>Легкий feedback під час тренування</small></span>
+            <span class="premium-switch ${window.NMTUX?.getSoundEnabled?.() !== false ? 'on' : ''}" data-sound-switch aria-hidden="true"><i></i></span>
+          </button>
+          <button class="profile-setting-row" type="button" data-open-tutorial>
+            <span class="profile-setting-icon" aria-hidden="true">?</span>
+            <span class="profile-setting-copy"><strong>Як це працює</strong><small>Короткий тур по застосунку</small></span>
+            <span class="profile-setting-chevron">›</span>
+          </button>
+        </section>
+
         <details class="profile-disclosure profile-disclosure-v3">
           <summary>
             <div><strong>Статистика</strong><span>${Number(data.total) || 0} ${taskWord(Number(data.total) || 0)} за весь час</span></div>
@@ -429,6 +520,16 @@ const tg = window.Telegram?.WebApp;
 
       profileContent.querySelectorAll('[data-profile-action]').forEach((button) => {
         button.addEventListener('click', () => switchView(button.dataset.profileAction));
+      });
+
+      profileContent.querySelector('[data-open-tutorial]')?.addEventListener('click', () => openOnboarding({ manual: true }));
+      profileContent.querySelector('[data-sound-toggle]')?.addEventListener('click', () => {
+        const current = window.NMTUX?.getSoundEnabled?.() !== false;
+        const next = !current;
+        window.NMTUX?.setSoundEnabled?.(next);
+        profileContent.querySelector('[data-sound-switch]')?.classList.toggle('on', next);
+        if (next) window.NMTUX?.playSound?.('correct');
+        window.NMTUX?.haptic?.('selection');
       });
 
       profileLoaded = true;
@@ -558,44 +659,42 @@ const tg = window.Telegram?.WebApp;
     document.getElementById('retryBtn').addEventListener('click', loadQuestion);
   }
 
-  function getExplanationSteps(q) {
-    if (Array.isArray(q?.explanation_steps) && q.explanation_steps.length) {
-      return q.explanation_steps;
-    }
-
-    if (typeof q?.explanation === 'string' && q.explanation.trim()) {
-      const parts = q.explanation
-        .split(/\n+|(?=\s*\d+[.)]\s+)/)
-        .map((part) => part.replace(/^\s*\d+[.)]\s*/, '').trim())
-        .filter(Boolean);
-
-      return parts.length ? parts : [q.explanation.trim()];
-    }
-
-    return ['Розв’язання для цього завдання не надійшло.'];
+  function cleanExplanationStep(value = '') {
+    return String(value)
+      .replace(/^\s*\d+[.)]\s*/, '')
+      .replace(/^Використовуємо\s+/iu, 'Беремо ')
+      .replace(/^Підставляємо\s+/iu, 'Маємо ')
+      .replace(/^Отримуємо\s+/iu, 'Звідси ')
+      .replace(/^Обчислюємо\s+/iu, 'Рахуємо ')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 
+  function getExplanationSteps(q) {
+    const source = Array.isArray(q?.solution?.steps) && q.solution.steps.length
+      ? q.solution.steps
+      : Array.isArray(q?.explanation_steps) && q.explanation_steps.length
+        ? q.explanation_steps
+        : typeof q?.explanation === 'string'
+          ? q.explanation.split(/\n+|;\s+|(?=\s*\d+[.)]\s+)/)
+          : [];
+
+    const unique = [];
+    for (const raw of source) {
+      const step = cleanExplanationStep(raw);
+      if (!step || unique.includes(step)) continue;
+      if (/^Відповідь\s*:/iu.test(step)) continue;
+      unique.push(step);
+      if (unique.length >= 4) break;
+    }
+
+    return unique.length ? unique : ['Короткий розв’язок для цього завдання тимчасово недоступний.'];
+  }
 
   function getStructuredSolution(q) {
-    const solution = q?.solution;
-    if (solution && typeof solution === 'object') {
-      return {
-        given: solution.given || 'Використовуємо дані з умови.',
-        find: solution.find || 'Знайти величину, яку вимагає умова.',
-        method: solution.method || 'Добираємо математичний зв’язок між відомими та шуканою величиною.',
-        steps: Array.isArray(solution.steps) && solution.steps.length ? solution.steps : getExplanationSteps(q),
-        why: solution.why || 'Отриманий результат випливає з умови та застосованих математичних співвідношень.',
-        answer: solution.answer || (q?.type === 'choice' ? q?.options?.[q?.correct_index] : q?.correct_display) || '—',
-      };
-    }
-    const steps = getExplanationSteps(q);
     return {
-      given: q?.question || 'Дані наведено в умові.',
-      find: 'Знайти величину, яку вимагає умова.',
-      method: steps[0] || 'Використовуємо відповідну математичну властивість.',
-      steps,
-      why: 'Перевіряємо, що знайдене значення відповідає саме запитаній величині.',
-      answer: q?.type === 'choice' ? q?.options?.[q?.correct_index] : q?.correct_display || '—',
+      steps: getExplanationSteps(q),
+      answer: q?.solution?.answer || (q?.type === 'choice' ? q?.options?.[q?.correct_index] : q?.correct_display) || '—',
     };
   }
 
@@ -625,7 +724,7 @@ const tg = window.Telegram?.WebApp;
     }
   }
 
-  const ENGINE_DEBUG = new URLSearchParams(window.location.search).get('debug') === '1';
+  const ENGINE_DEBUG = ['localhost', '127.0.0.1'].includes(location.hostname) && new URLSearchParams(window.location.search).get('debug') === '1';
 
   function engineDebugMarkup(q) {
     if (!ENGINE_DEBUG) return '';
@@ -655,6 +754,13 @@ const tg = window.Telegram?.WebApp;
   }
 
   function renderQuestion(q) {
+    if (window.NMTMath?.validateQuestion && !window.NMTMath.validateQuestion(q)) {
+      console.warn('Question skipped: invalid math payload', q?.id || q?.bank_id || q?.question);
+      renderLoading('Підбираємо коректно оформлене завдання…');
+      setTimeout(() => loadQuestion({ forceFresh: true }), 0);
+      return;
+    }
+
     hideStartupScreen();
     state.currentQuestion = q;
     state.selectedIndex = null;
@@ -669,7 +775,6 @@ const tg = window.Telegram?.WebApp;
     }
 
     const letters = ['А', 'Б', 'В', 'Г', 'Д'];
-    const explanationSteps = getExplanationSteps(q);
     const solution = getStructuredSolution(q);
 
     cardArea.innerHTML = `
@@ -692,38 +797,18 @@ const tg = window.Telegram?.WebApp;
         <div class="explanation" id="explanation">
           <div class="explanation-title">
             <span class="explanation-title-icon">✦</span>
-            <span>Повний розбір</span>
+            <span>Пояснення</span>
           </div>
           <div class="solution-topic">${escapeHtml(q.topic_label || 'Тема НМТ')}</div>
-          <div class="solution-block">
-            <div class="solution-kicker">1. Що дано</div>
-            <div class="solution-text">${escapeHtml(solution.given)}</div>
-          </div>
-          <div class="solution-block">
-            <div class="solution-kicker">2. Що треба знайти</div>
-            <div class="solution-text">${escapeHtml(solution.find)}</div>
-          </div>
-          <div class="solution-block solution-method">
-            <div class="solution-kicker">3. Ідея розв’язання</div>
-            <div class="solution-text">${escapeHtml(solution.method)}</div>
-          </div>
-          <div class="solution-block">
-            <div class="solution-kicker">4. Розв’язуємо крок за кроком</div>
-            <ol class="explanation-steps">
-              ${solution.steps.map((step) => `<li class="explanation-step">${escapeHtml(step)}</li>`).join('')}
-            </ol>
-          </div>
-          <div class="solution-block">
-            <div class="solution-kicker">5. Чому це правильна відповідь</div>
-            <div class="solution-text">${escapeHtml(solution.why)}</div>
-          </div>
+          <ol class="explanation-steps explanation-steps-compact">
+            ${solution.steps.map((step) => `<li class="explanation-step">${escapeHtml(step)}</li>`).join('')}
+          </ol>
           <div class="solution-answer"><span>Відповідь</span><strong>${escapeHtml(solution.answer)}</strong></div>
           <div class="ai-help" id="aiHelp">
-            <div class="ai-help-title">Потрібна ще допомога?</div>
+            <div class="ai-help-title">Хочеш інше пояснення?</div>
             <div class="ai-help-actions">
-              <button class="ai-chip" type="button" data-ai-mode="simple">Поясни простіше</button>
-              <button class="ai-chip" type="button" data-ai-mode="why_wrong">Чому моя відповідь неправильна?</button>
-              <button class="ai-chip" type="button" data-ai-mode="similar">Дай схоже завдання</button>
+              <button class="ai-chip" type="button" data-ai-mode="simple">Пояснити простіше</button>
+              <button class="ai-chip" type="button" data-ai-mode="detailed">Пояснити детальніше</button>
             </div>
             <div class="ai-help-result" id="aiHelpResult"></div>
           </div>
@@ -734,7 +819,13 @@ const tg = window.Telegram?.WebApp;
         </div>
       </div>`;
 
-    renderMathSafely(cardArea);
+    const mathRendered = renderMathSafely(cardArea);
+    if (!mathRendered && typeof window.renderMathInElement === 'function') {
+      console.warn('Rendered question rejected by KaTeX; loading another item.');
+      renderLoading('Виправляємо математичне оформлення…');
+      setTimeout(() => loadQuestion({ forceFresh: true }), 0);
+      return;
+    }
 
     cardArea.querySelectorAll('.option').forEach((btn) => {
       btn.addEventListener('click', () => selectAnswer(Number(btn.dataset.index)));
@@ -746,7 +837,7 @@ const tg = window.Telegram?.WebApp;
     });
 
     document.getElementById('regenerateBtn').addEventListener('click', () => {
-      tg?.HapticFeedback?.impactOccurred?.('light');
+      window.NMTUX?.haptic?.('light');
       clearPrefetch();
       loadQuestion({ forceFresh: true });
     });
@@ -776,7 +867,8 @@ const tg = window.Telegram?.WebApp;
     checkBtn.disabled = false;
     checkBtn.textContent = 'Перевірити відповідь';
 
-    tg?.HapticFeedback?.selectionChanged?.();
+    window.NMTUX?.unlockAudio?.();
+    window.NMTUX?.haptic?.('selection');
   }
 
   async function submitAnswer() {
@@ -802,10 +894,16 @@ const tg = window.Telegram?.WebApp;
     options[selectedIndex].classList.add(isCorrect ? 'correct' : 'wrong');
     if (!isCorrect) options[q.correct_index].classList.add('correct');
 
+    const card = cardArea.querySelector('.card');
+    card?.classList.remove('feedback-correct', 'feedback-wrong');
+    card?.classList.add(isCorrect ? 'feedback-correct' : 'feedback-wrong');
+
     if (isCorrect) {
-      tg?.HapticFeedback?.notificationOccurred('success');
+      window.NMTUX?.haptic?.('success');
+      window.NMTUX?.playSound?.('correct');
     } else {
-      tg?.HapticFeedback?.notificationOccurred('error');
+      window.NMTUX?.haptic?.('error');
+      window.NMTUX?.playSound?.('wrong');
     }
 
     profileDirty = true;
@@ -845,8 +943,6 @@ const tg = window.Telegram?.WebApp;
 
     document.getElementById('explanation').classList.add('show');
     document.getElementById('aiHelp')?.classList.add('show');
-    const whyWrongBtn = cardArea.querySelector('[data-ai-mode="why_wrong"]');
-    if (whyWrongBtn && isCorrect) whyWrongBtn.style.display = 'none';
     renderMathSafely(document.getElementById('explanation'));
 
     checkBtn.disabled = false;
@@ -1211,6 +1307,26 @@ const tg = window.Telegram?.WebApp;
     btn.addEventListener('click', () => submitReport(btn.dataset.reason || 'Інше'));
   });
 
+  profileHelpBtn?.addEventListener('click', () => openOnboarding({ manual: true }));
+  onboardingSkip?.addEventListener('click', () => closeOnboarding({ complete: true }));
+  onboardingBack?.addEventListener('click', () => {
+    onboardingIndex = Math.max(0, onboardingIndex - 1);
+    renderOnboardingSlide();
+    window.NMTUX?.haptic?.('selection');
+  });
+  onboardingNext?.addEventListener('click', () => {
+    window.NMTUX?.unlockAudio?.();
+    if (onboardingIndex >= ONBOARDING_SLIDES.length - 1) {
+      if (!onboardingManual) markOnboardingDone();
+      closeOnboarding({ complete: false });
+      window.NMTUX?.haptic?.('light');
+      return;
+    }
+    onboardingIndex += 1;
+    renderOnboardingSlide();
+    window.NMTUX?.haptic?.('selection');
+  });
+
   async function loadTopics() {
     // Engine 4.1: training is intentionally one endless mixed stream.
     // Topic-specific practice is removed from the product UI.
@@ -1242,6 +1358,7 @@ const tg = window.Telegram?.WebApp;
       // Одним запитом беремо відразу кілька завдань; перше показуємо, решта лишаються в буфері.
       await ensureQuestionQueue(4);
       await loadQuestion();
+      maybeShowFirstRunOnboarding();
 
       // Після першого paint тихо прогріваємо важчі екрани у фоні.
       const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 500));

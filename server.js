@@ -1212,9 +1212,14 @@ function buildExtraHelpPrompt(mode, payload) {
     ? payload.options.map((x, i) => `${i}: ${x}`).join('\n')
     : '';
 
-  const modeInstruction = mode === 'why_wrong'
-    ? `Учень обрав варіант ${payload.selected_index}. Поясни конкретно, чому цей варіант неправильний, де найімовірніше сталася помилка, і покажи правильний шлях.`
-    : `Поясни це завдання максимально просто, ніби учень знає тему слабко. Не перескакуй через кроки.`;
+  let modeInstruction;
+  if (mode === 'detailed') {
+    modeInstruction = 'Поясни трохи детальніше, але без довгої лекції: 3–5 логічних кроків, коротко пояснюючи, звідки береться кожен важливий перехід.';
+  } else if (mode === 'why_wrong') {
+    modeInstruction = `Учень обрав варіант ${payload.selected_index}. Поясни конкретно, чому цей варіант неправильний, де найімовірніше сталася помилка, і покажи правильний шлях.`;
+  } else {
+    modeInstruction = 'Поясни максимально просто: 2–4 короткі кроки людською мовою. Не починай кроки словами «Використовуємо», «Підставляємо» або «Отримуємо».';
+  }
 
   return `Ти — уважний репетитор НМТ з математики.
 
@@ -1229,8 +1234,8 @@ ${modeInstruction}
 - Не змінюй умову та правильну відповідь.
 - Пиши українською.
 - Математику оформлюй LaTeX у \\( ... \\) або \\[ ... \\].
-- Дай 2-5 коротких послідовних кроків.
-- Не використовуй зайву теорію.
+- Один крок = одна зрозуміла думка.
+- Не повторюй умову й не додавай зайву теорію.
 
 Поверни ЛИШЕ JSON:
 {
@@ -1516,15 +1521,38 @@ function stripDelimitedMath(value) {
     .replace(/\$\$[\s\S]*?\$\$/g, ' ');
 }
 
+function hasBalancedMathDelimiters(value) {
+  if (typeof value !== 'string') return true;
+  const pairs = [
+    [/\\\(/g, /\\\)/g],
+    [/\\\[/g, /\\\]/g],
+  ];
+  for (const [openRe, closeRe] of pairs) {
+    const opens = value.match(openRe)?.length ?? 0;
+    const closes = value.match(closeRe)?.length ?? 0;
+    if (opens !== closes) return false;
+  }
+  const dollars = value.match(/\$\$/g)?.length ?? 0;
+  return dollars % 2 === 0;
+}
+
 function hasUnsafeRawMath(value) {
   if (typeof value !== 'string') return false;
 
   const outsideMath = stripDelimitedMath(value);
-
   const rawLatexCommand = /\\(?:frac|dfrac|tfrac|sqrt|left|right|cdot|times|div|log|ln|sin|cos|tan|cot|le|ge|neq|approx|pi|infty|sum|prod|overline|vec|begin|end)\b/;
-  const legacyNotation = /\bsqrt\s*\(|\blog_[A-Za-z0-9]+\s*\(|(?:[A-Za-z0-9)}\]])\s*\^\s*(?:\{|[-+]?\d)/;
+  const legacyNotation = /\bsqrt\s*\(|\blog_[A-Za-z0-9]+\s*\(?|\b[A-Za-z]\s*[+−\-*/^]\s*\(?-?\d|\d\s*\^\s*\d/;
+  const compactMath = /[A-Za-zА-Яа-яІіЇїЄєҐґ0-9₀-₉ₙₐₑₒₓ][A-Za-zА-Яа-яІіЇїЄєҐґ0-9₀-₉ₙₐₑₒₓ_(){}\[\]+−\-*/·×^=<>≤≥≠:%.,]{1,100}/gu;
+  const hasCompactMath = [...outsideMath.matchAll(compactMath)].some(([token]) => {
+    // Only reject compact fragments that clearly look like an unwrapped formula,
+    // not ordinary hyphenated words or version-like text.
+    const hasRelationOrPower = /[=<>≤≥≠^√]/u.test(token);
+    const hasNumericOperation = /(?:\d[^\s]{0,30}[+−*/·×]|[+−*/·×][^\s]{0,30}\d)/u.test(token);
+    const hasSubscriptFormula = /[A-Za-zА-Яа-яІіЇїЄєҐґ][₀-₉ₙₐₑₒₓ]/u.test(token) && /[=+−*/·×^]/u.test(token);
+    return hasRelationOrPower || hasNumericOperation || hasSubscriptFormula;
+  });
 
-  return rawLatexCommand.test(outsideMath) || legacyNotation.test(outsideMath);
+  return rawLatexCommand.test(outsideMath) || legacyNotation.test(outsideMath) || hasCompactMath;
 }
 
 function hasSafeQuestionMath(question) {
@@ -1534,9 +1562,23 @@ function hasSafeQuestionMath(question) {
     question.question,
     ...(Array.isArray(question.options) ? question.options : []),
     question.explanation,
+    ...(Array.isArray(question.explanation_steps) ? question.explanation_steps : []),
+    ...(Array.isArray(question.left) ? question.left : []),
+    ...(Array.isArray(question.match_options) ? question.match_options.map((x) => x?.label) : []),
   ];
 
-  return fields.every((value) => !hasUnsafeRawMath(value));
+  if (question.solution && typeof question.solution === 'object') {
+    fields.push(
+      question.solution.given,
+      question.solution.find,
+      question.solution.method,
+      question.solution.why,
+      question.solution.answer,
+      ...(Array.isArray(question.solution.steps) ? question.solution.steps : []),
+    );
+  }
+
+  return fields.every((value) => hasBalancedMathDelimiters(value) && !hasUnsafeRawMath(value));
 }
 
 function verificationPasses(check, candidate) {
@@ -2281,7 +2323,7 @@ app.post('/api/explain-more', async (req, res) => {
       });
     }
 
-    if (!['simple', 'why_wrong'].includes(mode)) return res.status(400).json({ error: 'Невідомий режим пояснення.' });
+    if (!['simple', 'detailed', 'why_wrong'].includes(mode)) return res.status(400).json({ error: 'Невідомий режим пояснення.' });
 
     const help = await callGemini(buildExtraHelpPrompt(mode, question), 0.25);
     const steps = Array.isArray(help.steps) ? help.steps.filter((x) => typeof x === 'string' && x.trim()) : [];
@@ -2313,7 +2355,7 @@ app.post('/api/questions-batch', async (req, res) => {
     const user = await getOrCreateUser(telegramUser);
     const telegramId = user?.telegram_id ?? null;
     const avoidList = telegramId
-      ? await getRecentQuestions(telegramId, effectiveTopic, 60)
+      ? await getRecentQuestions(telegramId, effectiveTopic, 180)
       : [];
 
     const questions = [];
@@ -2414,7 +2456,7 @@ app.post('/api/generate-question', async (req, res) => {
     const user = await getOrCreateUser(telegramUser);
     const telegramId = user?.telegram_id ?? null;
     const avoidList = telegramId
-      ? await getRecentQuestions(telegramId, effectiveTopic, 60)
+      ? await getRecentQuestions(telegramId, effectiveTopic, 180)
       : [];
 
     let question = null;

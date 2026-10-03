@@ -1,24 +1,3 @@
-const ACTION_LABELS = [
-  [/cosine/i, 'теорему косинусів'],
-  [/pythag/i, 'теорему Піфагора'],
-  [/bisector/i, 'теорему про бісектрису'],
-  [/median|apolloni/i, 'формулу медіани'],
-  [/area/i, 'формулу площі'],
-  [/percent|discount|markup|ratio/i, 'відсоткові співвідношення та пропорції'],
-  [/vieta|roots/i, 'теорему Вієта та властивості коренів'],
-  [/quadratic/i, 'властивості квадратного рівняння'],
-  [/log/i, 'властивості логарифмів'],
-  [/derivative/i, 'правила диференціювання'],
-  [/integral|primitive/i, 'властивості первісної та інтеграла'],
-  [/probab|count/i, 'правила комбінаторики та ймовірності'],
-  [/similar/i, 'ознаки та властивості подібності'],
-  [/trig|sin|cos|tan/i, 'тригонометричні співвідношення'],
-  [/function|graph/i, 'властивості функції та її графіка'],
-  [/progress/i, 'формули прогресії'],
-  [/system/i, 'методи розв’язування систем рівнянь'],
-  [/inequal/i, 'властивості нерівностей'],
-];
-
 function cleanText(value='') {
   return String(value).replace(/\s+/g, ' ').trim();
 }
@@ -37,45 +16,79 @@ function extractFind(question='') {
   const explicit = parts.findLast?.((x) => /^(знайд|обчисл|визнач|скільки|якою|який|яка|чому|укаж|встанов)/iu.test(x));
   if (explicit) return explicit;
   const match = String(question).match(/((?:Знайдіть|Обчисліть|Визначте|Скільки|Якою|Який|Яка|Укажіть|Встановіть)[\s\S]*)$/iu);
-  return cleanText(match?.[1] || 'визначити значення, яке вимагає умова задачі');
+  return cleanText(match?.[1] || 'Знайти значення, яке вимагає умова.');
 }
 
 function extractGiven(question='') {
   const find = extractFind(question);
   const text = cleanText(question).replace(find, '').replace(/[.!?]+\s*$/, '').trim();
-  return text || 'Використовуємо всі дані, наведені в умові.';
+  return text || 'Дані наведені в умові.';
 }
 
-function chooseMethod(genome={}) {
-  const source = [genome.concept, ...(genome.solution_path || []), ...(genome.hidden_relations || [])].join(' ');
-  const hit = ACTION_LABELS.find(([re]) => re.test(source));
-  const label = hit?.[1] || 'зв’язки між величинами з умови та послідовні математичні перетворення';
-  return `Використовуємо ${label}, бо цей підхід безпосередньо пов’язує відомі дані з величиною, яку потрібно знайти.`;
+function humanizeStep(value='') {
+  let text = cleanText(value)
+    .replace(/^\d+[.)]\s*/, '')
+    .replace(/^Використовуємо\s*:?\s*/iu, 'Беремо ')
+    .replace(/^Підставляємо\s*:?\s*/iu, 'Маємо ')
+    .replace(/^Отримуємо\s*:?\s*/iu, 'Звідси ')
+    .replace(/^Обчислюємо\s*:?\s*/iu, 'Рахуємо ')
+    .replace(/^Застосовуємо\s*:?\s*/iu, 'Тут працює ')
+    .replace(/^За формулою\s*:?\s*/iu, 'Маємо за формулою ')
+    .trim();
+
+  if (!text) return '';
+  if (!/[.!?)]$/.test(text) && !/\\\)$/.test(text)) text += '.';
+  return text;
 }
 
 function splitExplanation(explanation='') {
-  const raw=String(explanation).trim();
-  const lines=raw.split(/\n+/).map((x)=>x.trim()).filter(Boolean);
-  const numbered=lines.filter((x)=>/^\d+[.)]\s+/.test(x));
-  if(numbered.length>=2) return lines.map((x)=>x.replace(/^\d+[.)]\s+/, '').trim()).filter(Boolean);
-  const sentences = sentenceParts(raw);
-  return sentences.length ? sentences : [cleanText(raw)].filter(Boolean);
+  const raw = String(explanation).trim();
+  if (!raw) return [];
+
+  const chunks = raw
+    .split(/\n+/)
+    .flatMap((x) => sentenceParts(x))
+    .map(humanizeStep)
+    .filter(Boolean);
+
+  const unique = [];
+  for (const chunk of chunks) {
+    if (/^Відповідь\s*:/iu.test(chunk)) continue;
+    if (!unique.includes(chunk)) unique.push(chunk);
+    if (unique.length >= 4) break;
+  }
+  return unique;
+}
+
+function fallbackSteps({ question, answerDisplay }) {
+  const find = extractFind(question);
+  return [
+    humanizeStep(find),
+    humanizeStep(`Тому шукане значення — ${cleanText(answerDisplay)}`),
+  ].filter(Boolean);
 }
 
 export function buildStructuredSolution({ question, explanation, genome, answerDisplay }) {
-  const steps = splitExplanation(explanation);
+  let steps = splitExplanation(explanation);
+  if (!steps.length) steps = fallbackSteps({ question, answerDisplay });
+  if (steps.length === 1 && cleanText(answerDisplay)) {
+    steps.push(humanizeStep(`Звідси шукане значення — ${cleanText(answerDisplay)}`));
+  }
+
+  // Launch UI intentionally stays concise. We preserve the legacy fields only
+  // for backward compatibility, but the product renders `steps` + `answer`.
   return {
-    version: 1,
+    version: 2,
     given: extractGiven(question),
     find: extractFind(question),
-    method: chooseMethod(genome),
-    steps,
-    why: 'Кожен крок використовує лише дані з умови або наслідки вже отриманих співвідношень. Тому знайдене значення безпосередньо відповідає тому, що потрібно визначити в задачі.',
+    method: steps[0] || '',
+    steps: steps.slice(0, 4),
+    why: steps.at(-1) || '',
     answer: cleanText(answerDisplay),
   };
 }
 
 export function solutionStepsForLegacy(solution) {
   if (!solution) return [];
-  return [solution.method, ...(solution.steps || []), `Відповідь: ${solution.answer}`];
+  return (solution.steps || []).slice(0, 4);
 }

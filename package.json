@@ -1,7 +1,7 @@
 {
   "name": "nmt-math-miniapp",
-  "version": "4.1.0",
-  "description": "Telegram Mini App — NMT Engine 4.0 AI Hybrid",
+  "version": "4.1.1",
+  "description": "Telegram Mini App — NMT Engine 4.1 Launch Polish",
   "type": "module",
   "main": "server.js",
   "scripts": {
@@ -12,7 +12,8 @@
     "nmt:core:audit": "node scripts/audit-engine4.js",
     "nmt:v4:bank": "node scripts/build-runtime-bank.js",
     "nmt:v4:audit": "node scripts/audit-engine4.js",
-    "nmt:v4:ai-review": "node scripts/ai-review-bank.js"
+    "nmt:v4:ai-review": "node scripts/ai-review-bank.js",
+    "nmt:launch:audit": "node scripts/audit-launch.js"
   },
   "engines": {
     "node": ">=18.0.0"
