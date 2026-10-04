@@ -732,25 +732,58 @@ async function ensureOfflineQuestionBankId(question) {
   return id;
 }
 
-async function getRecentNmtBankItemIds(telegramId, limitAttempts = 3) {
-  if (!pool || !telegramId) return [];
+function compactNmtQuestionMemory(question) {
+  if (!question || typeof question !== 'object') return null;
+  const meta = question.bank_meta || {};
+  const genome = meta.genome || question.genome || {};
+  return {
+    id: typeof question.id === 'string' ? question.id : null,
+    topic: question.topic || genome.topic || null,
+    family: meta.family || question.blueprint_id || genome.family || null,
+    skeleton_hash: meta.skeleton_hash || null,
+    genome_signature: meta.genome_signature || question.engine4?.evaluation?.genome_signature || null,
+    solution_path: meta.solution_path || (Array.isArray(genome.solution_path) ? genome.solution_path.join('>') : null),
+    concept: genome.concept || null,
+    representation: meta.representation || genome.representation || question.type || null,
+  };
+}
+
+async function getRecentNmtQuestionMemory(telegramId, limitAttempts = 8) {
+  if (!pool || !telegramId) return { ids: [], items: [] };
   const { rows } = await pool.query(
     `SELECT questions
      FROM nmt_exam_attempts
      WHERE telegram_id = $1
      ORDER BY started_at DESC
      LIMIT $2`,
-    [telegramId, Math.max(1, Number(limitAttempts) || 3)]
+    [telegramId, Math.max(1, Math.min(12, Number(limitAttempts) || 8))]
   );
 
-  const ids = [];
+  const items = [];
   for (const row of rows) {
     const questions = Array.isArray(row.questions) ? row.questions : [];
     for (const question of questions) {
-      if (typeof question?.id === 'string' && question.id.startsWith('nmt3-')) ids.push(question.id);
+      const memory = compactNmtQuestionMemory(question);
+      if (memory) items.push(memory);
     }
   }
-  return [...new Set(ids)];
+
+  const unique = [];
+  const seen = new Set();
+  for (const item of items) {
+    const key = [
+      item.id || '', item.skeleton_hash || '', item.genome_signature || '',
+      item.family || '', item.solution_path || '', item.concept || '', item.topic || '',
+    ].join('|');
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(item);
+  }
+
+  return {
+    ids: [...new Set(unique.map((item) => item.id).filter(Boolean))],
+    items: unique,
+  };
 }
 
 async function syncOfflineBankDisabledState() {
@@ -2116,9 +2149,13 @@ app.post('/api/nmt/start', async (req, res) => {
     const assemblySeed = `${telegramUser.id}:${normalizedSessionId}:stage9`;
 
     if (offlineBankRuntime) {
-      const recentIds = await getRecentNmtBankItemIds(telegramUser.id, 3);
+      // v1.0.4: remember several previous NMT attempts by structure, not only by item id.
+      // This prevents a fresh test from feeling like the previous one with different numbers.
+      const recentMemory = await getRecentNmtQuestionMemory(telegramUser.id, 8);
       const assembled = offlineBankRuntime.assembleMock(EXAM_SLOTS, {
-        recentIds,
+        recentIds: recentMemory.ids,
+        recentItems: recentMemory.items,
+        attempts: 48,
         seed: assemblySeed,
       });
       questions = assembled.questions;

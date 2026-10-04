@@ -5,6 +5,17 @@ function G({topic,subtopic,family,concept,solutionPath,context='abstract',repres
   return createGenome({topic,subtopic,family,concept,solutionPath,context,representation,visualTopology,combinedTopics,parameterPattern,answerFormat,...HARD,...extra});
 }
 const exact=(x)=>Math.abs(x-Math.round(x))<1e-9;
+const MATCH_CODES=['А','Б','В','Г','Д'];
+function shuffled(values){const out=[...values];for(let i=out.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[out[i],out[j]]=[out[j],out[i]];}return out;}
+function matchingPayload(correctValues,distractors=[]){
+  const values=[];
+  for(const value of [...correctValues,...distractors]){const text=String(value);if(!values.includes(text))values.push(text);}
+  let guard=0;while(values.length<5&&guard++<40){const fallback=String(ri(2,30));if(!values.includes(fallback))values.push(fallback);}
+  const options=shuffled(values.slice(0,5));
+  const pairs={};
+  correctValues.forEach((value,i)=>{const index=options.indexOf(String(value));if(index<0)throw new Error('Matching correct option missing');pairs[String(i)]=MATCH_CODES[index];});
+  return {options,pairs};
+}
 
 // 1. DATA / STATISTICS ---------------------------------------------------------
 function chartWeightedDifference(){
@@ -77,15 +88,92 @@ function advancedPercentEquation(){const base=pick([800,1000,1200]),p=pick([20,2
 export function generateAdvancedV4(){return pick([advancedAlgebraGeometry,advancedPercentEquation])();}
 
 // 13. MATCHING FUNCTIONS -------------------------------------------------------
-function matchingFunctions(){const left=['f(x)=2x−4','g(x)=x²−4','h(x)=−3x+6'];const opts=['Нуль функції дорівнює 2','Графік має вершину (0;−4)','Функція спадає на всій області визначення','Графік проходить через початок координат','Нуль функції дорівнює −2'];const pairs={'0':'A','1':'B','2':'C'};return matchingFromModel({blueprintId:'matching_functions',topic:'functions',variant:'v4-match-function-properties',question:'Установіть відповідність між функцією (1–3) та її властивістю (А–Д).',left,options:opts,correctPairs:pairs,explanation:'Для 2x−4=0 маємо x=2; y=x²−4 має вершину (0;−4); y=−3x+6 спадає на всій області визначення.',genome:G({topic:'functions',subtopic:'Функції і прямі',family:'matching_functions',concept:'match-formulas-to-properties',solutionPath:['analyze_each_formula','derive_key_property','compare_options','establish_bijection'],answerFormat:'matching',representation:'matching',combinedTopics:['graphs'],visualReasoning:2})});}
+function matchingFunctionsProperties(){
+  const root=pick([1,2,3,4]), h=pick([-2,-1,1,2]), k=pick([-5,-4,-3,2]), m=pick([2,3,4]), c=pick([4,6,8]);
+  const left=[math(`2x-${2*root}`),math(`(x-${h})^2${k>=0?'+':''}${k}`),math(`-${m}x+${c}`)];
+  const correct=[`Нуль функції дорівнює ${root}`,`Графік має вершину (${h};${k})`,'Функція спадає на всій області визначення'];
+  const payload=matchingPayload(correct,[`Нуль функції дорівнює ${-root}`,'Графік проходить через початок координат']);
+  return matchingFromModel({blueprintId:'matching_functions',topic:'functions',variant:'v4-match-function-properties-parameterized',question:'Установіть відповідність між функцією (1–3) та її властивістю (А–Д).',left,options:payload.options,correctPairs:payload.pairs,explanation:`Для першої функції розв'язуємо рівняння f(x)=0 і маємо x=${root}; у другої функції вершина параболи (${h};${k}); третя функція має від'ємний кутовий коефіцієнт, тому спадає.`,genome:G({topic:'functions',subtopic:'Функції і графіки',family:'matching_functions',concept:'match-formulas-to-properties',solutionPath:['analyze_zero','read_parabola_vertex','read_linear_monotonicity','match_properties'],answerFormat:'matching',representation:'matching',combinedTopics:['graphs'],visualReasoning:2})});
+}
+function matchingFunctionsValues(){
+  const x0=pick([-2,-1,1,2]), a=pick([2,3]), b=pick([1,4,5]);
+  const v1=a*x0+b, v2=x0*x0-b, v3=2*x0-a;
+  if(new Set([v1,v2,v3]).size<3)return matchingFunctionsValues();
+  const left=[math(`${a}x+${b}`),math(`x^2-${b}`),math(`2x-${a}`)];
+  const correct=[math(String(v1)),math(String(v2)),math(String(v3))];
+  const payload=matchingPayload(correct,[math(String(v1+2)),math(String(v2-2))]);
+  return matchingFromModel({blueprintId:'matching_functions',topic:'functions',variant:'v4-match-function-values',question:`Для кожної функції (1–3) установіть відповідність із її значенням при x=${x0}.`,left,options:payload.options,correctPairs:payload.pairs,explanation:`Для 1: ${a}·(${x0})+${b}=${v1}; для 2: (${x0})²−${b}=${v2}; для 3: 2·(${x0})−${a}=${v3}.`,genome:G({topic:'functions',subtopic:'Значення функції',family:'matching_functions',concept:'match-functions-to-point-values',solutionPath:['substitute_into_linear','substitute_into_quadratic','substitute_into_linear_2','match_values'],answerFormat:'matching',representation:'matching',algebraLoad:3})});
+}
+function matchingFunctionsRoots(){
+  const r1=pick([-3,-2,2,3]), r2=pick([1,2,4]), r3=pick([-4,-1,3]), c=pick([2,3]);
+  if(new Set([r1,r2,r3]).size<3)return matchingFunctionsRoots();
+  const left=[math(`x-${r1}`),math(`2x-${2*r2}`),math(`${c}x-${c*r3}`)];
+  const correct=[math(String(r1)),math(String(r2)),math(String(r3))];
+  const payload=matchingPayload(correct,[math(String(-r1)),math(String(r2+1))]);
+  return matchingFromModel({blueprintId:'matching_functions',topic:'functions',variant:'v4-match-linear-roots',question:'Установіть відповідність між функцією (1–3) та її нулем (А–Д).',left,options:payload.options,correctPairs:payload.pairs,explanation:`1) x−(${r1})=0, тому x=${r1}; 2) 2x−${2*r2}=0, тому x=${r2}; 3) ${c}x−(${c*r3})=0, тому x=${r3}.`,genome:G({topic:'functions',subtopic:'Нулі функції',family:'matching_functions',concept:'match-linear-functions-to-roots',solutionPath:['solve_first_zero','solve_second_zero','solve_third_zero','match_roots'],answerFormat:'matching',representation:'matching',algebraLoad:3})});
+}
+function matchingFunctions(){return pick([matchingFunctionsProperties,matchingFunctionsValues,matchingFunctionsRoots])();}
 export function generateMatchingFunctionsV4(){return matchingFunctions();}
 
 // 14. MATCHING EXPRESSIONS -----------------------------------------------------
-function matchingExpressions(){const left=[math('2^3\\cdot2^{-1}'),math('\\sqrt{49}+2'),math('(3^2-1)/4')];const opts=['2','4','8','9','16'];const pairs={'0':'B','1':'D','2':'A'};return matchingFromModel({blueprintId:'matching_expressions',topic:'powers_roots',variant:'v4-match-expression-values',question:'Установіть відповідність між виразом (1–3) та його значенням (А–Д).',left,options:opts,correctPairs:pairs,explanation:'2³·2⁻¹=2²=4; √49+2=9; (9−1)/4=2.',genome:G({topic:'powers_roots',subtopic:'Вирази',family:'matching_expressions',concept:'match-transformed-values',solutionPath:['simplify_power','evaluate_root_expression','simplify_fraction','map_unique_values'],answerFormat:'matching',representation:'matching',algebraLoad:3})});}
+function matchingExpressionsPowers(){
+  const a=pick([3,4,5]), b=pick([1,2]), n=pick([5,6,7]), add=pick([1,2,3]), denom=pick([2,4]), v3=pick([2,3,4]);
+  const v1=2**(a-b), v2=n+add, top=v3*denom;
+  if(new Set([v1,v2,v3]).size<3)return matchingExpressionsPowers();
+  const left=[math(`2^${a}\cdot2^{-${b}}`),math(`\sqrt{${n*n}}+${add}`),math(`\frac{${top}}{${denom}}`)];
+  const correct=[math(String(v1)),math(String(v2)),math(String(v3))];
+  const payload=matchingPayload(correct,[math(String(v1*2)),math(String(v2+2))]);
+  return matchingFromModel({blueprintId:'matching_expressions',topic:'powers_roots',variant:'v4-match-expression-values-powers',question:'Установіть відповідність між виразом (1–3) та його значенням (А–Д).',left,options:payload.options,correctPairs:payload.pairs,explanation:`1) 2^${a}·2^{−${b}}=2^${a-b}=${v1}; 2) √${n*n}+${add}=${v2}; 3) ${top}/${denom}=${v3}.`,genome:G({topic:'powers_roots',subtopic:'Вирази',family:'matching_expressions',concept:'match-power-root-fraction-values',solutionPath:['simplify_power','evaluate_root_expression','simplify_fraction','match_unique_values'],answerFormat:'matching',representation:'matching',algebraLoad:3})});
+}
+function matchingExpressionsRoots(){
+  const a=pick([3,4,5]), b=pick([2,3,4]), c=pick([2,3,5]);
+  const v1=a, v2=b*b, v3=c+1;
+  if(new Set([v1,v2,v3]).size<3)return matchingExpressionsRoots();
+  const left=[math(`\sqrt{${a*a}}`),math(`${b}^2`),math(`\sqrt{${c*c}}+1`)];
+  const correct=[math(String(v1)),math(String(v2)),math(String(v3))];
+  const payload=matchingPayload(correct,[math(String(a*a)),math(String(b+c))]);
+  return matchingFromModel({blueprintId:'matching_expressions',topic:'powers_roots',variant:'v4-match-roots-and-squares',question:'Установіть відповідність між виразом (1–3) та його числовим значенням (А–Д).',left,options:payload.options,correctPairs:payload.pairs,explanation:`1) √${a*a}=${a}; 2) ${b}²=${b*b}; 3) √${c*c}+1=${c+1}.`,genome:G({topic:'powers_roots',subtopic:'Степені та корені',family:'matching_expressions',concept:'match-roots-squares-values',solutionPath:['evaluate_square_root','evaluate_square','evaluate_root_plus_constant','match_values'],answerFormat:'matching',representation:'matching',algebraLoad:2})});
+}
+function matchingExpressionsFractions(){
+  const a=pick([4,6,8]), b=pick([2,4]), c=pick([3,5,7]);
+  const v1=a/b, v2=c-1, v3=a+c;
+  if(!exact(v1) || new Set([v1,v2,v3]).size<3)return matchingExpressionsFractions();
+  const left=[math(`\frac{${a}}{${b}}`),math(`\sqrt{${c*c}}-1`),math(`${a}+\sqrt{${c*c}}`)];
+  const correct=[math(String(v1)),math(String(v2)),math(String(v3))];
+  const payload=matchingPayload(correct,[math(String(a)),math(String(c))]);
+  return matchingFromModel({blueprintId:'matching_expressions',topic:'powers_roots',variant:'v4-match-fraction-root-combined',question:'Установіть відповідність між виразом (1–3) та результатом його обчислення (А–Д).',left,options:payload.options,correctPairs:payload.pairs,explanation:`1) ${a}/${b}=${v1}; 2) √${c*c}−1=${v2}; 3) ${a}+√${c*c}=${v3}.`,genome:G({topic:'powers_roots',subtopic:'Обчислення виразів',family:'matching_expressions',concept:'match-fraction-root-combined-values',solutionPath:['reduce_fraction','evaluate_root_difference','evaluate_sum_with_root','match_values'],answerFormat:'matching',representation:'matching',algebraLoad:2})});
+}
+function matchingExpressions(){return pick([matchingExpressionsPowers,matchingExpressionsRoots,matchingExpressionsFractions])();}
 export function generateMatchingExpressionsV4(){return matchingExpressions();}
 
 // 15. MATCHING PLANIMETRY ------------------------------------------------------
-function matchingPlanimetry(){const left=['Квадрат зі стороною 6','Прямокутник 6×8','Прямокутний трикутник з катетами 6 і 8'];const opts=['10','24','36','48','50'];const pairs={'0':'C','1':'D','2':'A'};return matchingFromModel({blueprintId:'matching_planimetry',topic:'planimetry',variant:'v4-match-geometry-derived-values',question:'Установіть відповідність між фігурою (1–3) та вказаною для неї величиною: для квадрата — площею, для прямокутника — площею, для трикутника — гіпотенузою.',left,options:opts,correctPairs:pairs,explanation:'6²=36; 6·8=48; √(6²+8²)=10.',genome:G({topic:'planimetry',subtopic:'Планіметрія',family:'matching_planimetry',concept:'match-figures-to-derived-measures',solutionPath:['identify_requested_measure_per_row','apply_area_or_pythagoras','compute_each','match_unique_values'],answerFormat:'matching',representation:'matching',combinedTopics:['areas','pythagorean_theorem'],visualReasoning:2,theoremRecall:3})});}
+function matchingPlanimetryAreas(){
+  const square=pick([4,5,6,7]), rw=pick([4,6,8]), rh=pick([5,7,9]), triples=pick([[3,4,5],[6,8,10],[5,12,13]]);
+  const [ca,cb,ch]=triples, v1=square*square, v2=rw*rh, v3=ch;
+  if(new Set([v1,v2,v3]).size<3)return matchingPlanimetryAreas();
+  const left=[`Квадрат зі стороною ${square}`,`Прямокутник ${rw}×${rh}`,`Прямокутний трикутник з катетами ${ca} і ${cb}`];
+  const correct=[math(String(v1)),math(String(v2)),math(String(v3))];
+  const payload=matchingPayload(correct,[math(String(2*square)),math(String(rw+rh))]);
+  return matchingFromModel({blueprintId:'matching_planimetry',topic:'planimetry',variant:'v4-match-geometry-derived-values-parameterized',question:'Установіть відповідність між фігурою (1–3) та вказаною для неї величиною: для квадрата — площею, для прямокутника — площею, для трикутника — гіпотенузою.',left,options:payload.options,correctPairs:payload.pairs,explanation:`1) Площа квадрата: ${square}²=${v1}; 2) площа прямокутника: ${rw}·${rh}=${v2}; 3) гіпотенуза трикутника: √(${ca}²+${cb}²)=${v3}.`,genome:G({topic:'planimetry',subtopic:'Планіметрія',family:'matching_planimetry',concept:'match-figures-to-derived-measures',solutionPath:['square_area','rectangle_area','pythagorean_hypotenuse','match_values'],answerFormat:'matching',representation:'matching',combinedTopics:['areas','pythagorean_theorem'],visualReasoning:2,theoremRecall:3})});
+}
+function matchingPlanimetryPerimeters(){
+  const square=pick([3,4,5,6]), rw=pick([4,5,7]), rh=pick([6,8,9]), r=pick([2,3,4]);
+  const v1=4*square, v2=2*(rw+rh), v3=2*r;
+  if(new Set([v1,v2,v3]).size<3)return matchingPlanimetryPerimeters();
+  const left=[`Периметр квадрата зі стороною ${square}`,`Периметр прямокутника зі сторонами ${rw} і ${rh}`,`Діаметр кола радіуса ${r}`];
+  const correct=[math(String(v1)),math(String(v2)),math(String(v3))];
+  const payload=matchingPayload(correct,[math(String(square*square)),math(String(r*r))]);
+  return matchingFromModel({blueprintId:'matching_planimetry',topic:'planimetry',variant:'v4-match-perimeter-and-diameter',question:'Установіть відповідність між геометричною величиною (1–3) та її значенням (А–Д).',left,options:payload.options,correctPairs:payload.pairs,explanation:`1) 4·${square}=${v1}; 2) 2(${rw}+${rh})=${v2}; 3) діаметр дорівнює 2·${r}=${v3}.`,genome:G({topic:'planimetry',subtopic:'Периметри і коло',family:'matching_planimetry',concept:'match-perimeters-and-diameter',solutionPath:['square_perimeter','rectangle_perimeter','circle_diameter','match_values'],answerFormat:'matching',representation:'matching',combinedTopics:['quadrilaterals','circle'],theoremRecall:2})});
+}
+function matchingPlanimetryTriangleMeasures(){
+  const triples=pick([[3,4,5],[5,12,13],[8,15,17]]), [a,b,c]=triples, square=pick([4,6,8]), rect=pick([[4,6],[5,8],[6,10]]), [rw,rh]=rect;
+  const v1=c, s2=`${square}√2`, v3=rw*rh/2;
+  const correct=[math(String(v1)),math(s2),math(ua(v3))];
+  const payload=matchingPayload(correct,[math(String(a+b)),math(String(rw*rh))]);
+  const left=[`Гіпотенуза прямокутного трикутника з катетами ${a} і ${b}`,`Діагональ квадрата зі стороною ${square}`,`Площа прямокутного трикутника з катетами ${rw} і ${rh}`];
+  return matchingFromModel({blueprintId:'matching_planimetry',topic:'planimetry',variant:'v4-match-triangle-square-measures',question:'Установіть відповідність між описом (1–3) та значенням шуканої величини (А–Д).',left,options:payload.options,correctPairs:payload.pairs,explanation:`1) √(${a}²+${b}²)=${c}; 2) діагональ квадрата дорівнює ${square}√2; 3) площа прямокутного трикутника: ${rw}·${rh}/2=${ua(v3)}.`,genome:G({topic:'planimetry',subtopic:'Трикутники і квадрат',family:'matching_planimetry',concept:'match-triangle-square-measures',solutionPath:['pythagorean_hypotenuse','square_diagonal','right_triangle_area','match_values'],answerFormat:'matching',representation:'matching',combinedTopics:['pythagorean_theorem','areas'],theoremRecall:3})});
+}
+function matchingPlanimetry(){return pick([matchingPlanimetryAreas,matchingPlanimetryPerimeters,matchingPlanimetryTriangleMeasures])();}
 export function generateMatchingPlanimetryV4(){return matchingPlanimetry();}
 
 // 16. SHORT CALCULUS -----------------------------------------------------------

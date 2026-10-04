@@ -3251,3 +3251,269 @@ body.telegram-dark {
 .nmt-page-mark svg,
 .profile-setting-icon svg,
 .app-settings-icon svg { stroke: currentColor !important; }
+
+
+/* =========================================================
+   v1.0.4 — Contrast audit + Dark Visuals + Liquid Glass 2.0
+   ========================================================= */
+:root {
+  --v104-bg: #17191D;
+  --v104-bg-2: #1E2126;
+  --v104-card: #25282E;
+  --v104-elevated: #2B2F35;
+  --v104-text: #F5F2EA;
+  --v104-muted: #A9A7A1;
+  --v104-gold: #C6A15B;
+  --v104-gold-2: #D5B56E;
+  --v104-success: #6FAF8E;
+  --v104-error: #D47676;
+  --v104-line: rgba(255,255,255,.075);
+  --visual-label-halo: #1B1E23;
+  --accent-color: #C6A15B;
+}
+
+/* Every regular application surface stays in the Obsidian family. */
+body,
+.view-page,
+.test-view,
+.cheatsheet-view,
+.profile-view,
+.nmt-view,
+.topic-overlay,
+.report-overlay,
+.ai-help-overlay,
+.nmt-finish-overlay,
+.nmt-match-overlay {
+  color: var(--v104-text) !important;
+}
+
+/* One contrast rule: readable foreground against every interactive surface. */
+button, input, textarea, select { color: inherit; }
+.card, .status, .topic-picker, .question-skeleton,
+.cheat-section, .profile-identity-card, .profile-metric-card,
+.profile-snapshot-card, .profile-settings-card, .profile-streak-card,
+.profile-focus-card, .profile-disclosure, .profile-stat-new,
+.topic-stat-row-new, .nmt-hero-card, .nmt-question-card,
+.nmt-result-card, .nmt-review-item, .app-settings-group,
+.admin-stat-grid article, .ai-help-panel, .report-panel {
+  color: var(--v104-text) !important;
+}
+
+.card p, .card small, .status small, .topic-picker small,
+.cheat-section-meta, .cheat-formula-note, .profile-page-head p,
+.profile-since-new, .profile-snapshot-card small, .profile-quick-actions small,
+.profile-disclosure summary span, .nmt-page-head p, .nmt-answer-help,
+.nmt-review-head p, .nmt-review-toggle small, .nmt-review-answer span,
+.nmt-review-explanation > span, .app-settings-copy small,
+.admin-panel-meta, .admin-mini-stats span {
+  color: var(--v104-muted) !important;
+}
+
+/* Visual Engine: drawings are no longer a pale paper island. The generated SVGs
+   use currentColor, so a dark visual surface is safe and stays fully readable. */
+.nmt-diagram,
+.training-diagram,
+.diagram,
+.visual-container,
+.question-visual {
+  color: #EEE9DF !important;
+  --accent-color: #C6A15B;
+  --visual-label-halo: #1B1E23;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 100% at 0% 0%, rgba(198,161,91,.075), transparent 55%),
+    linear-gradient(155deg, #22252A 0%, #1B1E23 100%) !important;
+  border: 1px solid rgba(255,255,255,.075) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.025), 0 12px 30px rgba(0,0,0,.18) !important;
+}
+.nmt-diagram svg,
+.training-diagram svg,
+.diagram svg,
+.visual-container svg,
+.question-visual svg {
+  color: #EEE9DF !important;
+  --accent-color: #C6A15B;
+  --visual-label-halo: #1B1E23;
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.nmt-diagram svg .frame,
+.training-diagram svg .frame,
+.diagram svg .frame,
+.visual-container svg .frame,
+.question-visual svg .frame {
+  fill: rgba(255,255,255,.018) !important;
+  stroke: rgba(255,255,255,.075) !important;
+}
+.nmt-diagram svg .t, .nmt-diagram svg .m, .nmt-diagram svg .s,
+.training-diagram svg .t, .training-diagram svg .m, .training-diagram svg .s,
+.diagram svg .t, .diagram svg .m, .diagram svg .s,
+.visual-container svg .t, .visual-container svg .m, .visual-container svg .s,
+.question-visual svg .t, .question-visual svg .m, .question-visual svg .s {
+  fill: #EEE9DF !important;
+  stroke: #1B1E23 !important;
+}
+.nmt-diagram svg .g, .nmt-diagram svg .thin, .nmt-diagram svg .d,
+.training-diagram svg .g, .training-diagram svg .thin, .training-diagram svg .d,
+.diagram svg .g, .diagram svg .thin, .diagram svg .d,
+.visual-container svg .g, .visual-container svg .thin, .visual-container svg .d,
+.question-visual svg .g, .question-visual svg .thin, .question-visual svg .d {
+  stroke: #E7E1D7 !important;
+}
+.nmt-diagram svg .a, .training-diagram svg .a, .diagram svg .a,
+.visual-container svg .a, .question-visual svg .a {
+  stroke: #D5B56E !important;
+}
+.nmt-diagram svg .dot, .training-diagram svg .dot, .diagram svg .dot,
+.visual-container svg .dot, .question-visual svg .dot {
+  fill: #D5B56E !important;
+  stroke: #F5F2EA !important;
+}
+.nmt-diagram svg .grid, .training-diagram svg .grid, .diagram svg .grid,
+.visual-container svg .grid, .question-visual svg .grid {
+  stroke: rgba(245,242,234,.14) !important;
+}
+.nmt-diagram svg .axis, .training-diagram svg .axis, .diagram svg .axis,
+.visual-container svg .axis, .question-visual svg .axis {
+  stroke: rgba(245,242,234,.72) !important;
+}
+
+/* Matching review: all 3 rows receive their own compact explanation. */
+.nmt-pair-explanations {
+  margin-top: 9px;
+  display: grid;
+  gap: 8px;
+}
+.nmt-pair-explanation {
+  padding: 11px 12px;
+  border: 1px solid var(--v104-line);
+  border-radius: 15px;
+  background: #25282E;
+}
+.nmt-pair-explanation-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+.nmt-pair-explanation-head b { color: var(--v104-gold-2); font-size: 13px; }
+.nmt-pair-explanation-head span { color: var(--v104-text); font-size: 12.5px; }
+.nmt-pair-explanation-source { color: var(--v104-muted); font-size: 11px; line-height: 1.35; }
+.nmt-pair-explanation p { margin: 6px 0 0; color: var(--v104-text); font-size: 12.5px; line-height: 1.5; }
+.nmt-pair-explanation.is-correct { border-color: rgba(111,175,142,.20); }
+.nmt-pair-explanation.is-wrong { border-color: rgba(212,118,118,.18); }
+
+/* Liquid Glass 2.0 — graphite glass, not a white rounded rectangle. */
+.liquid-bottom-nav {
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+}
+.liquid-nav-track {
+  isolation: isolate;
+  overflow: hidden;
+  position: relative;
+  background:
+    radial-gradient(100% 150% at 14% -20%, rgba(255,255,255,.085), transparent 42%),
+    radial-gradient(85% 120% at 84% 130%, rgba(198,161,91,.08), transparent 58%),
+    linear-gradient(145deg, rgba(43,47,53,.72), rgba(25,28,33,.76)) !important;
+  border: 1px solid rgba(255,255,255,.085) !important;
+  box-shadow:
+    0 18px 50px rgba(0,0,0,.34),
+    inset 0 1px 0 rgba(255,255,255,.075),
+    inset 0 -1px 0 rgba(0,0,0,.16) !important;
+  backdrop-filter: blur(28px) saturate(145%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(145%) !important;
+}
+.liquid-nav-track::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: -70% -45%;
+  background: linear-gradient(108deg, transparent 38%, rgba(255,255,255,.085) 48%, rgba(213,181,110,.055) 52%, transparent 62%);
+  transform: translateX(-42%) rotate(3deg);
+  animation: nmtGlassSheen 8.5s ease-in-out infinite;
+  pointer-events: none;
+}
+.liquid-nav-track::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 1px;
+  border-radius: inherit;
+  background: radial-gradient(55% 65% at 50% 115%, rgba(198,161,91,.065), transparent 70%);
+  pointer-events: none;
+}
+@keyframes nmtGlassSheen {
+  0%, 26% { transform: translateX(-54%) rotate(3deg); opacity: .12; }
+  47% { opacity: .72; }
+  72%, 100% { transform: translateX(54%) rotate(3deg); opacity: .10; }
+}
+.liquid-nav-indicator {
+  overflow: hidden;
+  background:
+    radial-gradient(95% 100% at 18% 0%, rgba(255,255,255,.07), transparent 50%),
+    linear-gradient(145deg, rgba(198,161,91,.17), rgba(43,47,53,.78)) !important;
+  border: 1px solid rgba(213,181,110,.16) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.055), 0 8px 18px rgba(0,0,0,.15) !important;
+  transition: transform .44s cubic-bezier(.22,1,.36,1), width .3s cubic-bezier(.22,1,.36,1) !important;
+}
+.liquid-nav-item {
+  outline: none !important;
+  box-shadow: none !important;
+  transition: color .24s ease, opacity .24s ease, transform .18s cubic-bezier(.22,1,.36,1) !important;
+}
+.liquid-nav-item:active { transform: scale(.94) translateY(1px) !important; }
+.liquid-nav-item.active .liquid-nav-icon { transform: translateY(-1px) scale(1.04); }
+.liquid-nav-icon { transition: transform .28s cubic-bezier(.22,1,.36,1); }
+
+/* Buttons: no awkward outer ring. Keep one inner edge and a tactile press. */
+.primary-btn, .secondary-btn, .nmt-start-btn, .nmt-nav-btn,
+.nmt-finish-btn, .nmt-inline-done, .profile-focus-button,
+.profile-quick-actions button, .app-settings-row, .option, .nmt-choice,
+.nmt-match-row-v2, .nmt-match-sheet-option {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform .18s cubic-bezier(.22,1,.36,1),
+    background-color .24s ease,
+    border-color .24s ease,
+    color .24s ease,
+    opacity .24s ease,
+    box-shadow .24s ease !important;
+}
+.primary-btn:active, .secondary-btn:active, .nmt-start-btn:active, .nmt-nav-btn:active,
+.nmt-finish-btn:active, .nmt-inline-done:active, .profile-focus-button:active,
+.profile-quick-actions button:active, .app-settings-row:active, .option:active,
+.nmt-choice:active, .nmt-match-row-v2:active, .nmt-match-sheet-option:active {
+  transform: scale(.982) !important;
+}
+.option.selected, .nmt-choice.selected, .nmt-match-row-v2.selected, .nmt-match-sheet-option.selected {
+  box-shadow: inset 0 0 0 1px rgba(213,181,110,.08) !important;
+}
+
+/* More natural motion across content. */
+.card, .nmt-question-card, .nmt-review-item, .cheat-section,
+.profile-metric-card, .profile-snapshot-card, .profile-settings-card,
+.app-settings-group, .admin-stat-grid article {
+  transition: transform .28s cubic-bezier(.22,1,.36,1), border-color .24s ease, background .28s ease, box-shadow .28s ease !important;
+}
+.nmt-question-card { animation: v104QuestionIn .32s cubic-bezier(.22,1,.36,1) both; }
+@keyframes v104QuestionIn {
+  from { opacity: 0; transform: translate3d(0,8px,0) scale(.992); }
+  to { opacity: 1; transform: translate3d(0,0,0) scale(1); }
+}
+.nmt-review-item.open .nmt-review-body { animation: v104Reveal .28s cubic-bezier(.22,1,.36,1) both; }
+@keyframes v104Reveal {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .liquid-nav-track::before { animation: none !important; opacity: .18 !important; }
+  .nmt-question-card, .nmt-review-item.open .nmt-review-body { animation: none !important; }
+  *, *::before, *::after { scroll-behavior: auto !important; }
+}

@@ -12,6 +12,51 @@ const SCORE_2026 = Object.freeze({
 
 const LETTERS = ['А','Б','В','Г','Д'];
 
+const MATCH_CODE_ALIASES = Object.freeze({
+  A:'А', B:'Б', C:'В', D:'Г', E:'Д',
+  'А':'А', 'Б':'Б', 'В':'В', 'Г':'Г', 'Д':'Д',
+});
+
+function canonicalMatchCode(value) {
+  const code = String(value ?? '').trim().toUpperCase();
+  return MATCH_CODE_ALIASES[code] || code;
+}
+
+function matchOptionByCode(question, code) {
+  const target = canonicalMatchCode(code);
+  return (question?.match_options || []).find((option) => canonicalMatchCode(option?.code) === target) || null;
+}
+
+function splitMatchingExplanation(question) {
+  const raw = String(question?.explanation || '').trim();
+  if (!raw) return [];
+  const chunks = raw.split(/\s*;\s*/).map((part) => part.trim()).filter(Boolean);
+  return chunks.length >= 3 ? chunks.slice(0, 3) : [];
+}
+
+function matchingPairExplanations(question, pairResults = []) {
+  const chunks = splitMatchingExplanation(question);
+  return ['0','1','2'].map((key, index) => {
+    const rawCorrect = question?.correct_pairs?.[key];
+    const option = matchOptionByCode(question, rawCorrect);
+    const code = option?.code || canonicalMatchCode(rawCorrect);
+    const label = option?.label || '';
+    const left = question?.left?.[index] || `Пункт ${index + 1}`;
+    const explanation = chunks[index]
+      || `Для пункту ${index + 1} правильна відповідність — ${code}${label ? ` (${label})` : ''}.`;
+    const result = pairResults[index] || null;
+    return {
+      row: index + 1,
+      left,
+      correct: code,
+      correct_label: label,
+      selected: result?.selected ?? null,
+      is_correct: !!result?.is_correct,
+      explanation,
+    };
+  });
+}
+
 function uaNumber(value, maxDigits = 6) {
   if (Number.isInteger(value)) return String(value);
   return Number(Number(value).toFixed(maxDigits)).toString().replace('.', ',');
@@ -77,7 +122,10 @@ function displayAnswer(q, answer) {
 
 function correctAnswerDisplay(q) {
   if (q.type === 'choice') return `${LETTERS[q.correct_index]} · ${q.options[q.correct_index]}`;
-  if (q.type === 'matching') return ['0','1','2'].map((k,index)=>`${index+1}–${q.correct_pairs[k]}`).join(', ');
+  if (q.type === 'matching') return ['0','1','2'].map((k,index)=>{
+    const option = matchOptionByCode(q, q.correct_pairs[k]);
+    return `${index+1}–${option?.code || canonicalMatchCode(q.correct_pairs[k])}`;
+  }).join(', ');
   return q.correct_display ?? uaNumber(q.correct_value);
 }
 
@@ -99,12 +147,16 @@ export function gradeNmtExam(questions, answers = {}) {
       awarded = correct ? 1 : 0;
     } else if (q.type === 'matching') {
       const normalized = normalizeMatchingAnswer(answer);
-      pairResults = ['0','1','2'].map((k) => ({
-        row:Number(k)+1,
-        selected:normalized[k],
-        correct:q.correct_pairs[k],
-        is_correct:normalized[k] === q.correct_pairs[k],
-      }));
+      pairResults = ['0','1','2'].map((k) => {
+        const option = matchOptionByCode(q, q.correct_pairs[k]);
+        const correctCode = option?.code || canonicalMatchCode(q.correct_pairs[k]);
+        return {
+          row:Number(k)+1,
+          selected:normalized[k],
+          correct:correctCode,
+          is_correct:canonicalMatchCode(normalized[k]) === canonicalMatchCode(correctCode),
+        };
+      });
       awarded = pairResults.filter((x)=>x.is_correct).length;
       correct = awarded === 3;
     } else if (q.type === 'short') {
@@ -137,7 +189,8 @@ export function gradeNmtExam(questions, answers = {}) {
       score_awarded:awarded,
       max_score:q.max_score,
       pair_results:pairResults,
-      explanation:q.explanation,
+      pair_explanations:q.type === 'matching' ? matchingPairExplanations(q, pairResults) : null,
+      explanation:Array.isArray(q.explanation_steps) && q.explanation_steps.length ? q.explanation_steps : q.explanation,
     });
   }
 

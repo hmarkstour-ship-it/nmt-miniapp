@@ -10,15 +10,15 @@ function shell(inner, aria = 'Математична схема', viewBox = '0 0
       .g{stroke:currentColor;stroke-width:2.35;fill:none;stroke-linecap:round;stroke-linejoin:round}
       .thin{stroke:currentColor;stroke-opacity:.55;stroke-width:1.35;fill:none}
       .d{stroke:currentColor;stroke-opacity:.45;stroke-width:1.55;fill:none;stroke-dasharray:6 6}
-      .a{stroke:var(--accent-color,#4f7cff);stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round}
-      .fill{fill:color-mix(in srgb,var(--accent-color,#4f7cff) 16%,transparent);stroke:var(--accent-color,#4f7cff);stroke-width:1.6}
+      .a{stroke:var(--accent-color,#C6A15B);stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round}
+      .fill{fill:color-mix(in srgb,var(--accent-color,#C6A15B) 16%,transparent);stroke:var(--accent-color,#C6A15B);stroke-width:1.6}
       .soft{fill:color-mix(in srgb,currentColor 6%,transparent);stroke:currentColor;stroke-opacity:.5;stroke-width:1.2}
-      .t{font:700 15px system-ui,-apple-system,"Segoe UI",sans-serif;fill:currentColor;paint-order:stroke;stroke:#fffdf9;stroke-width:4px;stroke-linejoin:round}
-      .m{font:600 13px system-ui,-apple-system,"Segoe UI",sans-serif;fill:currentColor;paint-order:stroke;stroke:#fffdf9;stroke-width:4px;stroke-linejoin:round}
-      .s{font:500 11px system-ui,-apple-system,"Segoe UI",sans-serif;fill:currentColor;opacity:.62;paint-order:stroke;stroke:#fffdf9;stroke-width:3px;stroke-linejoin:round}
+      .t{font:700 15px system-ui,-apple-system,"Segoe UI",sans-serif;fill:currentColor;paint-order:stroke;stroke:var(--visual-label-halo,#17191D);stroke-width:4px;stroke-linejoin:round}
+      .m{font:600 13px system-ui,-apple-system,"Segoe UI",sans-serif;fill:currentColor;paint-order:stroke;stroke:var(--visual-label-halo,#17191D);stroke-width:4px;stroke-linejoin:round}
+      .s{font:500 11px system-ui,-apple-system,"Segoe UI",sans-serif;fill:currentColor;opacity:.62;paint-order:stroke;stroke:var(--visual-label-halo,#17191D);stroke-width:3px;stroke-linejoin:round}
       .grid{stroke:currentColor;stroke-opacity:.10;stroke-width:1}
       .axis{stroke:currentColor;stroke-opacity:.72;stroke-width:1.7;fill:none}
-      .dot{fill:var(--accent-color,#4f7cff);stroke:currentColor;stroke-width:.8}
+      .dot{fill:var(--accent-color,#C6A15B);stroke:currentColor;stroke-width:.8}
     </style>
   </defs>
   <rect class="frame" x="8" y="8" width="464" height="304" rx="18"/>

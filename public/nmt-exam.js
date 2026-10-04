@@ -630,14 +630,32 @@
         ${item.diagram_svg ? `<div class="nmt-diagram compact">${safeDiagramSvg(item.diagram_svg)}</div>` : ''}
         <div class="nmt-review-answer"><span>Твоя відповідь</span><strong>${escapeHtml(item.user_answer)}</strong></div>
         <div class="nmt-review-answer correct"><span>Правильна відповідь</span><strong>${escapeHtml(item.correct_answer)}</strong></div>
-        <div class="nmt-review-explanation"><span>Розв’язання</span>${stepsMarkup(item.explanation)}</div>
+        <div class="nmt-review-explanation"><span>Розв’язання</span>${item.type === 'matching' ? matchingStepsMarkup(item) : stepsMarkup(item.explanation)}</div>
       </div>
     </article>`;
   }
 
   function stepsMarkup(explanation) {
-    const steps = String(explanation || '').split(/\n+/).map(x => x.replace(/^\s*\d+[.)]\s*/, '').trim()).filter(Boolean);
-    return `<ol>${steps.map(step => `<li>${escapeHtml(step)}</li>`).join('')}</ol>`;
+    const source = Array.isArray(explanation) ? explanation : String(explanation || '').split(/\n+/);
+    const steps = source
+      .map((x) => String(x || '').replace(/^\s*\d+[.)]\s*/, '').trim())
+      .filter(Boolean)
+      .slice(0, 4);
+    return `<ol>${steps.map((step) => `<li>${escapeHtml(step)}</li>`).join('')}</ol>`;
+  }
+
+  function matchingStepsMarkup(item) {
+    const pairs = Array.isArray(item?.pair_explanations) ? item.pair_explanations : [];
+    if (!pairs.length) return stepsMarkup(item?.explanation);
+    return `<div class="nmt-pair-explanations">${pairs.map((pair) => `
+      <div class="nmt-pair-explanation ${pair.is_correct ? 'is-correct' : 'is-wrong'}">
+        <div class="nmt-pair-explanation-head">
+          <b>${escapeHtml(pair.row)} → ${escapeHtml(pair.correct)}</b>
+          <span>${escapeHtml(pair.correct_label || '')}</span>
+        </div>
+        <div class="nmt-pair-explanation-source">${escapeHtml(pair.left || '')}</div>
+        <p>${escapeHtml(pair.explanation || '')}</p>
+      </div>`).join('')}</div>`;
   }
 
   function showKeyboardDone(shortWrap = null) {
