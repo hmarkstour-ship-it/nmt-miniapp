@@ -107,7 +107,14 @@ async function initDb() {
 
   await pool.query(`
     ALTER TABLE users
-    ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ;
+      ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS last_name TEXT,
+      ADD COLUMN IF NOT EXISTS username TEXT;
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_users_last_seen
+    ON users (last_seen_at DESC);
   `);
 
   await pool.query(`
@@ -122,6 +129,11 @@ async function initDb() {
   await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_app_sessions_activity
     ON app_sessions (last_seen_at DESC, telegram_id);
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_app_sessions_started
+    ON app_sessions (started_at DESC, telegram_id);
   `);
 
   await pool.query(`
@@ -276,8 +288,26 @@ async function initDb() {
     ALTER TABLE user_answers
       ADD COLUMN IF NOT EXISTS client_answer_id TEXT,
       ADD COLUMN IF NOT EXISTS selected_index INT,
-      ADD COLUMN IF NOT EXISTS response_ms INT;
+      ADD COLUMN IF NOT EXISTS response_ms INT,
+      ADD COLUMN IF NOT EXISTS activity_session_id TEXT;
   `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_user_answers_activity_time
+    ON user_answers (answered_at DESC, telegram_id);
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_user_answers_activity_session
+    ON user_answers (telegram_id, activity_session_id)
+    WHERE activity_session_id IS NOT NULL;
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_question_history_activity_time
+    ON question_history (asked_at DESC, telegram_id);
+  `);
+
 
   await pool.query(`
     CREATE UNIQUE INDEX IF NOT EXISTS idx_user_answers_client_answer
@@ -344,6 +374,11 @@ async function initDb() {
     CREATE UNIQUE INDEX IF NOT EXISTS idx_nmt_exam_attempts_client_session
     ON nmt_exam_attempts (telegram_id, client_session_id)
     WHERE client_session_id IS NOT NULL;
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_nmt_exam_activity_time
+    ON nmt_exam_attempts (started_at DESC, telegram_id);
   `);
 
   await pool.query(`
@@ -441,13 +476,20 @@ async function getOrCreateUser(telegramUser) {
   if (!pool || !telegramUser?.id) return null;
 
   const { rows } = await pool.query(
-    `INSERT INTO users (telegram_id, first_name, last_seen_at)
-     VALUES ($1, $2, now())
+    `INSERT INTO users (telegram_id, first_name, last_name, username, last_seen_at)
+     VALUES ($1, $2, $3, $4, now())
      ON CONFLICT (telegram_id) DO UPDATE SET
        first_name = EXCLUDED.first_name,
+       last_name = EXCLUDED.last_name,
+       username = EXCLUDED.username,
        last_seen_at = now()
-     RETURNING telegram_id, first_name, correct_count, wrong_count, created_at, last_seen_at`,
-    [telegramUser.id, telegramUser.first_name || null]
+     RETURNING telegram_id, first_name, last_name, username, correct_count, wrong_count, created_at, last_seen_at`,
+    [
+      telegramUser.id,
+      telegramUser.first_name || null,
+      telegramUser.last_name || null,
+      telegramUser.username || null,
+    ]
   );
   return rows[0];
 }
@@ -584,16 +626,21 @@ async function recordAnswer(telegramId, isCorrect, topic = 'mixed', questionBank
       [telegramId]
     );
 
+    const activitySessionId = typeof telemetry.activitySessionId === 'string'
+      ? telemetry.activitySessionId.trim().slice(0, 128)
+      : null;
+
     await client.query(
       `INSERT INTO user_answers (
          telegram_id, topic, is_correct, question_bank_id,
-         client_answer_id, selected_index, response_ms
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+         client_answer_id, selected_index, response_ms, activity_session_id
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
       [
         telegramId, topic || 'mixed', !!isCorrect, questionBankId || null,
         clientAnswerId,
         Number.isInteger(Number(telemetry.selectedIndex)) ? Number(telemetry.selectedIndex) : null,
         Number.isFinite(Number(telemetry.responseMs)) ? Math.max(0, Math.min(1800000, Math.round(Number(telemetry.responseMs)))) : null,
+        activitySessionId,
       ]
     );
 
@@ -1894,6 +1941,9 @@ app.post('/api/admin/login', async (req, res) => {
 app.get('/api/admin/stats', requireAdminToken, async (req, res) => {
   if (!pool) return res.status(503).json({ error: 'База даних недоступна.' });
   try {
+    const requestedRange = Number(req.query?.range);
+    const rangeDays = [7, 14, 30].includes(requestedRange) ? requestedRange : 14;
+
     const summaryQuery = await pool.query(`
       WITH activity_events AS (
         SELECT telegram_id, asked_at AS activity_at FROM question_history
@@ -1902,26 +1952,42 @@ app.get('/api/admin/stats', requireAdminToken, async (req, res) => {
         UNION ALL
         SELECT telegram_id, started_at AS activity_at FROM nmt_exam_attempts
         UNION ALL
+        SELECT telegram_id, finished_at AS activity_at FROM nmt_exam_attempts WHERE finished_at IS NOT NULL
+        UNION ALL
+        SELECT telegram_id, started_at AS activity_at FROM app_sessions
+        UNION ALL
         SELECT telegram_id, last_seen_at AS activity_at FROM app_sessions
+      ), training_sessions AS (
+        SELECT telegram_id,
+               COALESCE(NULLIF(activity_session_id, ''), 'legacy:' || to_char(answered_at AT TIME ZONE 'Europe/Kyiv', 'YYYY-MM-DD')) AS test_key,
+               MIN(answered_at) AS first_answer_at
+        FROM user_answers
+        GROUP BY telegram_id, 2
       )
       SELECT
         (SELECT COUNT(*)::int FROM users) AS total_users,
         (SELECT COUNT(*)::int FROM users WHERE last_seen_at >= now() - interval '2 minutes') AS active_now,
-        (SELECT COUNT(DISTINCT telegram_id)::int FROM activity_events WHERE activity_at >= date_trunc('day', now())) AS active_today,
-        (SELECT COUNT(DISTINCT telegram_id)::int FROM activity_events WHERE activity_at >= now() - interval '7 days') AS active_7d,
-        (SELECT COUNT(DISTINCT telegram_id)::int FROM activity_events WHERE activity_at >= now() - interval '30 days') AS active_30d,
-        (SELECT COUNT(*)::int FROM users WHERE created_at >= now() - interval '7 days') AS new_users_7d,
-        (SELECT COUNT(*)::int FROM app_sessions) AS total_sessions,
+        (SELECT COUNT(DISTINCT telegram_id)::int FROM activity_events WHERE activity_at >= now() - interval '1 hour') AS active_last_hour,
+        (SELECT COUNT(DISTINCT telegram_id)::int FROM activity_events WHERE activity_at >= (date_trunc('day', now() AT TIME ZONE 'Europe/Kyiv') AT TIME ZONE 'Europe/Kyiv')) AS active_today,
+        (SELECT COUNT(DISTINCT telegram_id)::int FROM activity_events WHERE activity_at >= now() - ($1::int * interval '1 day')) AS active_period,
+        (SELECT COUNT(*)::int FROM users WHERE created_at >= now() - ($1::int * interval '1 day')) AS new_users_period,
+        (SELECT COUNT(*)::int FROM users WHERE created_at >= now() - interval '1 hour') AS new_users_last_hour,
+        (SELECT COUNT(*)::int FROM app_sessions WHERE started_at >= now() - ($1::int * interval '1 day')) AS sessions_period,
         (SELECT COALESCE(ROUND((AVG(LEAST(EXTRACT(EPOCH FROM (last_seen_at - started_at)), 14400)) / 60.0)::numeric, 1), 0)
            FROM app_sessions
-          WHERE started_at >= now() - interval '30 days' AND last_seen_at >= started_at) AS avg_session_minutes,
-        (SELECT COUNT(*)::int FROM user_answers WHERE answered_at >= now() - interval '7 days') AS answers_7d,
-        (SELECT COUNT(*)::int FROM nmt_exam_attempts WHERE status = 'finished' AND finished_at >= now() - interval '30 days') AS finished_nmt_30d
-    `);
+          WHERE started_at >= now() - ($1::int * interval '1 day') AND last_seen_at >= started_at) AS avg_session_minutes,
+        (SELECT COUNT(*)::int FROM user_answers WHERE answered_at >= now() - ($1::int * interval '1 day')) AS answers_period,
+        (SELECT COUNT(*)::int FROM training_sessions WHERE first_answer_at >= now() - ($1::int * interval '1 day')) AS training_tests_period,
+        (SELECT COUNT(*)::int FROM nmt_exam_attempts WHERE status = 'finished' AND finished_at >= now() - ($1::int * interval '1 day')) AS finished_nmt_period
+    `, [rangeDays]);
 
     const activityQuery = await pool.query(`
       WITH days AS (
-        SELECT generate_series(current_date - interval '13 days', current_date, interval '1 day')::date AS day
+        SELECT generate_series(
+          (now() AT TIME ZONE 'Europe/Kyiv')::date - (($1::int - 1) * interval '1 day'),
+          (now() AT TIME ZONE 'Europe/Kyiv')::date,
+          interval '1 day'
+        )::date AS day
       ), activity_events AS (
         SELECT telegram_id, asked_at AS activity_at FROM question_history
         UNION ALL
@@ -1929,23 +1995,107 @@ app.get('/api/admin/stats', requireAdminToken, async (req, res) => {
         UNION ALL
         SELECT telegram_id, started_at AS activity_at FROM nmt_exam_attempts
         UNION ALL
+        SELECT telegram_id, finished_at AS activity_at FROM nmt_exam_attempts WHERE finished_at IS NOT NULL
+        UNION ALL
+        SELECT telegram_id, started_at AS activity_at FROM app_sessions
+        UNION ALL
         SELECT telegram_id, last_seen_at AS activity_at FROM app_sessions
       ), activity AS (
-        SELECT date_trunc('day', activity_at)::date AS day, COUNT(DISTINCT telegram_id)::int AS users
+        SELECT (activity_at AT TIME ZONE 'Europe/Kyiv')::date AS day, COUNT(DISTINCT telegram_id)::int AS users
         FROM activity_events
-        WHERE activity_at >= current_date - interval '13 days'
+        WHERE activity_at >= ((((now() AT TIME ZONE 'Europe/Kyiv')::date - (($1::int - 1) * interval '1 day'))::timestamp) AT TIME ZONE 'Europe/Kyiv')
         GROUP BY 1
       )
       SELECT to_char(days.day, 'YYYY-MM-DD') AS day, COALESCE(activity.users, 0)::int AS users
       FROM days
       LEFT JOIN activity USING(day)
       ORDER BY days.day ASC
+    `, [rangeDays]);
+
+    const hourlyQuery = await pool.query(`
+      WITH hours AS (
+        SELECT generate_series(
+          date_trunc('hour', now() AT TIME ZONE 'Europe/Kyiv') - interval '23 hours',
+          date_trunc('hour', now() AT TIME ZONE 'Europe/Kyiv'),
+          interval '1 hour'
+        ) AS hour_start
+      ), session_activity AS (
+        SELECT h.hour_start, COUNT(DISTINCT s.telegram_id)::int AS users
+        FROM hours h
+        LEFT JOIN app_sessions s
+          ON s.started_at < ((h.hour_start + interval '1 hour') AT TIME ZONE 'Europe/Kyiv')
+         AND s.last_seen_at >= (h.hour_start AT TIME ZONE 'Europe/Kyiv')
+         AND s.last_seen_at >= now() - interval '25 hours'
+        GROUP BY h.hour_start
+      )
+      SELECT
+        to_char(hour_start, 'YYYY-MM-DD"T"HH24:00:00') AS hour,
+        COALESCE(users, 0)::int AS users
+      FROM session_activity
+      ORDER BY hour_start ASC
+    `);
+
+    const usersQuery = await pool.query(`
+      WITH training AS (
+        SELECT
+          telegram_id,
+          COUNT(*)::int AS training_answers,
+          COUNT(DISTINCT COALESCE(
+            NULLIF(activity_session_id, ''),
+            'legacy:' || to_char(answered_at AT TIME ZONE 'Europe/Kyiv', 'YYYY-MM-DD')
+          ))::int AS training_tests,
+          MAX(answered_at) AS last_training_at
+        FROM user_answers
+        GROUP BY telegram_id
+      ), exams AS (
+        SELECT
+          telegram_id,
+          COUNT(*)::int AS nmt_started,
+          COUNT(*) FILTER (WHERE status = 'finished')::int AS nmt_finished,
+          MAX(finished_at) FILTER (WHERE status = 'finished') AS last_nmt_at
+        FROM nmt_exam_attempts
+        GROUP BY telegram_id
+      ), sessions AS (
+        SELECT telegram_id, COUNT(*)::int AS session_count
+        FROM app_sessions
+        GROUP BY telegram_id
+      )
+      SELECT
+        u.telegram_id,
+        u.first_name,
+        u.last_name,
+        u.username,
+        u.created_at,
+        u.last_seen_at,
+        u.correct_count,
+        u.wrong_count,
+        COALESCE(t.training_answers, 0)::int AS training_answers,
+        COALESCE(t.training_tests, 0)::int AS training_tests,
+        COALESCE(e.nmt_started, 0)::int AS nmt_started,
+        COALESCE(e.nmt_finished, 0)::int AS nmt_finished,
+        COALESCE(s.session_count, 0)::int AS session_count,
+        GREATEST(
+          COALESCE(u.last_seen_at, u.created_at),
+          COALESCE(t.last_training_at, u.created_at),
+          COALESCE(e.last_nmt_at, u.created_at)
+        ) AS last_activity_at,
+        (u.last_seen_at >= now() - interval '2 minutes') AS online
+      FROM users u
+      LEFT JOIN training t USING (telegram_id)
+      LEFT JOIN exams e USING (telegram_id)
+      LEFT JOIN sessions s USING (telegram_id)
+      ORDER BY COALESCE(u.last_seen_at, u.created_at) DESC
+      LIMIT 250
     `);
 
     res.json({
       generated_at: new Date().toISOString(),
+      range_days: rangeDays,
       summary: summaryQuery.rows[0] || {},
       daily: activityQuery.rows || [],
+      hourly: hourlyQuery.rows || [],
+      users: usersQuery.rows || [],
+      users_limit: 250,
     });
   } catch (err) {
     console.error('ADMIN STATS ERROR:', err);
@@ -2001,7 +2151,7 @@ app.post('/api/progress', async (req, res) => {
 
 // Записує відповідь користувача
 app.post('/api/answer', async (req, res) => {
-  const { initData, isCorrect, topic = 'mixed', questionBankId = null, selectedIndex = null, responseMs = null, clientAnswerId = null } = req.body;
+  const { initData, isCorrect, topic = 'mixed', questionBankId = null, selectedIndex = null, responseMs = null, clientAnswerId = null, activitySessionId = null } = req.body;
 
   try {
     const telegramUser = verifyTelegramInitData(initData);
@@ -2017,7 +2167,7 @@ app.post('/api/answer', async (req, res) => {
       !!isCorrect,
       topic,
       Number.isInteger(Number(questionBankId)) ? Number(questionBankId) : null,
-      { selectedIndex, responseMs, clientAnswerId }
+      { selectedIndex, responseMs, clientAnswerId, activitySessionId }
     );
 
     res.json({

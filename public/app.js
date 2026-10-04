@@ -3,7 +3,7 @@ const tg = window.Telegram?.WebApp;
   tg?.expand();
 
   function syncTelegramTheme() {
-    // v1.0.5: NMT landing info-note contrast hotfix (based on v1.0.4).
+    // v1.1.0: richer Supabase-backed admin analytics + user activity dashboard.
     document.documentElement.style.colorScheme = 'dark';
     document.body?.classList.remove('telegram-dark');
     document.body?.classList.add('fixed-premium-theme');
@@ -20,8 +20,8 @@ const tg = window.Telegram?.WebApp;
   const FETCH_TIMEOUT_MS = 30000;
   const QUESTION_TIMEOUT_MS = 55000;
   const BACKEND_WAKE_MAX_MS = 75000;
-  const BUILD_VERSION = 'launch-polish-v1.0.5';
-  const APP_VERSION = '1.0.5';
+  const BUILD_VERSION = 'admin-analytics-v1.1.0';
+  const APP_VERSION = '1.1.0';
   console.log('[NMT build]', BUILD_VERSION);
 
   async function fetchWithTimeout(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS) {
@@ -371,6 +371,7 @@ const tg = window.Telegram?.WebApp;
   })();
   let activityTimer = null;
   let adminRefreshTimer = null;
+  let adminRangeDays = 14;
 
   async function sendActivityHeartbeat() {
     const initData = tg?.initData || '';
@@ -429,14 +430,40 @@ const tg = window.Telegram?.WebApp;
     return `${h} год ${m} хв`;
   }
 
-  function adminChartMarkup(daily = []) {
+  function formatAdminDateTime(value) {
+    if (!value) return '—';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '—';
+    return new Intl.DateTimeFormat('uk-UA', {
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Europe/Kyiv',
+    }).format(date);
+  }
+
+  function formatAdminRelative(value) {
+    if (!value) return 'не було активності';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return 'не було активності';
+    const seconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+    if (seconds < 90) return 'щойно';
+    if (seconds < 3600) return `${Math.floor(seconds / 60)} хв тому`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)} год тому`;
+    if (seconds < 86400 * 7) return `${Math.floor(seconds / 86400)} дн тому`;
+    return formatAdminDateTime(value);
+  }
+
+  function adminDailyChartMarkup(daily = []) {
     const points = Array.isArray(daily) ? daily : [];
     const max = Math.max(1, ...points.map((x) => Number(x.users) || 0));
+    const stride = points.length <= 7 ? 1 : points.length <= 14 ? 2 : 5;
     return points.map((item, index) => {
       const value = Number(item.users) || 0;
       const height = Math.max(value ? 8 : 2, Math.round((value / max) * 100));
       const date = new Date(`${item.day}T12:00:00`);
-      const label = index % 3 === 0 || index === points.length - 1
+      const label = index % stride === 0 || index === points.length - 1
         ? new Intl.DateTimeFormat('uk-UA', { day: '2-digit', month: '2-digit' }).format(date)
         : '';
       return `<div class="admin-chart-column" title="${escapeHtml(item.day)} · ${value}">
@@ -447,11 +474,125 @@ const tg = window.Telegram?.WebApp;
     }).join('');
   }
 
-  async function fetchAdminStats(token = getAdminToken()) {
-    const res = await fetchWithTimeout(`${API_BASE}/api/admin/stats`, {
+  function adminHourlyChartMarkup(hourly = []) {
+    const points = Array.isArray(hourly) ? hourly : [];
+    const max = Math.max(1, ...points.map((x) => Number(x.users) || 0));
+    return points.map((item, index) => {
+      const value = Number(item.users) || 0;
+      const height = Math.max(value ? 8 : 2, Math.round((value / max) * 100));
+      const hour = String(item.hour || '').slice(11, 13) || '--';
+      const label = index % 3 === 0 || index === points.length - 1 ? `${hour}:00` : '';
+      return `<div class="admin-hour-column" title="${escapeHtml(String(item.hour || ''))} · ${value}">
+        <div class="admin-hour-value">${value || ''}</div>
+        <div class="admin-hour-rail"><span style="height:${height}%"></span></div>
+        <small>${escapeHtml(label)}</small>
+      </div>`;
+    }).join('');
+  }
+
+  function adminRangeMarkup(activeRange) {
+    return [7, 14, 30].map((days) => `
+      <button type="button" class="admin-range-btn ${Number(activeRange) === days ? 'active' : ''}" data-admin-range="${days}">
+        ${days} днів
+      </button>`).join('');
+  }
+
+  function adminUsersMarkup(users = []) {
+    if (!Array.isArray(users) || !users.length) {
+      return '<div class="admin-users-empty">Користувачів поки немає.</div>';
+    }
+
+    return users.map((user) => {
+      const firstName = String(user.first_name || '').trim();
+      const lastName = String(user.last_name || '').trim();
+      const fullName = [firstName, lastName].filter(Boolean).join(' ') || 'Telegram-користувач';
+      const username = String(user.username || '').trim();
+      const identity = username ? `@${username}` : 'без username';
+      const telegramId = String(user.telegram_id || '—');
+      const online = user.online === true || user.online === 'true';
+      const initial = (firstName || username || '?').slice(0, 1).toUpperCase();
+      const searchText = `${fullName} ${username} ${telegramId}`.toLocaleLowerCase('uk-UA');
+      return `<article class="admin-user-row" data-admin-user-row data-search="${escapeHtml(searchText)}">
+        <div class="admin-user-avatar">${escapeHtml(initial)}${online ? '<i></i>' : ''}</div>
+        <div class="admin-user-main">
+          <div class="admin-user-name-line">
+            <strong>${escapeHtml(fullName)}</strong>
+            <span>${escapeHtml(identity)}</span>
+          </div>
+          <button type="button" class="admin-user-id" data-copy-tg-id="${escapeHtml(telegramId)}" title="Скопіювати Telegram ID">ID ${escapeHtml(telegramId)}</button>
+          <div class="admin-user-metrics">
+            <span><b>${formatAdminNumber(user.training_tests)}</b> тестів</span>
+            <span><b>${formatAdminNumber(user.nmt_finished)}</b> НМТ</span>
+            <span><b>${formatAdminNumber(user.training_answers)}</b> завдань</span>
+          </div>
+          <div class="admin-user-foot">
+            <span>${online ? '● онлайн' : `Останній вхід: ${escapeHtml(formatAdminRelative(user.last_seen_at || user.last_activity_at))}`}</span>
+            <span>Перший вхід: ${escapeHtml(formatAdminDateTime(user.created_at))}</span>
+          </div>
+        </div>
+      </article>`;
+    }).join('');
+  }
+
+  function applyAdminUserFilter(root) {
+    const input = root?.querySelector('[data-admin-user-search]');
+    const counter = root?.querySelector('[data-admin-user-count]');
+    const query = String(input?.value || '').trim().toLocaleLowerCase('uk-UA');
+    let visible = 0;
+    root?.querySelectorAll('[data-admin-user-row]').forEach((row) => {
+      const show = !query || String(row.dataset.search || '').includes(query);
+      row.hidden = !show;
+      if (show) visible += 1;
+    });
+    if (counter) counter.textContent = query ? `${visible} знайдено` : `${visible} показано`;
+  }
+
+  async function copyAdminTelegramId(value, button) {
+    const text = String(value || '');
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const helper = document.createElement('textarea');
+        helper.value = text;
+        helper.style.position = 'fixed';
+        helper.style.opacity = '0';
+        document.body.appendChild(helper);
+        helper.select();
+        document.execCommand('copy');
+        helper.remove();
+      }
+      const old = button.textContent;
+      button.textContent = 'ID скопійовано';
+      setTimeout(() => { if (button.isConnected) button.textContent = old; }, 1100);
+      window.NMTUX?.haptic?.('light');
+    } catch (_) {}
+  }
+
+  function bindAdminPanelContent(root) {
+    root?.querySelectorAll('[data-admin-range]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const next = Number(button.dataset.adminRange);
+        if (![7, 14, 30].includes(next) || next === adminRangeDays) return;
+        adminRangeDays = next;
+        window.NMTUX?.playSound?.('tap');
+        refreshAdminPanel(root);
+      });
+    });
+
+    const search = root?.querySelector('[data-admin-user-search]');
+    search?.addEventListener('input', () => applyAdminUserFilter(root));
+
+    root?.querySelectorAll('[data-copy-tg-id]').forEach((button) => {
+      button.addEventListener('click', () => copyAdminTelegramId(button.dataset.copyTgId, button));
+    });
+  }
+
+  async function fetchAdminStats(token = getAdminToken(), rangeDays = adminRangeDays) {
+    const res = await fetchWithTimeout(`${API_BASE}/api/admin/stats?range=${encodeURIComponent(rangeDays)}`, {
       headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store',
-    }, 12000);
+    }, 15000);
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       if (res.status === 401) setAdminToken('');
@@ -463,12 +604,20 @@ const tg = window.Telegram?.WebApp;
   async function refreshAdminPanel(root, { quiet = false } = {}) {
     const content = root?.querySelector('[data-admin-content]');
     const updated = root?.querySelector('[data-admin-updated]');
+    const previousSearch = String(root?.querySelector('[data-admin-user-search]')?.value || '');
     if (!content) return;
     if (!quiet) content.classList.add('loading');
     try {
       const data = await fetchAdminStats();
       const m = data.summary || {};
+      const range = Number(data.range_days) || adminRangeDays;
+      adminRangeDays = range;
+      const users = Array.isArray(data.users) ? data.users : [];
       content.innerHTML = `
+        <section class="admin-range-card">
+          <div><small>ПЕРІОД</small><strong>Статистика застосунку</strong></div>
+          <div class="admin-range-tabs">${adminRangeMarkup(range)}</div>
+        </section>
         <div class="admin-live-card">
           <span class="admin-live-dot"></span>
           <div><strong>${formatAdminNumber(m.active_now)}</strong><small>активні зараз</small></div>
@@ -476,22 +625,45 @@ const tg = window.Telegram?.WebApp;
         </div>
         <div class="admin-stat-grid">
           <article><strong>${formatAdminNumber(m.total_users)}</strong><span>всього користувачів</span></article>
-          <article><strong>${formatAdminNumber(m.active_today)}</strong><span>за сьогодні</span></article>
-          <article><strong>${formatAdminNumber(m.active_7d)}</strong><span>за 7 днів</span></article>
-          <article><strong>${formatAdminNumber(m.active_30d)}</strong><span>за 30 днів</span></article>
-          <article><strong>${formatAdminMinutes(m.avg_session_minutes)}</strong><span>середня сесія</span></article>
-          <article><strong>+${formatAdminNumber(m.new_users_7d)}</strong><span>нових за 7 днів</span></article>
+          <article><strong>${formatAdminNumber(m.active_last_hour)}</strong><span>за останню годину</span></article>
+          <article><strong>${formatAdminNumber(m.active_today)}</strong><span>активні сьогодні</span></article>
+          <article><strong>${formatAdminNumber(m.active_period)}</strong><span>активні за ${range} днів</span></article>
+          <article><strong>${formatAdminMinutes(m.avg_session_minutes)}</strong><span>середня сесія · ${range} днів</span></article>
+          <article><strong>+${formatAdminNumber(m.new_users_period)}</strong><span>нових за ${range} днів</span></article>
         </div>
         <section class="admin-analytics-card">
-          <div class="admin-card-head"><div><small>АКТИВНІСТЬ</small><strong>Останні 14 днів</strong></div></div>
-          <div class="admin-chart">${adminChartMarkup(data.daily)}</div>
+          <div class="admin-card-head"><div><small>АКТИВНІСТЬ ПО ДНЯХ</small><strong>Унікальні користувачі · ${range} днів</strong></div></div>
+          <div class="admin-chart admin-chart-${range}">${adminDailyChartMarkup(data.daily)}</div>
+        </section>
+        <section class="admin-analytics-card admin-hourly-card">
+          <div class="admin-card-head"><div><small>ПОГОДИННО</small><strong>Користувачі за останні 24 години</strong></div></div>
+          <div class="admin-hour-chart-scroll"><div class="admin-hour-chart">${adminHourlyChartMarkup(data.hourly)}</div></div>
         </section>
         <section class="admin-mini-stats">
-          <div><strong>${formatAdminNumber(m.total_sessions)}</strong><span>сесій загалом</span></div>
-          <div><strong>${formatAdminNumber(m.answers_7d)}</strong><span>відповідей за 7 днів</span></div>
-          <div><strong>${formatAdminNumber(m.finished_nmt_30d)}</strong><span>НМТ завершено за 30 днів</span></div>
+          <div><strong>${formatAdminNumber(m.training_tests_period)}</strong><span>тест-сесій за ${range} днів</span></div>
+          <div><strong>${formatAdminNumber(m.finished_nmt_period)}</strong><span>завершених НМТ за ${range} днів</span></div>
+          <div><strong>${formatAdminNumber(m.answers_period)}</strong><span>відповідей за ${range} днів</span></div>
+          <div><strong>${formatAdminNumber(m.sessions_period)}</strong><span>входів / сесій за ${range} днів</span></div>
+          <div><strong>+${formatAdminNumber(m.new_users_last_hour)}</strong><span>нових користувачів за годину</span></div>
+        </section>
+        <section class="admin-users-card">
+          <div class="admin-users-head">
+            <div><small>SUPABASE · USERS</small><strong>Хто заходив</strong><span data-admin-user-count>${formatAdminNumber(users.length)} показано</span></div>
+          </div>
+          <label class="admin-user-search">
+            <span>⌕</span>
+            <input type="search" data-admin-user-search placeholder="Нік, ім'я або Telegram ID" autocomplete="off">
+          </label>
+          <div class="admin-users-list">${adminUsersMarkup(users)}</div>
+          ${Number(data.users_limit) && users.length >= Number(data.users_limit) ? `<p class="admin-users-limit">Показані останні ${formatAdminNumber(data.users_limit)} користувачів за активністю.</p>` : ''}
         </section>`;
-      if (updated) updated.textContent = `Оновлено ${new Intl.DateTimeFormat('uk-UA', { hour: '2-digit', minute: '2-digit' }).format(new Date(data.generated_at || Date.now()))}`;
+      bindAdminPanelContent(root);
+      const searchInput = root?.querySelector('[data-admin-user-search]');
+      if (searchInput && previousSearch) {
+        searchInput.value = previousSearch;
+        applyAdminUserFilter(root);
+      }
+      if (updated) updated.textContent = `Оновлено ${new Intl.DateTimeFormat('uk-UA', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv' }).format(new Date(data.generated_at || Date.now()))}`;
     } catch (err) {
       if (!getAdminToken()) {
         closeAdminPanel();
@@ -1297,7 +1469,8 @@ const tg = window.Telegram?.WebApp;
           questionBankId: q.bank_id || null,
           selectedIndex,
           responseMs: state.questionShownAtMs ? Math.max(0, Date.now() - state.questionShownAtMs) : null,
-          clientAnswerId: globalThis.crypto?.randomUUID?.() || `ans-${Date.now()}-${Math.random().toString(36).slice(2)}`
+          clientAnswerId: globalThis.crypto?.randomUUID?.() || `ans-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          activitySessionId: ACTIVITY_SESSION_ID
         }),
       });
 
