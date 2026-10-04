@@ -3517,3 +3517,12 @@ button, input, textarea, select { color: inherit; }
   .nmt-question-card, .nmt-review-item.open .nmt-review-body { animation: none !important; }
   *, *::before, *::after { scroll-behavior: auto !important; }
 }
+
+/* ========================================================================
+   v1.0.5 — NMT landing info-note contrast fix
+   Keep the warm cream surface, but force readable graphite copy in dark mode.
+   ======================================================================== */
+.nmt-hero-note,
+.nmt-hero-note p {
+  color: #5D5548 !important;
+}

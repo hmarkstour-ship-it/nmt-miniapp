@@ -3,7 +3,7 @@ const tg = window.Telegram?.WebApp;
   tg?.expand();
 
   function syncTelegramTheme() {
-    // v1.0.4: Obsidian Gold consistency + NMT anti-repeat/review polish.
+    // v1.0.5: NMT landing info-note contrast hotfix (based on v1.0.4).
     document.documentElement.style.colorScheme = 'dark';
     document.body?.classList.remove('telegram-dark');
     document.body?.classList.add('fixed-premium-theme');
@@ -20,8 +20,8 @@ const tg = window.Telegram?.WebApp;
   const FETCH_TIMEOUT_MS = 30000;
   const QUESTION_TIMEOUT_MS = 55000;
   const BACKEND_WAKE_MAX_MS = 75000;
-  const BUILD_VERSION = 'launch-polish-v1.0.4';
-  const APP_VERSION = '1.0.4';
+  const BUILD_VERSION = 'launch-polish-v1.0.5';
+  const APP_VERSION = '1.0.5';
   console.log('[NMT build]', BUILD_VERSION);
 
   async function fetchWithTimeout(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS) {
