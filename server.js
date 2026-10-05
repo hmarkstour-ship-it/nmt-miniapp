@@ -32,10 +32,48 @@ import {
 const { Pool } = pg;
 
 const app = express();
-app.use(cors());
-app.use(express.json());
+app.set('trust proxy', 1);
+app.disable('x-powered-by');
+
+const CORS_ALLOWED_ORIGINS = new Set(
+  String(process.env.CORS_ALLOWED_ORIGINS || '')
+    .split(',')
+    .map((value) => value.trim().replace(/\/$/, ''))
+    .filter(Boolean)
+);
+
+app.use(cors({
+  origin(origin, callback) {
+    // Native/same-origin requests may omit Origin. Cross-origin Mini App traffic
+    // must come from an explicitly configured frontend origin.
+    if (!origin) return callback(null, true);
+    const normalized = String(origin).replace(/\/$/, '');
+    if (CORS_ALLOWED_ORIGINS.has(normalized)) return callback(null, true);
+    return callback(null, false);
+  },
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  maxAge: 600,
+}));
+app.use(express.json({ limit: '256kb', strict: true }));
 
 app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
+  res.setHeader('Permissions-Policy', 'geolocation=(), payment=(), usb=()');
+  res.setHeader(
+    'Content-Security-Policy',
+    "default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; " +
+    "script-src 'self' https://telegram.org https://cdn.jsdelivr.net; " +
+    "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; " +
+    "font-src 'self' https://cdn.jsdelivr.net data:; img-src 'self' data: blob:; " +
+    "connect-src 'self' https://nmt-miniapp.onrender.com; " +
+    "frame-ancestors 'self' https://web.telegram.org https://*.telegram.org"
+  );
+  if (req.secure || req.headers['x-forwarded-proto'] === 'https') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
   console.log(`${req.method} ${req.url}`);
   next();
 });
@@ -53,9 +91,18 @@ const TRAINING_VISUAL_MODE = ['plain', 'visual', 'any'].includes(process.env.NMT
   : 'any';
 const STAGE10_AUTO_QUARANTINE = /^(1|true|yes)$/i.test(String(process.env.NMT_STAGE10_AUTO_QUARANTINE || 'false'));
 const ADMIN_PANEL_PASSWORD = String(process.env.ADMIN_PANEL_PASSWORD || '').trim();
+const ADMIN_TELEGRAM_IDS = new Set(
+  String(process.env.ADMIN_TELEGRAM_IDS || '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter((value) => /^\d+$/.test(value))
+);
+const TELEGRAM_INITDATA_MAX_AGE_SECONDS = Math.max(300, Math.min(86400, Number(process.env.TELEGRAM_INITDATA_MAX_AGE_SECONDS) || 21600));
 const ADMIN_PANEL_TOKEN_TTL_MS = 6 * 60 * 60 * 1000;
 const ADMIN_LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const ADMIN_LOGIN_MAX_ATTEMPTS = 5;
+const REPORT_REVIEW_THRESHOLD = Math.max(1, Math.min(100, Number(process.env.REPORT_REVIEW_THRESHOLD) || 3));
+const REPORT_AUTO_QUARANTINE_THRESHOLD = Math.max(0, Math.min(1000, Number(process.env.REPORT_AUTO_QUARANTINE_THRESHOLD) || 0));
 const adminTokens = new Map();
 const adminLoginAttempts = new Map();
 
@@ -85,12 +132,34 @@ if (!BOT_TOKEN) {
     '⚠️  BOT_TOKEN не знайдено в .env — не можемо перевірити, хто саме користувач, прогрес не зберігатиметься.'
   );
 }
+if (!CORS_ALLOWED_ORIGINS.size) {
+  console.warn('⚠️ CORS_ALLOWED_ORIGINS порожній: cross-origin frontend не зможе звертатися до API. Додай точний URL Render Static Site.');
+}
+if (ADMIN_PANEL_PASSWORD && !ADMIN_TELEGRAM_IDS.size) {
+  console.warn('⚠️ ADMIN_TELEGRAM_IDS порожній: адмін-вхід заблокований, доки не додаси дозволений Telegram ID.');
+}
 
 // ---- База даних ---------------------------------------------------------------
 
-const pool = DATABASE_URL
-  ? new Pool({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false } })
+const DATABASE_SSL_CA = process.env.DATABASE_SSL_CA_BASE64
+  ? Buffer.from(process.env.DATABASE_SSL_CA_BASE64, 'base64').toString('utf8')
   : null;
+
+const pool = DATABASE_URL
+  ? new Pool({
+      connectionString: DATABASE_URL,
+      ssl: DATABASE_SSL_CA
+        ? { rejectUnauthorized: true, ca: DATABASE_SSL_CA }
+        : { rejectUnauthorized: false },
+      max: Math.max(2, Math.min(20, Number(process.env.DB_POOL_MAX) || 10)),
+      idleTimeoutMillis: 30_000,
+      connectionTimeoutMillis: 10_000,
+    })
+  : null;
+
+if (DATABASE_URL && !DATABASE_SSL_CA) {
+  console.warn('⚠️ DATABASE_SSL_CA_BASE64 не задано: TLS до Postgres шифрується, але сертифікат не верифікується. Для production додай Supabase CA.');
+}
 
 async function initDb() {
   if (!pool) return;
@@ -183,7 +252,8 @@ async function initDb() {
     ALTER TABLE question_bank
       ADD COLUMN IF NOT EXISTS offline_bank_id TEXT,
       ADD COLUMN IF NOT EXISTS content_hash TEXT,
-      ADD COLUMN IF NOT EXISTS factory_version INT;
+      ADD COLUMN IF NOT EXISTS factory_version INT,
+      ADD COLUMN IF NOT EXISTS needs_review BOOLEAN NOT NULL DEFAULT false;
   `);
 
   await pool.query(`
@@ -580,6 +650,57 @@ async function getStage10UserAnalytics(telegramId) {
     LIMIT 1000
   `, [telegramId]);
   return buildUserTopicAnalytics(rows);
+}
+
+async function gradeTrainingAnswer(questionBankId, selectedIndex) {
+  if (!pool) {
+    const error = new Error('Database unavailable');
+    error.code = 'DB_UNAVAILABLE';
+    throw error;
+  }
+
+  const bankId = Number(questionBankId);
+  const answerIndex = Number(selectedIndex);
+  if (!Number.isInteger(bankId) || bankId <= 0 || !Number.isInteger(answerIndex)) {
+    const error = new Error('Invalid training answer payload');
+    error.code = 'INVALID_TRAINING_ANSWER';
+    throw error;
+  }
+
+  const { rows } = await pool.query(
+    `SELECT id, topic, question_json, verified
+     FROM question_bank
+     WHERE id = $1
+     LIMIT 1`,
+    [bankId]
+  );
+  const row = rows[0];
+  const question = row?.question_json;
+  if (!row || row.verified !== true || !question || !Array.isArray(question.options)) {
+    const error = new Error('Training question not found');
+    error.code = 'TRAINING_QUESTION_NOT_FOUND';
+    throw error;
+  }
+
+  const correctIndex = Number(question.correct_index);
+  if (!Number.isInteger(correctIndex) || correctIndex < 0 || correctIndex >= question.options.length) {
+    const error = new Error('Training question has invalid answer key');
+    error.code = 'TRAINING_ANSWER_KEY_INVALID';
+    throw error;
+  }
+  if (answerIndex < 0 || answerIndex >= question.options.length) {
+    const error = new Error('Selected answer is out of range');
+    error.code = 'INVALID_TRAINING_ANSWER';
+    throw error;
+  }
+
+  return {
+    id: Number(row.id),
+    topic: question.topic || row.topic || 'mixed',
+    selectedIndex: answerIndex,
+    correctIndex,
+    isCorrect: answerIndex === correctIndex,
+  };
 }
 
 async function recordAnswer(telegramId, isCorrect, topic = 'mixed', questionBankId = null, telemetry = {}) {
@@ -1799,24 +1920,37 @@ function scheduleBankRefill(topic, difficulty) {
 // Документація: https://core.telegram.org/bots/webapps#validating-data-received-via-the-mini-app
 
 function verifyTelegramInitData(initData) {
-  if (!BOT_TOKEN || !initData) return null;
+  if (!BOT_TOKEN || typeof initData !== 'string' || !initData.trim()) return null;
 
-  const params = new URLSearchParams(initData);
-  const hash = params.get('hash');
-  params.delete('hash');
+  try {
+    const params = new URLSearchParams(initData);
+    const hash = params.get('hash');
+    if (!hash || !/^[a-f0-9]{64}$/i.test(hash)) return null;
+    params.delete('hash');
 
-  const dataCheckString = [...params.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([key, value]) => `${key}=${value}`)
-    .join('\n');
+    const authDate = Number(params.get('auth_date'));
+    if (!Number.isInteger(authDate) || authDate <= 0) return null;
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    const ageSeconds = nowSeconds - authDate;
+    if (ageSeconds < -60 || ageSeconds > TELEGRAM_INITDATA_MAX_AGE_SECONDS) return null;
 
-  const secretKey = crypto.createHmac('sha256', 'WebAppData').update(BOT_TOKEN).digest();
-  const computedHash = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
+    const dataCheckString = [...params.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, value]) => `${key}=${value}`)
+      .join('\n');
 
-  if (computedHash !== hash) return null;
+    const secretKey = crypto.createHmac('sha256', 'WebAppData').update(BOT_TOKEN).digest();
+    const computedHash = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest();
+    const providedHash = Buffer.from(hash, 'hex');
+    if (computedHash.length !== providedHash.length || !crypto.timingSafeEqual(computedHash, providedHash)) return null;
 
-  const userJson = params.get('user');
-  return userJson ? JSON.parse(userJson) : null;
+    const userJson = params.get('user');
+    if (!userJson) return null;
+    const user = JSON.parse(userJson);
+    return user && Number.isInteger(Number(user.id)) ? user : null;
+  } catch {
+    return null;
+  }
 }
 
 function safePasswordEqual(a, b) {
@@ -1827,7 +1961,7 @@ function safePasswordEqual(a, b) {
 }
 
 function adminAttemptKey(req) {
-  return String(req.headers['x-forwarded-for'] || req.ip || 'unknown').split(',')[0].trim();
+  return String(req.ip || 'unknown');
 }
 
 function isAdminLoginRateLimited(req) {
@@ -1874,21 +2008,83 @@ function requireAdminToken(req, res, next) {
     if (token) adminTokens.delete(token);
     return res.status(401).json({ error: 'Адмін-сесія недійсна або завершилась.' });
   }
+  if (!session.telegramId || !ADMIN_TELEGRAM_IDS.has(String(session.telegramId))) {
+    if (token) adminTokens.delete(token);
+    return res.status(403).json({ error: 'Цей Telegram-акаунт не має доступу до адмін-панелі.' });
+  }
   req.adminSession = session;
   next();
 }
 
+function requireTelegramUser(req, res, next) {
+  const telegramUser = verifyTelegramInitData(req.body?.initData);
+  if (!telegramUser?.id) {
+    return res.status(401).json({
+      error: 'Сесія Telegram недійсна або застаріла. Закрий Mini App і відкрий його знову.',
+      code: 'TELEGRAM_AUTH_REQUIRED',
+    });
+  }
+  req.telegramUser = telegramUser;
+  next();
+}
+
+function rateLimitKey(req, scope = 'ip') {
+  if (scope === 'telegram' && req.telegramUser?.id) return `tg:${req.telegramUser.id}`;
+  return `ip:${req.ip || 'unknown'}`;
+}
+
+function createRateLimiter({ windowMs, max, scope = 'telegram', label = 'request' }) {
+  const buckets = new Map();
+  return function rateLimiter(req, res, next) {
+    const now = Date.now();
+    const key = rateLimitKey(req, scope);
+    let bucket = buckets.get(key);
+    if (!bucket || bucket.resetAt <= now) bucket = { count: 0, resetAt: now + windowMs };
+    bucket.count += 1;
+    buckets.set(key, bucket);
+
+    if (buckets.size > 10_000) {
+      for (const [bucketKey, value] of buckets) {
+        if (value.resetAt <= now) buckets.delete(bucketKey);
+      }
+    }
+
+    if (bucket.count > max) {
+      const retryAfter = Math.max(1, Math.ceil((bucket.resetAt - now) / 1000));
+      res.setHeader('Retry-After', String(retryAfter));
+      return res.status(429).json({
+        error: 'Забагато запитів. Спробуй трохи пізніше.',
+        code: 'RATE_LIMITED',
+        limit: label,
+        retry_after: retryAfter,
+      });
+    }
+    next();
+  };
+}
+
+const apiIpBurstRateLimit = createRateLimiter({ windowMs: 60_000, max: 300, scope: 'ip', label: 'api-ip-burst' });
+const heartbeatRateLimit = createRateLimiter({ windowMs: 60_000, max: 20, label: 'heartbeat' });
+const trainingRateLimit = createRateLimiter({ windowMs: 60_000, max: 40, label: 'training' });
+const answerRateLimit = createRateLimiter({ windowMs: 60_000, max: 120, label: 'answer' });
+const nmtRateLimit = createRateLimiter({ windowMs: 60_000, max: 90, label: 'nmt' });
+const reportRateLimit = createRateLimiter({ windowMs: 60 * 60_000, max: 12, label: 'reports' });
+const aiMinuteRateLimit = createRateLimiter({ windowMs: 60_000, max: 8, label: 'ai-minute' });
+const aiHourRateLimit = createRateLimiter({ windowMs: 60 * 60_000, max: 60, label: 'ai-hour' });
+
 // ---- Роути --------------------------------------------------------------------
+
+// Cheap IP-level shield runs before Telegram HMAC verification and route-specific limits.
+app.use('/api', apiIpBurstRateLimit);
 
 app.get('/api/topics', (req, res) => {
   res.json([{ key: 'mixed', label: '🎯 Змішані завдання НМТ' }]);
 });
 
-app.post('/api/activity/heartbeat', async (req, res) => {
+app.post('/api/activity/heartbeat', requireTelegramUser, heartbeatRateLimit, async (req, res) => {
   if (!pool) return res.status(503).json({ error: 'База даних недоступна.' });
   try {
-    const telegramUser = verifyTelegramInitData(req.body?.initData);
-    if (!telegramUser?.id) return res.status(401).json({ error: 'Не вдалося підтвердити Telegram-користувача.' });
+    const telegramUser = req.telegramUser;
     const sessionId = String(req.body?.sessionId || '').trim().slice(0, 128);
     if (!sessionId) return res.status(400).json({ error: 'Немає sessionId.' });
 
@@ -1911,17 +2107,21 @@ app.post('/api/activity/heartbeat', async (req, res) => {
 
 app.post('/api/admin/login', async (req, res) => {
   try {
-    if (!ADMIN_PANEL_PASSWORD) {
-      return res.status(503).json({ error: 'Адмін-панель не налаштована на сервері.' });
+    if (!ADMIN_PANEL_PASSWORD || !ADMIN_TELEGRAM_IDS.size) {
+      return res.status(503).json({ error: 'Адмін-панель не налаштована: потрібні ADMIN_PANEL_PASSWORD і ADMIN_TELEGRAM_IDS.' });
     }
     if (isAdminLoginRateLimited(req)) {
       return res.status(429).json({ error: 'Забагато спроб. Спробуй пізніше.' });
     }
 
     const telegramUser = verifyTelegramInitData(req.body?.initData);
-    if (BOT_TOKEN && !telegramUser?.id) {
+    if (!telegramUser?.id) {
       registerAdminLoginFailure(req);
-      return res.status(401).json({ error: 'Адмін-вхід доступний лише з Telegram Mini App.' });
+      return res.status(401).json({ error: 'Адмін-вхід доступний лише з валідної Telegram Mini App сесії.' });
+    }
+    if (!ADMIN_TELEGRAM_IDS.has(String(telegramUser.id))) {
+      registerAdminLoginFailure(req);
+      return res.status(403).json({ error: 'Цей Telegram-акаунт не має доступу до адмін-панелі.' });
     }
 
     if (!safePasswordEqual(req.body?.password, ADMIN_PANEL_PASSWORD)) {
@@ -1930,7 +2130,7 @@ app.post('/api/admin/login', async (req, res) => {
     }
 
     clearAdminLoginFailures(req);
-    const token = createAdminToken(telegramUser?.id || null);
+    const token = createAdminToken(telegramUser.id);
     res.json({ token, expires_in: Math.floor(ADMIN_PANEL_TOKEN_TTL_MS / 1000) });
   } catch (err) {
     console.error('ADMIN LOGIN ERROR:', err);
@@ -2106,6 +2306,14 @@ app.get('/api/admin/stats', requireAdminToken, async (req, res) => {
 
 app.get('/api/knowledge/meta', (req, res) => {
   res.json({
+    status: offlineBankRuntime ? 'ready' : 'degraded',
+    year: NMT_META.year,
+    exam_questions: NMT_EXAM_META.questions,
+  });
+});
+
+app.get('/api/admin/knowledge/meta', requireAdminToken, (req, res) => {
+  res.json({
     version: GENERATOR_VERSION,
     core_engine_version: GENERATOR_VERSION,
     visual_engine_version: VISUAL_ENGINE_VERSION,
@@ -2125,11 +2333,11 @@ app.get('/api/knowledge/meta', (req, res) => {
 });
 
 // Повертає збережений прогрес користувача
-app.post('/api/progress', async (req, res) => {
+app.post('/api/progress', requireTelegramUser, trainingRateLimit, async (req, res) => {
   const { initData } = req.body;
 
   try {
-    const telegramUser = verifyTelegramInitData(initData);
+    const telegramUser = req.telegramUser;
     const user = await getOrCreateUser(telegramUser);
 
     res.json({
@@ -2150,37 +2358,39 @@ app.post('/api/progress', async (req, res) => {
 
 
 // Записує відповідь користувача
-app.post('/api/answer', async (req, res) => {
-  const { initData, isCorrect, topic = 'mixed', questionBankId = null, selectedIndex = null, responseMs = null, clientAnswerId = null, activitySessionId = null } = req.body;
+app.post('/api/answer', requireTelegramUser, answerRateLimit, async (req, res) => {
+  const { questionBankId = null, selectedIndex = null, responseMs = null, clientAnswerId = null, activitySessionId = null } = req.body;
 
   try {
-    const telegramUser = verifyTelegramInitData(initData);
-
-    if (!telegramUser?.id) {
-      return res.json({ saved: false });
-    }
-
+    const telegramUser = req.telegramUser;
     await getOrCreateUser(telegramUser);
 
+    // SECURITY: never trust client-provided isCorrect/topic. The answer key is read
+    // from the verified server-side question bank and graded here.
+    const grade = await gradeTrainingAnswer(questionBankId, selectedIndex);
     const updated = await recordAnswer(
       telegramUser.id,
-      !!isCorrect,
-      topic,
-      Number.isInteger(Number(questionBankId)) ? Number(questionBankId) : null,
-      { selectedIndex, responseMs, clientAnswerId, activitySessionId }
+      grade.isCorrect,
+      grade.topic,
+      grade.id,
+      { selectedIndex: grade.selectedIndex, responseMs, clientAnswerId, activitySessionId }
     );
 
     res.json({
       saved: !!updated,
+      is_correct: grade.isCorrect,
+      correct_index: grade.correctIndex,
       ...updated,
     });
 
   } catch (err) {
     console.error('ANSWER ERROR:', err);
-
-    res.status(500).json({
-      saved: false
-    });
+    if (['INVALID_TRAINING_ANSWER', 'TRAINING_QUESTION_NOT_FOUND', 'TRAINING_ANSWER_KEY_INVALID'].includes(err.code)) {
+      const status = err.code === 'TRAINING_QUESTION_NOT_FOUND' ? 404 : 400;
+      return res.status(status).json({ saved: false, error: 'Не вдалося перевірити цю відповідь.' });
+    }
+    if (err.code === 'DB_UNAVAILABLE') return res.status(503).json({ saved: false, error: 'База даних недоступна.' });
+    res.status(500).json({ saved: false, error: 'Не вдалося зберегти відповідь.' });
   }
 });
 
@@ -2207,10 +2417,10 @@ async function discardLegacyNmtAttempt(attempt) {
   return null;
 }
 
-app.post('/api/nmt/resume', async (req, res) => {
+app.post('/api/nmt/resume', requireTelegramUser, nmtRateLimit, async (req, res) => {
   const { initData } = req.body;
   try {
-    const telegramUser = verifyTelegramInitData(initData);
+    const telegramUser = req.telegramUser;
     if (!telegramUser?.id) return res.status(401).json({ error: 'Потрібно відкрити застосунок через Telegram.' });
     await getOrCreateUser(telegramUser);
 
@@ -2232,10 +2442,10 @@ app.post('/api/nmt/resume', async (req, res) => {
   }
 });
 
-app.post('/api/nmt/start', async (req, res) => {
+app.post('/api/nmt/start', requireTelegramUser, nmtRateLimit, async (req, res) => {
   const { initData, forceNew = false, clientSessionId = null } = req.body;
   try {
-    const telegramUser = verifyTelegramInitData(initData);
+    const telegramUser = req.telegramUser;
     if (!telegramUser?.id) return res.status(401).json({ error: 'Потрібно відкрити застосунок через Telegram.' });
     await getOrCreateUser(telegramUser);
 
@@ -2393,11 +2603,11 @@ app.post('/api/nmt/start', async (req, res) => {
   }
 });
 
-app.post('/api/nmt/save-answer', async (req, res) => {
+app.post('/api/nmt/save-answer', requireTelegramUser, nmtRateLimit, async (req, res) => {
   const { initData, attemptId, index, answer, revision = null } = req.body;
   let client = null;
   try {
-    const telegramUser = verifyTelegramInitData(initData);
+    const telegramUser = req.telegramUser;
     if (!telegramUser?.id) return res.status(401).json({ error: 'Потрібно відкрити застосунок через Telegram.' });
     if (!pool) return res.status(503).json({ saved: false, error: 'База даних тимчасово недоступна.' });
 
@@ -2503,10 +2713,10 @@ app.post('/api/nmt/save-answer', async (req, res) => {
   }
 });
 
-app.post('/api/nmt/finish', async (req, res) => {
+app.post('/api/nmt/finish', requireTelegramUser, nmtRateLimit, async (req, res) => {
   const { initData, attemptId, answers = null } = req.body;
   try {
-    const telegramUser = verifyTelegramInitData(initData);
+    const telegramUser = req.telegramUser;
     if (!telegramUser?.id) return res.status(401).json({ error: 'Потрібно відкрити застосунок через Telegram.' });
 
     const current = await getNmtAttemptById(telegramUser.id, Number(attemptId));
@@ -2535,11 +2745,11 @@ app.post('/api/nmt/finish', async (req, res) => {
 });
 
 // Профіль користувача та статистика по темах
-app.post('/api/profile', async (req, res) => {
+app.post('/api/profile', requireTelegramUser, trainingRateLimit, async (req, res) => {
   const { initData } = req.body;
 
   try {
-    const telegramUser = verifyTelegramInitData(initData);
+    const telegramUser = req.telegramUser;
     if (!telegramUser?.id) return res.status(401).json({ error: 'Потрібно відкрити застосунок через Telegram.' });
 
     await getOrCreateUser(telegramUser);
@@ -2611,11 +2821,11 @@ app.post('/api/profile', async (req, res) => {
 });
 
 // Скарга на некоректне/незрозуміле завдання
-app.post('/api/report-question', async (req, res) => {
+app.post('/api/report-question', requireTelegramUser, reportRateLimit, async (req, res) => {
   const { initData, questionBankId = null, reason = 'Інше', question = null } = req.body;
 
   try {
-    const telegramUser = verifyTelegramInitData(initData);
+    const telegramUser = req.telegramUser;
     if (!telegramUser?.id) return res.status(401).json({ error: 'Потрібно відкрити застосунок через Telegram.' });
     await getOrCreateUser(telegramUser);
 
@@ -2642,13 +2852,17 @@ app.post('/api/report-question', async (req, res) => {
     if (pool && validBankId && inserted) {
       const { rows } = await pool.query(
         `UPDATE question_bank
-         SET report_count = report_count + 1
+         SET report_count = report_count + 1,
+             needs_review = CASE WHEN report_count + 1 >= $2 THEN true ELSE needs_review END
          WHERE id = $1
-         RETURNING report_count, offline_bank_id`,
-        [validBankId]
+         RETURNING report_count, offline_bank_id, needs_review`,
+        [validBankId, REPORT_REVIEW_THRESHOLD]
       );
 
-      if ((rows[0]?.report_count || 0) >= 3) {
+      const reportCount = Number(rows[0]?.report_count) || 0;
+      // Reports from users mark the item for review, but do not let a few accounts
+      // remotely disable the bank. Auto-quarantine is opt-in via an explicit threshold.
+      if (REPORT_AUTO_QUARANTINE_THRESHOLD > 0 && reportCount >= REPORT_AUTO_QUARANTINE_THRESHOLD) {
         await pool.query(`UPDATE question_bank SET is_active = false WHERE id = $1`, [validBankId]);
         if (rows[0]?.offline_bank_id) offlineBankRuntime?.disable(rows[0].offline_bank_id);
       }
@@ -2662,11 +2876,11 @@ app.post('/api/report-question', async (req, res) => {
 });
 
 // Додаткова AI-допомога після відповіді
-app.post('/api/explain-more', async (req, res) => {
+app.post('/api/explain-more', requireTelegramUser, aiMinuteRateLimit, aiHourRateLimit, async (req, res) => {
   const { initData, mode = 'simple', topic = 'mixed', difficulty = 'NMT HARD', question } = req.body;
 
   try {
-    const telegramUser = verifyTelegramInitData(initData);
+    const telegramUser = req.telegramUser;
     if (!telegramUser?.id) return res.status(401).json({ error: 'Потрібно відкрити застосунок через Telegram.' });
     if (!question?.question || !Array.isArray(question.options)) return res.status(400).json({ error: 'Немає даних завдання.' });
 
@@ -2728,7 +2942,7 @@ app.post('/api/explain-more', async (req, res) => {
 
 // Віддає невеликий буфер готових завдань одним HTTP-запитом.
 // Це прибирає мережеву паузу між «Наступне завдання» і новою карткою.
-app.post('/api/questions-batch', async (req, res) => {
+app.post('/api/questions-batch', requireTelegramUser, trainingRateLimit, async (req, res) => {
   const {
     topic = 'mixed',
     difficulty = 'NMT HARD',
@@ -2740,7 +2954,7 @@ app.post('/api/questions-batch', async (req, res) => {
   const batchSize = Math.max(1, Math.min(5, Number(count) || 4));
 
   try {
-    const telegramUser = verifyTelegramInitData(initData);
+    const telegramUser = req.telegramUser;
     const user = await getOrCreateUser(telegramUser);
     const telegramId = user?.telegram_id ?? null;
     const avoidList = telegramId
@@ -2831,7 +3045,7 @@ app.post('/api/questions-batch', async (req, res) => {
 
 
 // Віддає інше перевірене питання з offline bank
-app.post('/api/generate-question', async (req, res) => {
+app.post('/api/generate-question', requireTelegramUser, trainingRateLimit, async (req, res) => {
   const {
     topic = 'mixed',
     difficulty = 'NMT HARD',
@@ -2841,7 +3055,7 @@ app.post('/api/generate-question', async (req, res) => {
   const effectiveTopic = 'mixed';
 
   try {
-    const telegramUser = verifyTelegramInitData(initData);
+    const telegramUser = req.telegramUser;
     const user = await getOrCreateUser(telegramUser);
     const telegramId = user?.telegram_id ?? null;
     const avoidList = telegramId

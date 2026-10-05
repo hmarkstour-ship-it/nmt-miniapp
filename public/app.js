@@ -3,7 +3,7 @@ const tg = window.Telegram?.WebApp;
   tg?.expand();
 
   function syncTelegramTheme() {
-    // v1.1.0: richer Supabase-backed admin analytics + user activity dashboard.
+    // v1.1.1: security hardening — verified Telegram sessions, rate limits, server-side grading, safer SVG.
     document.documentElement.style.colorScheme = 'dark';
     document.body?.classList.remove('telegram-dark');
     document.body?.classList.add('fixed-premium-theme');
@@ -20,8 +20,8 @@ const tg = window.Telegram?.WebApp;
   const FETCH_TIMEOUT_MS = 30000;
   const QUESTION_TIMEOUT_MS = 55000;
   const BACKEND_WAKE_MAX_MS = 75000;
-  const BUILD_VERSION = 'admin-analytics-v1.1.0';
-  const APP_VERSION = '1.1.0';
+  const BUILD_VERSION = 'security-hardening-v1.1.1';
+  const APP_VERSION = '1.1.1';
   console.log('[NMT build]', BUILD_VERSION);
 
   async function fetchWithTimeout(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS) {
@@ -1292,14 +1292,68 @@ const tg = window.Telegram?.WebApp;
     return `<div class="engine-debug">${rows.map(([k,v]) => `<span><b>${escapeHtml(k)}:</b> ${escapeHtml(String(v))}</span>`).join('')}</div>`;
   }
 
-  function safeDiagramSvg(svg) {
-    if (typeof svg !== 'string') return '';
+  const SAFE_SVG_TAGS = new Set(['svg', 'defs', 'style', 'g', 'path', 'rect', 'circle', 'ellipse', 'polyline', 'polygon', 'line', 'text', 'tspan']);
+  const SAFE_SVG_ATTRS = new Set([
+    'xmlns', 'viewBox', 'class', 'd', 'x', 'y', 'x1', 'y1', 'x2', 'y2', 'rx', 'ry',
+    'width', 'height', 'cx', 'cy', 'r', 'points', 'text-anchor', 'role', 'aria-label',
+    'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin', 'stroke-opacity',
+    'fill-opacity', 'opacity', 'transform', 'preserveAspectRatio', 'vector-effect', 'type'
+  ]);
+
+  function parseSafeDiagramSvg(svg) {
+    if (typeof svg !== 'string' || svg.length > 120000) return null;
     const value = svg.trim();
-    if (!value.startsWith('<svg') || !value.endsWith('</svg>')) return '';
-    return value
-      .replace(/<script[\s\S]*?<\/script>/gi, '')
-      .replace(/\son\w+\s*=\s*(["']).*?\1/gi, '')
-      .replace(/javascript:/gi, '');
+    if (!value.startsWith('<svg') || !value.endsWith('</svg>')) return null;
+
+    try {
+      const doc = new DOMParser().parseFromString(value, 'image/svg+xml');
+      if (doc.querySelector('parsererror')) return null;
+      const root = doc.documentElement;
+      if (!root || root.localName !== 'svg') return null;
+
+      for (const el of [root, ...root.querySelectorAll('*')]) {
+        if (!SAFE_SVG_TAGS.has(el.localName)) {
+          el.remove();
+          continue;
+        }
+        for (const attr of [...el.attributes]) {
+          const name = attr.name;
+          const lowerName = name.toLowerCase();
+          const attrValue = String(attr.value || '');
+          if (lowerName.startsWith('on') || !SAFE_SVG_ATTRS.has(name) || /javascript:|data:text\/html|vbscript:/i.test(attrValue)) {
+            el.removeAttribute(name);
+          }
+        }
+        if (el.localName === 'style') {
+          const css = String(el.textContent || '');
+          if (css.length > 20000 || /@import|url\s*\(|expression\s*\(|javascript:|data:|behavior\s*:|-moz-binding/i.test(css)) {
+            el.remove();
+          }
+        }
+      }
+
+      root.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+      const imported = document.importNode(root, true);
+      imported.style.width = '100%';
+      imported.style.height = 'auto';
+      imported.style.display = 'block';
+      imported.style.maxWidth = '100%';
+      return imported;
+    } catch {
+      return null;
+    }
+  }
+
+  function mountSafeDiagram(container, svg) {
+    if (!container) return;
+    const safeSvg = parseSafeDiagramSvg(svg);
+    if (!safeSvg) {
+      container.remove();
+      return;
+    }
+    const shadow = container.attachShadow?.({ mode: 'closed' });
+    if (shadow) shadow.appendChild(safeSvg);
+    else container.replaceChildren(safeSvg);
   }
 
   function renderQuestion(q) {
@@ -1334,7 +1388,7 @@ const tg = window.Telegram?.WebApp;
         </div>
         <div class="question-text">${escapeHtml(q.question)}</div>
         ${engineDebugMarkup(q)}
-        ${q.diagram_svg ? `<div class="training-diagram">${safeDiagramSvg(q.diagram_svg)}</div>` : ''}
+        ${q.diagram_svg ? `<div class="training-diagram" data-training-diagram></div>` : ''}
         <div class="options">
           ${q.options.map((opt, i) => `
             <button class="option" data-index="${i}" type="button">
@@ -1367,6 +1421,8 @@ const tg = window.Telegram?.WebApp;
           <button class="secondary-btn" id="regenerateBtn" type="button">↻ Інше завдання</button>
         </div>
       </div>`;
+
+    if (q.diagram_svg) mountSafeDiagram(cardArea.querySelector('[data-training-diagram]'), q.diagram_svg);
 
     const mathRendered = renderMathSafely(cardArea);
     if (!mathRendered && typeof window.renderMathInElement === 'function') {
@@ -1464,7 +1520,6 @@ const tg = window.Telegram?.WebApp;
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           initData: tg?.initData || null,
-          isCorrect,
           topic: q.topic || topicSelect.value,
           questionBankId: q.bank_id || null,
           selectedIndex,

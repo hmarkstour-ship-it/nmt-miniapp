@@ -74,14 +74,57 @@
     }
   }
 
-  function safeDiagramSvg(svg) {
-    if (typeof svg !== 'string') return '';
+  const SAFE_SVG_TAGS = new Set(['svg', 'defs', 'style', 'g', 'path', 'rect', 'circle', 'ellipse', 'polyline', 'polygon', 'line', 'text', 'tspan']);
+  const SAFE_SVG_ATTRS = new Set([
+    'xmlns', 'viewBox', 'class', 'd', 'x', 'y', 'x1', 'y1', 'x2', 'y2', 'rx', 'ry',
+    'width', 'height', 'cx', 'cy', 'r', 'points', 'text-anchor', 'role', 'aria-label',
+    'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin', 'stroke-opacity',
+    'fill-opacity', 'opacity', 'transform', 'preserveAspectRatio', 'vector-effect', 'type'
+  ]);
+
+  function parseSafeDiagramSvg(svg) {
+    if (typeof svg !== 'string' || svg.length > 120000) return null;
     const value = svg.trim();
-    if (!value.startsWith('<svg') || !value.endsWith('</svg>')) return '';
-    return value
-      .replace(/<script[\s\S]*?<\/script>/gi, '')
-      .replace(/\son\w+\s*=\s*(["']).*?\1/gi, '')
-      .replace(/javascript:/gi, '');
+    if (!value.startsWith('<svg') || !value.endsWith('</svg>')) return null;
+    try {
+      const doc = new DOMParser().parseFromString(value, 'image/svg+xml');
+      if (doc.querySelector('parsererror')) return null;
+      const root = doc.documentElement;
+      if (!root || root.localName !== 'svg') return null;
+      for (const el of [root, ...root.querySelectorAll('*')]) {
+        if (!SAFE_SVG_TAGS.has(el.localName)) { el.remove(); continue; }
+        for (const attr of [...el.attributes]) {
+          const name = attr.name;
+          const lowerName = name.toLowerCase();
+          const attrValue = String(attr.value || '');
+          if (lowerName.startsWith('on') || !SAFE_SVG_ATTRS.has(name) || /javascript:|data:text\/html|vbscript:/i.test(attrValue)) {
+            el.removeAttribute(name);
+          }
+        }
+        if (el.localName === 'style') {
+          const css = String(el.textContent || '');
+          if (css.length > 20000 || /@import|url\s*\(|expression\s*\(|javascript:|data:|behavior\s*:|-moz-binding/i.test(css)) el.remove();
+        }
+      }
+      root.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+      const imported = document.importNode(root, true);
+      imported.style.width = '100%';
+      imported.style.height = 'auto';
+      imported.style.display = 'block';
+      imported.style.maxWidth = '100%';
+      return imported;
+    } catch {
+      return null;
+    }
+  }
+
+  function mountSafeDiagram(container, svg) {
+    if (!container) return;
+    const safeSvg = parseSafeDiagramSvg(svg);
+    if (!safeSvg) { container.remove(); return; }
+    const shadow = container.attachShadow?.({ mode: 'closed' });
+    if (shadow) shadow.appendChild(safeSvg);
+    else container.replaceChildren(safeSvg);
   }
 
   function formatTime(seconds) {
@@ -291,7 +334,7 @@
         <div class="nmt-question-meta"><span>${escapeHtml(q.topic_label || '')}</span><span>${typeLabel(q.type)}</span></div>
         <div class="nmt-question-text">${escapeHtml(q.question)}</div>
         ${engineDebugMarkup(q)}
-        ${q.diagram_svg ? `<div class="nmt-diagram">${safeDiagramSvg(q.diagram_svg)}</div>` : ''}
+        ${q.diagram_svg ? `<div class="nmt-diagram" data-nmt-diagram></div>` : ''}
         <div id="nmtAnswerArea">${answerMarkup(q, state.answers[String(state.index)])}</div>
       </article>
 
@@ -302,6 +345,7 @@
           : '<button class="nmt-nav-btn primary" id="nmtNext" type="button">Далі →</button>'}
       </div>`;
 
+    if (q.diagram_svg) mountSafeDiagram(content.querySelector('[data-nmt-diagram]'), q.diagram_svg);
     bindExamInteractions(q);
     renderMath(content);
     updateTimerDom();
@@ -604,10 +648,14 @@
 
       <section class="nmt-review-section">
         <div class="nmt-review-head"><h3>Розбір завдань</h3><p>Натисни на завдання, щоб побачити відповідь і пояснення.</p></div>
-        <div class="nmt-review-list">${result.review.map(item => reviewMarkup(item)).join('')}</div>
+        <div class="nmt-review-list">${result.review.map((item, index) => reviewMarkup(item, index)).join('')}</div>
       </section>
 
       <button class="nmt-start-btn" id="nmtNewAfterResult" type="button">Пройти ще один варіант</button>`;
+
+    result.review.forEach((item, index) => {
+      if (item.diagram_svg) mountSafeDiagram(content.querySelector(`[data-review-diagram="${index}"]`), item.diagram_svg);
+    });
 
     content.querySelectorAll('.nmt-review-toggle').forEach(btn => btn.addEventListener('click', () => {
       const item = btn.closest('.nmt-review-item');
@@ -618,7 +666,7 @@
     renderMath(content);
   }
 
-  function reviewMarkup(item) {
+  function reviewMarkup(item, reviewIndex) {
     return `<article class="nmt-review-item ${item.score_awarded === item.max_score ? 'correct' : 'wrong'}">
       <button class="nmt-review-toggle" type="button">
         <span class="nmt-review-number">${item.number}</span>
@@ -627,7 +675,7 @@
       </button>
       <div class="nmt-review-body">
         <div class="nmt-review-question">${escapeHtml(item.question)}</div>
-        ${item.diagram_svg ? `<div class="nmt-diagram compact">${safeDiagramSvg(item.diagram_svg)}</div>` : ''}
+        ${item.diagram_svg ? `<div class="nmt-diagram compact" data-review-diagram="${reviewIndex}"></div>` : ''}
         <div class="nmt-review-answer"><span>Твоя відповідь</span><strong>${escapeHtml(item.user_answer)}</strong></div>
         <div class="nmt-review-answer correct"><span>Правильна відповідь</span><strong>${escapeHtml(item.correct_answer)}</strong></div>
         <div class="nmt-review-explanation"><span>Розв’язання</span>${item.type === 'matching' ? matchingStepsMarkup(item) : stepsMarkup(item.explanation)}</div>
